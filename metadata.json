@@ -1,0 +1,5 @@
+{
+  "name": "Personel Takip Sistemi",
+  "description": "Personel, ustabaşı ve admin rolleriyle personel çalışma günlerini, ödemeleri ve aylık raporları takip etmek için tasarlanmış bir web uygulaması.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,263 @@
+import React, { useState, useMemo } from 'react';
+import { Income, Expense } from '../types';
+import { PlusIcon, ArrowUpCircleIcon, ArrowDownCircleIcon, XMarkIcon, TrashIcon, CurrencyDollarIcon, MagnifyingGlassIcon } from './icons/Icons';
+import ConfirmationModal from './ui/ConfirmationModal';
+
+interface FinanceViewProps {
+    incomes: Income[];
+    expenses: Expense[];
+    onAddIncome: (income: Omit<Income, 'id'>) => void;
+    onAddExpense: (expense: Omit<Expense, 'id'>) => void;
+    onDeleteIncome: (incomeId: string) => void;
+    onDeleteExpense: (expenseId: string) => void;
+    selectedMonth: Date;
+}
+
+const AddTransactionModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onAddIncome: (income: { description: string, amount: number }) => void;
+    onAddExpense: (expense: { description: string, amount: number }) => void;
+}> = ({ isOpen, onClose, onAddIncome, onAddExpense }) => {
+    const [type, setType] = useState<'income' | 'expense'>('expense');
+    const [description, setDescription] = useState('');
+    const [amount, setAmount] = useState('');
+
+    if (!isOpen) return null;
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const numericAmount = parseFloat(amount);
+        if (!description.trim() || isNaN(numericAmount) || numericAmount <= 0) {
+            alert('Lütfen geçerli bir açıklama ve pozitif bir tutar girin.');
+            return;
+        }
+
+        if (type === 'income') {
+            onAddIncome({ description, amount: numericAmount });
+        } else {
+            onAddExpense({ description, amount: numericAmount });
+        }
+        
+        // Reset and close
+        setDescription('');
+        setAmount('');
+        onClose();
+    };
+
+    const isIncome = type === 'income';
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h3 className="text-lg font-semibold text-gray-800">Yeni İşlem Ekle</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <XMarkIcon className="h-6 w-6" />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6">
+                    <div className="mb-6">
+                        <span className="block text-sm font-medium text-gray-700 mb-2">İşlem Tipi</span>
+                        <div className="flex rounded-md shadow-sm">
+                             <button type="button" onClick={() => setType('expense')} className={`relative inline-flex items-center justify-center w-1/2 px-4 py-2 rounded-l-md border text-sm font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${type === 'expense' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Gider</button>
+                            <button type="button" onClick={() => setType('income')} className={`-ml-px relative inline-flex items-center justify-center w-1/2 px-4 py-2 rounded-r-md border text-sm font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${type === 'income' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Gelir</button>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Açıklama</label>
+                            <input
+                                type="text"
+                                id="description"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder={isIncome ? 'Örn: Hurda Malzeme Satışı' : 'Örn: Malzeme Alımı - Çimento'}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                autoFocus
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Tutar (₺)</label>
+                            <input
+                                type="number"
+                                id="amount"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                placeholder="0.00"
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+                    </div>
+                    <div className="mt-8 flex justify-end gap-3">
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                            İptal
+                        </button>
+                        <button
+                            type="submit"
+                            className={`px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm ${isIncome ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 ${isIncome ? 'focus:ring-green-500' : 'focus:ring-red-500'}`}
+                        >
+                            {isIncome ? 'Geliri Kaydet' : 'Gideri Kaydet'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+
+const FinanceView: React.FC<FinanceViewProps> = ({ incomes, expenses, onAddIncome, onAddExpense, onDeleteIncome, onDeleteExpense, selectedMonth }) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<{ id: string, type: 'income' | 'expense', description: string } | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const transactions = useMemo(() => {
+        const currentMonth = selectedMonth.getMonth();
+        const currentYear = selectedMonth.getFullYear();
+
+        const filterByMonth = (item: Income | Expense) => {
+            const itemDate = new Date(item.date);
+            return itemDate.getMonth() === currentMonth && itemDate.getFullYear() === currentYear;
+        };
+
+        const combined = [
+            ...incomes.filter(filterByMonth).map(item => ({ ...item, type: 'income' as const })),
+            ...expenses.filter(filterByMonth).map(item => ({ ...item, type: 'expense' as const })),
+        ];
+        return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [incomes, expenses, selectedMonth]);
+
+    const filteredTransactions = useMemo(() => {
+        if (!searchQuery) return transactions;
+        return transactions.filter(t =>
+            t.description.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [transactions, searchQuery]);
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
+    }
+    
+    const formatDateTime = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    const handleAddTransaction = (item: { description: string, amount: number }, type: 'income' | 'expense') => {
+        const newTransaction = { ...item, date: new Date().toISOString() };
+        if (type === 'income') {
+            onAddIncome(newTransaction);
+        } else {
+            onAddExpense(newTransaction);
+        }
+    };
+    
+    const handleDelete = () => {
+        if (!itemToDelete) return;
+        if (itemToDelete.type === 'income') {
+            onDeleteIncome(itemToDelete.id);
+        } else {
+            onDeleteExpense(itemToDelete.id);
+        }
+        setItemToDelete(null);
+    };
+
+    return (
+        <div className="relative min-h-[calc(100vh-150px)]">
+            <h2 className="text-3xl font-bold mb-6 text-gray-700">Finans Yönetimi ({selectedMonth.toLocaleString('tr-TR', { month: 'long', year: 'numeric' })})</h2>
+            
+            <div className="bg-white rounded-lg shadow-md">
+                <div className="p-4 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                    <h3 className="text-lg font-semibold text-gray-800">Aylık İşlemler</h3>
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Açıklamaya göre ara..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full sm:w-64 pl-10 pr-4 py-2 border rounded-md bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+                </div>
+                <ul className="divide-y divide-gray-200">
+                    {filteredTransactions.length > 0 ? (
+                        filteredTransactions.map(item => {
+                            const isIncome = item.type === 'income';
+                            return (
+                                <li key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50 group">
+                                    <div className="flex items-center">
+                                        {isIncome ? (
+                                            <ArrowUpCircleIcon className="h-8 w-8 text-green-500 mr-4" />
+                                        ) : (
+                                            <ArrowDownCircleIcon className="h-8 w-8 text-red-500 mr-4" />
+                                        )}
+                                        <div>
+                                            <p className="font-semibold text-gray-800">{item.description}</p>
+                                            <p className="text-sm text-gray-500">{formatDateTime(item.date)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <p className={`font-bold text-lg ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
+                                            {isIncome ? '+' : '-'} {formatCurrency(item.amount)}
+                                        </p>
+                                        <button 
+                                            onClick={() => setItemToDelete({id: item.id, type: item.type, description: item.description})}
+                                            className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            aria-label="İşlemi Sil"
+                                        >
+                                            <TrashIcon className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                </li>
+                            );
+                        })
+                    ) : (
+                         <div className="flex flex-col items-center justify-center text-center p-10">
+                            {transactions.length > 0 && searchQuery ? (
+                                <>
+                                    <MagnifyingGlassIcon className="h-12 w-12 text-gray-300 mb-2"/>
+                                    <p className="text-gray-500 font-medium">Sonuç Bulunamadı</p>
+                                    <p className="text-sm text-gray-400">'{searchQuery}' için işlem bulunamadı.</p>
+                                </>
+                            ) : (
+                                <>
+                                    <CurrencyDollarIcon className="h-12 w-12 text-gray-300 mb-2"/>
+                                    <p className="text-gray-500 font-medium">İşlem Bulunmuyor</p>
+                                    <p className="text-sm text-gray-400">Bu ay için herhangi bir gelir veya gider kaydedilmedi.</p>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </ul>
+            </div>
+
+            <button
+                onClick={() => setIsModalOpen(true)}
+                className="fixed bottom-8 right-8 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-transform hover:scale-110"
+                aria-label="Yeni İşlem Ekle"
+            >
+                <PlusIcon className="h-8 w-8" />
+            </button>
+
+            <AddTransactionModal 
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onAddIncome={(item) => handleAddTransaction(item, 'income')}
+                onAddExpense={(item) => handleAddTransaction(item, 'expense')}
+            />
+
+            <ConfirmationModal
+                isOpen={!!itemToDelete}
+                onClose={() => setItemToDelete(null)}
+                onConfirm={handleDelete}
+                title="İşlemi Sil"
+                message={`'${itemToDelete?.description}' işlemini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+            />
+        </div>
+    );
+};
+
+export default FinanceView;
