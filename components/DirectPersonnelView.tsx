@@ -421,7 +421,7 @@ const DirectPersonnelView: React.FC<DirectPersonnelViewProps> = ({ currentUser, 
                 />
             </div>
         </div>
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 max-h-80 md:max-h-none">
             {filteredPersonnel.length > 0 ? (
                 <ul>{filteredPersonnel.map(p => (
                     <li key={p.id}>

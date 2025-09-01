@@ -423,7 +423,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
                 <input type="text" placeholder="Personel ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-sm focus:ring-blue-500 focus:border-blue-500"/>
             </div>
         </div>
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 max-h-80 md:max-h-none">
             {filteredPersonnel.length > 0 ? (
                 <ul>{filteredPersonnel.map(p => {
                     const foremanName = users.find(u => u.id === p.foremanId)?.name;
