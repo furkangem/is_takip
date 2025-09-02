@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Personnel, WorkDay, User, Role, Payment, Income, Expense } from '../types';
+import { Personnel, WorkDay, User, Role, Payment, Income, Expense, PersonnelPayment } from '../types';
 import { CashIcon, UsersIcon, TrendingDownIcon, TrendingUpIcon, DocumentCheckIcon, ChevronDownIcon, ChevronUpIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 import ForemanPayments from './ForemanPayments';
@@ -12,13 +12,14 @@ interface DashboardViewProps {
   personnel: Personnel[];
   workDays: WorkDay[];
   payments: Payment[];
+  personnelPayments: PersonnelPayment[];
   extraIncomes: Income[];
   extraExpenses: Expense[];
   onAddPayment: (payment: Omit<Payment, 'id'>) => void;
   selectedMonth: Date;
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, users, personnel, workDays, payments, extraIncomes, extraExpenses, onAddPayment, selectedMonth }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, users, personnel, workDays, payments, personnelPayments, extraIncomes, extraExpenses, onAddPayment, selectedMonth }) => {
   
   const currentMonthName = selectedMonth.toLocaleString('tr-TR', { month: 'long' });
   const formatCurrency = (value: number) => {
@@ -43,36 +44,39 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, users, perso
       const extraExp = extraExpenses
           .filter(exp => isCurrentMonth(exp.date))
           .reduce((sum, exp) => sum + exp.amount, 0);
+          
+      const foremanPaymentsTotal = payments
+          .filter(p => isCurrentMonth(p.date))
+          .reduce((sum, p) => sum + p.amount, 0);
 
-      let personnelExp = 0;
+      const personnelPaymentsTotal = personnelPayments
+          .filter(p => isCurrentMonth(p.date))
+          .reduce((sum, p) => sum + p.amount, 0);
+
+      const totalPaidExpenses = foremanPaymentsTotal + personnelPaymentsTotal;
+      const totalExp = extraExp + totalPaidExpenses;
+      const profit = income - totalExp;
+
+      // Calculate theoretical earnings by foreman for the "Hakedişler" table
       const byForeman: { [key: string]: { name: string, total: number } } = {};
       users.filter(u => u.role === Role.FOREMAN).forEach(f => {
           byForeman[f.id] = { name: f.name, total: 0 };
       });
-
       const monthlyWorkDays = workDays.filter(wd => isCurrentMonth(wd.date));
-      
       monthlyWorkDays.forEach(wd => {
         const p = personnel.find(p => p.id === wd.personnelId);
-        if(p) {
-           personnelExp += wd.wage;
-           if(byForeman[p.foremanId]) {
-               byForeman[p.foremanId].total += wd.wage;
-           }
+        if(p && byForeman[p.foremanId]) {
+           byForeman[p.foremanId].total += wd.wage;
         }
       });
       
-      const totalExp = personnelExp + extraExp;
-      const profit = income - totalExp;
-
       return { 
           totalIncome: income,
           totalExpenses: totalExp,
           netProfit: profit,
-          personnelExpenses: personnelExp,
           expensesByForeman: Object.values(byForeman)
       };
-    }, [personnel, workDays, extraIncomes, extraExpenses, users, selectedMonth]);
+    }, [personnel, workDays, payments, personnelPayments, extraIncomes, extraExpenses, users, selectedMonth]);
 
     const chartData = [
       {
@@ -122,7 +126,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, users, perso
             </ResponsiveContainer>
           </div>
           <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-semibold mb-4 text-gray-700">Ustabaşına Göre Personel Giderleri</h3>
+              <h3 className="text-xl font-semibold mb-4 text-gray-700">Ustabaşı Ekibi Hakedişleri</h3>
               <ul className="space-y-4">
                   {expensesByForeman.map(foreman => (
                       <li key={foreman.name} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">

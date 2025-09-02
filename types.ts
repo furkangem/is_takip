@@ -24,6 +24,7 @@ export interface WorkDay {
   location: string;
   jobDescription: string;
   wage: number;
+  hours?: number;
 }
 
 export interface Payment {
@@ -41,7 +42,7 @@ export interface PersonnelPayment {
 }
 
 export interface Income {
-    id: string;
+    id:string;
     description: string;
     amount: number;
     date: string; // ISO Date String

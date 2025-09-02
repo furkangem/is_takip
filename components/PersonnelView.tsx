@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Personnel, WorkDay, User, Role, PersonnelPayment } from '../types';
 import Calendar from './Calendar';
-import { UserGroupIcon, IdentificationIcon, CashIcon, CalendarIcon, MapPinIcon, DocumentTextIcon, XMarkIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon } from './icons/Icons';
+import { UserGroupIcon, IdentificationIcon, CashIcon, ClockIcon, MapPinIcon, DocumentTextIcon, XMarkIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
 
 interface PersonnelViewProps {
@@ -34,25 +34,28 @@ const WorkDayEditor: React.FC<{
     const [location, setLocation] = useState(existingWorkDay?.location || '');
     const [jobDescription, setJobDescription] = useState(existingWorkDay?.jobDescription || '');
     const [wage, setWage] = useState(existingWorkDay?.wage.toString() || '');
+    const [hours, setHours] = useState(existingWorkDay?.hours?.toString() || '8');
 
 
     useEffect(() => {
         setLocation(existingWorkDay?.location || '');
         setJobDescription(existingWorkDay?.jobDescription || '');
         setWage(existingWorkDay?.wage.toString() || '');
+        setHours(existingWorkDay?.hours?.toString() || '8');
     }, [existingWorkDay]);
 
     const handleSave = () => {
         const numericWage = parseFloat(wage);
-        if(isNaN(numericWage) || numericWage <= 0) {
-            alert('Lütfen geçerli bir yevmiye tutarı girin.');
+        const numericHours = parseFloat(hours);
+        if(isNaN(numericWage) || numericWage <= 0 || isNaN(numericHours) || numericHours <= 0) {
+            alert('Lütfen geçerli bir yevmiye ve çalışma saati girin.');
             return;
         }
 
         if (existingWorkDay) {
-            onUpdate({ ...existingWorkDay, location, jobDescription, wage: numericWage });
+            onUpdate({ ...existingWorkDay, location, jobDescription, wage: numericWage, hours: numericHours });
         } else {
-            onAdd({ personnelId: selectedPersonnel.id, date: selectedDate, location, jobDescription, wage: numericWage });
+            onAdd({ personnelId: selectedPersonnel.id, date: selectedDate, location, jobDescription, wage: numericWage, hours: numericHours });
         }
     };
     
@@ -73,20 +76,37 @@ const WorkDayEditor: React.FC<{
                 İş Detayları - <span className="text-blue-600">{formattedDate}</span>
              </h3>
             <div className="space-y-4">
-                 <div>
-                    <label htmlFor="wage" className="block text-sm font-medium text-gray-700 mb-1">
-                        <CashIcon className="h-4 w-4 inline-block mr-1" />
-                        Günlük Yevmiye (₺)
-                    </label>
-                    <input
-                        type="number"
-                        id="wage"
-                        value={wage}
-                        onChange={(e) => setWage(e.target.value)}
-                        disabled={!isEditable}
-                        placeholder="Örn: 1250"
-                        className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-200"
-                    />
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                     <div>
+                        <label htmlFor="wage" className="block text-sm font-medium text-gray-700 mb-1">
+                            <CashIcon className="h-4 w-4 inline-block mr-1" />
+                            Günlük Yevmiye (₺)
+                        </label>
+                        <input
+                            type="number"
+                            id="wage"
+                            value={wage}
+                            onChange={(e) => setWage(e.target.value)}
+                            disabled={!isEditable}
+                            placeholder="Örn: 1250"
+                            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-200"
+                        />
+                    </div>
+                     <div>
+                        <label htmlFor="hours" className="block text-sm font-medium text-gray-700 mb-1">
+                            <ClockIcon className="h-4 w-4 inline-block mr-1" />
+                            Çalışma Saati
+                        </label>
+                        <input
+                            type="number"
+                            id="hours"
+                            value={hours}
+                            onChange={(e) => setHours(e.target.value)}
+                            disabled={!isEditable}
+                            placeholder="Örn: 8"
+                            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-200"
+                        />
+                    </div>
                 </div>
                 <div>
                     <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">

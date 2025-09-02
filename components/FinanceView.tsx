@@ -1,9 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import { Income, Expense } from '../types';
-import { PlusIcon, ArrowUpCircleIcon, ArrowDownCircleIcon, XMarkIcon, TrashIcon, CurrencyDollarIcon, MagnifyingGlassIcon } from './icons/Icons';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { Income, Expense, User, Personnel, Payment, PersonnelPayment, Role } from '../types';
+import { PlusIcon, ArrowUpCircleIcon, ArrowDownCircleIcon, XMarkIcon, TrashIcon, CurrencyDollarIcon, MagnifyingGlassIcon, BanknotesIcon, UserGroupIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
 
 interface FinanceViewProps {
+    users: User[];
+    personnel: Personnel[];
     incomes: Income[];
     expenses: Expense[];
     onAddIncome: (income: Omit<Income, 'id'>) => void;
@@ -11,41 +14,80 @@ interface FinanceViewProps {
     onDeleteIncome: (incomeId: string) => void;
     onDeleteExpense: (expenseId: string) => void;
     selectedMonth: Date;
+    onAddPayment: (payment: Omit<Payment, 'id'>) => void;
+    onAddPersonnelPayment: (payment: Omit<PersonnelPayment, 'id'>) => void;
 }
+
+type TransactionType = 'income' | 'expense' | 'foremanPayment' | 'personnelPayment';
 
 const AddTransactionModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onAddIncome: (income: { description: string, amount: number }) => void;
-    onAddExpense: (expense: { description: string, amount: number }) => void;
-}> = ({ isOpen, onClose, onAddIncome, onAddExpense }) => {
-    const [type, setType] = useState<'income' | 'expense'>('expense');
+    onAddIncome: (income: Omit<Income, 'id'>) => void;
+    onAddExpense: (expense: Omit<Expense, 'id'>) => void;
+    onAddPayment: (payment: Omit<Payment, 'id'>) => void;
+    onAddPersonnelPayment: (payment: Omit<PersonnelPayment, 'id'>) => void;
+    users: User[];
+    personnel: Personnel[];
+}> = ({ isOpen, onClose, onAddIncome, onAddExpense, onAddPayment, onAddPersonnelPayment, users, personnel }) => {
+    const [type, setType] = useState<TransactionType>('expense');
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
+    const [payeeId, setPayeeId] = useState('');
+
+    const foremen = useMemo(() => users.filter(u => u.role === Role.FOREMAN), [users]);
+    const allPersonnel = useMemo(() => personnel, [personnel]);
+    
+    useEffect(() => {
+        if(isOpen) {
+            setType('expense');
+            setDescription('');
+            setAmount('');
+            setPayeeId('');
+        }
+    }, [isOpen])
 
     if (!isOpen) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const numericAmount = parseFloat(amount);
-        if (!description.trim() || isNaN(numericAmount) || numericAmount <= 0) {
-            alert('Lütfen geçerli bir açıklama ve pozitif bir tutar girin.');
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+            alert('Lütfen geçerli ve pozitif bir tutar girin.');
             return;
         }
 
-        if (type === 'income') {
-            onAddIncome({ description, amount: numericAmount });
-        } else {
-            onAddExpense({ description, amount: numericAmount });
+        const date = new Date().toISOString();
+
+        switch (type) {
+            case 'income':
+                if (!description.trim()) { alert('Lütfen bir açıklama girin.'); return; }
+                onAddIncome({ description, amount: numericAmount, date });
+                break;
+            case 'expense':
+                if (!description.trim()) { alert('Lütfen bir açıklama girin.'); return; }
+                onAddExpense({ description, amount: numericAmount, date });
+                break;
+            case 'foremanPayment':
+                if (!payeeId) { alert('Lütfen bir ustabaşı seçin.'); return; }
+                onAddPayment({ foremanId: payeeId, amount: numericAmount, date });
+                break;
+            case 'personnelPayment':
+                if (!payeeId) { alert('Lütfen bir personel seçin.'); return; }
+                onAddPersonnelPayment({ personnelId: payeeId, amount: numericAmount, date });
+                break;
         }
-        
-        // Reset and close
-        setDescription('');
-        setAmount('');
         onClose();
     };
 
-    const isIncome = type === 'income';
+    const typeConfig = {
+        income: { title: 'Gelir', color: 'green', icon: ArrowUpCircleIcon },
+        expense: { title: 'Gider', color: 'red', icon: ArrowDownCircleIcon },
+        foremanPayment: { title: 'Ustabaşı Ödemesi', color: 'blue', icon: BanknotesIcon },
+        personnelPayment: { title: 'Personel Ödemesi', color: 'purple', icon: UserGroupIcon },
+    };
+    
+    const isPayment = type === 'foremanPayment' || type === 'personnelPayment';
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog">
@@ -59,31 +101,52 @@ const AddTransactionModal: React.FC<{
                 <form onSubmit={handleSubmit} className="p-6">
                     <div className="mb-6">
                         <span className="block text-sm font-medium text-gray-700 mb-2">İşlem Tipi</span>
-                        <div className="flex rounded-md shadow-sm">
-                             <button type="button" onClick={() => setType('expense')} className={`relative inline-flex items-center justify-center w-1/2 px-4 py-2 rounded-l-md border text-sm font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${type === 'expense' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Gider</button>
-                            <button type="button" onClick={() => setType('income')} className={`-ml-px relative inline-flex items-center justify-center w-1/2 px-4 py-2 rounded-r-md border text-sm font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${type === 'income' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>Gelir</button>
+                        <div className="grid grid-cols-2 gap-2">
+                             {(Object.keys(typeConfig) as TransactionType[]).map((key) => {
+                                const config = typeConfig[key];
+                                const isSelected = type === key;
+                                return (
+                                    <button
+                                        type="button"
+                                        key={key}
+                                        onClick={() => { setType(key); setPayeeId(''); }}
+                                        className={`flex items-center justify-center p-3 rounded-md border text-sm font-medium transition-colors ${isSelected ? `bg-${config.color}-600 text-white border-${config.color}-600` : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                                    >
+                                        <config.icon className={`h-5 w-5 mr-2`} />
+                                        {config.title}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                     <div className="space-y-4">
-                        <div>
-                            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Açıklama</label>
-                            <input
-                                type="text"
-                                id="description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder={isIncome ? 'Örn: Hurda Malzeme Satışı' : 'Örn: Malzeme Alımı - Çimento'}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                autoFocus
-                            />
-                        </div>
+                        {isPayment ? (
+                            <div>
+                                <label htmlFor="payee" className="block text-sm font-medium text-gray-700">Alıcı</label>
+                                <select id="payee" value={payeeId} onChange={e => setPayeeId(e.target.value)} required
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="" disabled>
+                                        {type === 'foremanPayment' ? 'Ustabaşı Seçin...' : 'Personel Seçin...'}
+                                    </option>
+                                    {(type === 'foremanPayment' ? foremen : allPersonnel).map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <div>
+                                <label htmlFor="description" className="block text-sm font-medium text-gray-700">Açıklama</label>
+                                <input
+                                    type="text" id="description" value={description} onChange={(e) => setDescription(e.target.value)}
+                                    placeholder={type === 'income' ? 'Örn: Hurda Malzeme Satışı' : 'Örn: Malzeme Alımı'}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                        )}
                         <div>
                             <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Tutar (₺)</label>
                             <input
-                                type="number"
-                                id="amount"
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
+                                type="number" id="amount" value={amount} onChange={(e) => setAmount(e.target.value)} required
                                 placeholder="0.00"
                                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             />
@@ -95,9 +158,9 @@ const AddTransactionModal: React.FC<{
                         </button>
                         <button
                             type="submit"
-                            className={`px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm ${isIncome ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 ${isIncome ? 'focus:ring-green-500' : 'focus:ring-red-500'}`}
+                            className={`px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm bg-${typeConfig[type].color}-600 hover:bg-${typeConfig[type].color}-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${typeConfig[type].color}-500`}
                         >
-                            {isIncome ? 'Geliri Kaydet' : 'Gideri Kaydet'}
+                            Kaydet
                         </button>
                     </div>
                 </form>
@@ -107,7 +170,8 @@ const AddTransactionModal: React.FC<{
 };
 
 
-const FinanceView: React.FC<FinanceViewProps> = ({ incomes, expenses, onAddIncome, onAddExpense, onDeleteIncome, onDeleteExpense, selectedMonth }) => {
+const FinanceView: React.FC<FinanceViewProps> = (props) => {
+    const { incomes, expenses, onDeleteIncome, onDeleteExpense, selectedMonth } = props;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<{ id: string, type: 'income' | 'expense', description: string } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -142,15 +206,6 @@ const FinanceView: React.FC<FinanceViewProps> = ({ incomes, expenses, onAddIncom
     const formatDateTime = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
-
-    const handleAddTransaction = (item: { description: string, amount: number }, type: 'income' | 'expense') => {
-        const newTransaction = { ...item, date: new Date().toISOString() };
-        if (type === 'income') {
-            onAddIncome(newTransaction);
-        } else {
-            onAddExpense(newTransaction);
-        }
-    };
     
     const handleDelete = () => {
         if (!itemToDelete) return;
@@ -168,7 +223,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({ incomes, expenses, onAddIncom
             
             <div className="bg-white rounded-lg shadow-md">
                 <div className="p-4 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                    <h3 className="text-lg font-semibold text-gray-800">Aylık İşlemler</h3>
+                    <h3 className="text-lg font-semibold text-gray-800">Aylık Ek Gelir & Giderler</h3>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
@@ -245,8 +300,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({ incomes, expenses, onAddIncom
             <AddTransactionModal 
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onAddIncome={(item) => handleAddTransaction(item, 'income')}
-                onAddExpense={(item) => handleAddTransaction(item, 'expense')}
+                {...props}
             />
 
             <ConfirmationModal

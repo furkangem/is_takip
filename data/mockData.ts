@@ -50,6 +50,7 @@ const generateInitialWorkDays = (): WorkDay[] => {
                     location: locations[Math.floor(Math.random() * locations.length)],
                     jobDescription: jobDescriptions[Math.floor(Math.random() * jobDescriptions.length)],
                     wage: Math.floor(Math.random() * 501) + 1000, // Random wage between 1000 and 1500
+                    hours: Math.floor(Math.random() * 5) + 8, // Random hours between 8 and 12
                 });
             }
         }

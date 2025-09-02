@@ -11,8 +11,10 @@ import LoginView from './components/LoginView';
 import ReportView from './components/ReportView';
 import AdminView from './components/AdminView';
 import DirectPersonnelView from './components/DirectPersonnelView';
+import TimeSheetView from './components/TimeSheetView';
+import CashFlowView from './components/CashFlowView';
 
-type View = 'dashboard' | 'personnel' | 'finance' | 'reports' | 'admin' | 'direct_personnel';
+type View = 'dashboard' | 'personnel' | 'finance' | 'reports' | 'admin' | 'direct_personnel' | 'timesheet' | 'cashflow';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -43,7 +45,7 @@ export default function App() {
     const user = users.find(u => u.id === userId);
     if (user && currentUser) {
       setCurrentUser(user);
-      const nonAdminViews: View[] = ['finance', 'reports', 'admin', 'direct_personnel'];
+      const nonAdminViews: View[] = ['finance', 'reports', 'admin', 'direct_personnel', 'timesheet', 'cashflow'];
       if (user.role !== Role.ADMIN && nonAdminViews.includes(currentView)) {
         setCurrentView('dashboard');
       }
@@ -162,6 +164,7 @@ export default function App() {
               personnel={personnel}
               workDays={workDays}
               payments={payments}
+              personnelPayments={personnelPayments}
               extraIncomes={extraIncomes}
               extraExpenses={extraExpenses}
               onAddPayment={addPayment}
@@ -203,12 +206,27 @@ export default function App() {
           )}
           {currentView === 'finance' && currentUser.role === Role.ADMIN && (
              <FinanceView
+                users={users}
+                personnel={personnel}
                 incomes={extraIncomes}
                 expenses={extraExpenses}
                 onAddIncome={addIncome}
                 onAddExpense={addExpense}
                 onDeleteIncome={deleteIncome}
                 onDeleteExpense={deleteExpense}
+                selectedMonth={selectedMonth}
+                onAddPayment={addPayment}
+                onAddPersonnelPayment={addPersonnelPayment}
+             />
+          )}
+           {currentView === 'cashflow' && currentUser.role === Role.ADMIN && (
+             <CashFlowView
+                users={users}
+                personnel={personnel}
+                payments={payments}
+                personnelPayments={personnelPayments}
+                extraIncomes={extraIncomes}
+                extraExpenses={extraExpenses}
                 selectedMonth={selectedMonth}
              />
           )}
@@ -217,8 +235,18 @@ export default function App() {
                 users={users}
                 personnel={personnel}
                 workDays={workDays}
+                payments={payments}
+                personnelPayments={personnelPayments}
                 extraIncomes={extraIncomes}
                 extraExpenses={extraExpenses}
+                selectedMonth={selectedMonth}
+             />
+          )}
+          {currentView === 'timesheet' && currentUser.role === Role.ADMIN && (
+             <TimeSheetView
+                users={users}
+                personnel={personnel}
+                workDays={workDays}
                 selectedMonth={selectedMonth}
              />
           )}
