@@ -54,3 +54,24 @@ export interface Expense {
     amount: number;
     date: string; // ISO Date String
 }
+
+export interface Customer {
+  id: string;
+  name: string;
+  contactInfo: string;
+  address: string;
+  jobDescription: string;
+}
+
+export interface CustomerJob {
+  id: string;
+  customerId: string;
+  operation: string;
+  date: string; // YYYY-MM-DD
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  income: number;
+  personnelPayment: number;
+  expense: number;
+}

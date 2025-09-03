@@ -1,7 +1,6 @@
-
 import React, { useState, useMemo } from 'react';
-import { users as initialUsers, personnel as initialPersonnel, workDays as initialWorkDays, payments as initialPayments, extraIncomes as initialIncomes, extraExpenses as initialExpenses, personnelPayments as initialPersonnelPayments } from './data/mockData';
-import { Role, User, Personnel, WorkDay, Payment, Income, Expense, PersonnelPayment } from './types';
+import { users as initialUsers, personnel as initialPersonnel, workDays as initialWorkDays, payments as initialPayments, extraIncomes as initialIncomes, extraExpenses as initialExpenses, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs } from './data/mockData';
+import { Role, User, Personnel, WorkDay, Payment, Income, Expense, PersonnelPayment, Customer, CustomerJob } from './types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
@@ -13,8 +12,9 @@ import AdminView from './components/AdminView';
 import DirectPersonnelView from './components/DirectPersonnelView';
 import TimeSheetView from './components/TimeSheetView';
 import CashFlowView from './components/CashFlowView';
+import CustomerView from './components/CustomerView';
 
-type View = 'dashboard' | 'personnel' | 'finance' | 'reports' | 'admin' | 'direct_personnel' | 'timesheet' | 'cashflow';
+type View = 'dashboard' | 'personnel' | 'finance' | 'reports' | 'admin' | 'direct_personnel' | 'timesheet' | 'cashflow' | 'customers';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -29,6 +29,8 @@ export default function App() {
   const [personnelPayments, setPersonnelPayments] = useState<PersonnelPayment[]>(initialPersonnelPayments);
   const [extraIncomes, setExtraIncomes] = useState<Income[]>(initialIncomes);
   const [extraExpenses, setExtraExpenses] = useState<Expense[]>(initialExpenses);
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [customerJobs, setCustomerJobs] = useState<CustomerJob[]>(initialCustomerJobs);
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
@@ -45,7 +47,7 @@ export default function App() {
     const user = users.find(u => u.id === userId);
     if (user && currentUser) {
       setCurrentUser(user);
-      const nonAdminViews: View[] = ['finance', 'reports', 'admin', 'direct_personnel', 'timesheet', 'cashflow'];
+      const nonAdminViews: View[] = ['finance', 'reports', 'admin', 'direct_personnel', 'timesheet', 'cashflow', 'customers'];
       if (user.role !== Role.ADMIN && nonAdminViews.includes(currentView)) {
         setCurrentView('dashboard');
       }
@@ -136,6 +138,35 @@ export default function App() {
     setUsers(prev => prev.filter(u => u.id !== userId));
   };
 
+  // Customer CRUD
+  const addCustomer = (newCustomerData: Omit<Customer, 'id'>) => {
+    const newCustomer: Customer = { ...newCustomerData, id: `cust-${Date.now()}` };
+    setCustomers(prev => [...prev, newCustomer]);
+  };
+
+  const updateCustomer = (updatedCustomer: Customer) => {
+    setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+  };
+
+  const deleteCustomer = (customerId: string) => {
+    setCustomers(prev => prev.filter(c => c.id !== customerId));
+    setCustomerJobs(prev => prev.filter(job => job.customerId !== customerId));
+  };
+
+  // Customer Job CRUD
+  const addCustomerJob = (newJobData: Omit<CustomerJob, 'id'>) => {
+    const newJob: CustomerJob = { ...newJobData, id: `job-${Date.now()}` };
+    setCustomerJobs(prev => [...prev, newJob]);
+  };
+
+  const updateCustomerJob = (updatedJob: CustomerJob) => {
+    setCustomerJobs(prev => prev.map(job => job.id === updatedJob.id ? updatedJob : job));
+  };
+
+  const deleteCustomerJob = (jobId: string) => {
+    setCustomerJobs(prev => prev.filter(job => job.id !== jobId));
+  };
+
   if (!isAuthenticated || !currentUser) {
     return <LoginView users={users} onLogin={handleLogin} />;
   }
@@ -202,6 +233,18 @@ export default function App() {
                 onDeletePersonnel={deletePersonnel}
                 onAddPersonnelPayment={addPersonnelPayment}
                 onDeletePersonnelPayment={deletePersonnelPayment}
+             />
+          )}
+           {currentView === 'customers' && currentUser.role === Role.ADMIN && (
+             <CustomerView
+                customers={customers}
+                customerJobs={customerJobs}
+                onAddCustomer={addCustomer}
+                onUpdateCustomer={updateCustomer}
+                onDeleteCustomer={deleteCustomer}
+                onAddCustomerJob={addCustomerJob}
+                onUpdateCustomerJob={updateCustomerJob}
+                onDeleteCustomerJob={deleteCustomerJob}
              />
           )}
           {currentView === 'finance' && currentUser.role === Role.ADMIN && (

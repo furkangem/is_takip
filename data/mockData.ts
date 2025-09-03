@@ -1,4 +1,4 @@
-import { Role, User, Personnel, WorkDay, Payment, Income, Expense, PersonnelPayment } from '../types';
+import { Role, User, Personnel, WorkDay, Payment, Income, Expense, PersonnelPayment, Customer, CustomerJob } from '../types';
 
 export const users: User[] = [
   { id: 'user-1', name: 'Ahmet Yılmaz', email: 'admin@example.com', password: 'password123', role: Role.ADMIN },
@@ -84,4 +84,37 @@ export const extraExpenses: Expense[] = [
     { id: 'exp-1', description: 'Ofis Kirası', amount: 15000, date: new Date(today.getFullYear(), today.getMonth(), 1).toISOString() },
     { id: 'exp-2', description: 'Malzeme Alımı - Çimento', amount: 35000, date: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString() },
     { id: 'exp-3', description: 'Nakliye Ücreti', amount: 4500, date: today.toISOString() },
+];
+
+
+export const customers: Customer[] = [
+  {
+    id: 'cust-1',
+    name: 'ABC İnşaat A.Ş.',
+    contactInfo: '0555 123 4567 - info@abcinsaat.com',
+    address: 'Kızılay Mah. Atatürk Blv. No:1, Çankaya/Ankara',
+    jobDescription: 'Ankara Merkez Plaza dış cephe ve ince işçilik işleri.',
+  },
+  {
+    id: 'cust-2',
+    name: 'Yıldız Konutları Sitesi',
+    contactInfo: '0312 987 6543 - yonetim@yildizkonutlari.net',
+    address: 'Çayyolu Mah. 8765. Sk. No:2, Çankaya/Ankara',
+    jobDescription: 'Site ortak alanlarının tadilatı ve peyzaj düzenlemesi.',
+  },
+];
+
+export const customerJobs: CustomerJob[] = [
+    // Jobs for ABC İnşaat
+    { id: 'job-1', customerId: 'cust-1', operation: 'Dış Cephe Mantolama', date: '2024-05-10', quantity: 1250, unit: 'm²', unitPrice: 900, income: 1200000, personnelPayment: 350000, expense: 420000 },
+    { id: 'job-2', customerId: 'cust-1', operation: 'İç Cephe Alçıpan', date: '2024-05-15', quantity: 750, unit: 'm²', unitPrice: 500, income: 400000, personnelPayment: 100000, expense: 110000 },
+    { id: 'job-3', customerId: 'cust-1', operation: 'Zemin Şap Betonu', date: '2024-05-20', quantity: 150, unit: 'm³', unitPrice: 3800, income: 600000, personnelPayment: 70000, expense: 250000 },
+    { id: 'job-4', customerId: 'cust-1', operation: 'Seramik Döşeme', date: '2024-06-01', quantity: 400, unit: 'm²', unitPrice: 600, income: 250000, personnelPayment: 45000, expense: 75000 },
+    { id: 'job-8', customerId: 'cust-1', operation: 'Elektrik Tesisatı', date: '2024-06-05', quantity: 1, unit: 'proje', unitPrice: 150000, income: 180000, personnelPayment: 50000, expense: 35000 },
+    
+    // Jobs for Yıldız Konutları
+    { id: 'job-5', customerId: 'cust-2', operation: 'Bahçe Duvarı İnşaatı', date: '2024-06-02', quantity: 300, unit: 'm²', unitPrice: 1100, income: 350000, personnelPayment: 90000, expense: 110000 },
+    { id: 'job-6', customerId: 'cust-2', operation: 'Kamelya Montajı', date: '2024-06-05', quantity: 8, unit: 'adet', unitPrice: 18000, income: 150000, personnelPayment: 20000, expense: 40000 },
+    { id: 'job-7', customerId: 'cust-2', operation: 'Peyzaj Sulama Sistemi', date: '2024-06-10', quantity: 1, unit: 'sistem', unitPrice: 95000, income: 100000, personnelPayment: 22000, expense: 33000 },
+    { id: 'job-9', customerId: 'cust-2', operation: 'Çatı İzolasyonu', date: '2024-06-12', quantity: 550, unit: 'm²', unitPrice: 450, income: 280000, personnelPayment: 75000, expense: 90000 },
 ];

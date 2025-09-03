@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface StatCardProps {
@@ -16,13 +15,18 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color }) 
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
-      <div className={`p-4 rounded-full text-white ${colorClasses[color]} mr-4`}>
+    <div className="bg-white p-4 rounded-lg shadow-md flex items-center overflow-hidden">
+      <div className={`p-3 rounded-full text-white ${colorClasses[color]} mr-4 shrink-0`}>
         <Icon className="h-8 w-8" />
       </div>
-      <div>
-        <p className="text-sm text-gray-500 font-medium">{title}</p>
-        <p className="text-2xl font-bold text-gray-800">{value}</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-gray-500 font-medium truncate">{title}</p>
+        <p 
+          className="text-base lg:text-lg font-bold text-gray-800 truncate" 
+          title={value}
+        >
+          {value}
+        </p>
       </div>
     </div>
   );
