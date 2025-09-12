@@ -1,8 +1,8 @@
 import React from 'react';
-import { DashboardIcon, UsersIcon, CurrencyDollarIcon, ChartBarIcon, CogIcon, UserIcon, DocumentTextIcon, ClipboardDocumentListIcon, BuildingOffice2Icon } from './icons/Icons';
+import { DashboardIcon, UsersIcon, ChartBarIcon, CogIcon, DocumentTextIcon, BuildingOffice2Icon } from './icons/Icons';
 import { User, Role } from '../types';
 
-type View = 'dashboard' | 'personnel' | 'direct_personnel' | 'finance' | 'reports' | 'admin' | 'timesheet' | 'cashflow' | 'customers';
+type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'timesheet' | 'customers';
 
 interface SidebarProps {
   currentView: View;
@@ -12,12 +12,9 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, currentUser }) => {
   const navItems = [
-    { id: 'dashboard', label: 'Gösterge Paneli', icon: DashboardIcon, roles: [Role.ADMIN, Role.FOREMAN] },
-    { id: 'personnel', label: 'Personel Yönetimi', icon: UsersIcon, roles: [Role.ADMIN, Role.FOREMAN] },
-    { id: 'direct_personnel', label: 'Şahsi Ekip Yönetimi', icon: UserIcon, roles: [Role.ADMIN] },
+    { id: 'dashboard', label: 'Gösterge Paneli', icon: DashboardIcon, roles: [Role.ADMIN] },
+    { id: 'personnel', label: 'Personel Yönetimi', icon: UsersIcon, roles: [Role.ADMIN] },
     { id: 'customers', label: 'Müşteriler', icon: BuildingOffice2Icon, roles: [Role.ADMIN] },
-    { id: 'finance', label: 'Finans Yönetimi', icon: CurrencyDollarIcon, roles: [Role.ADMIN] },
-    { id: 'cashflow', label: 'Nakit Akışı', icon: ClipboardDocumentListIcon, roles: [Role.ADMIN] },
     { id: 'reports', label: 'Raporlar', icon: ChartBarIcon, roles: [Role.ADMIN] },
     { id: 'timesheet', label: 'Puantaj Raporu', icon: DocumentTextIcon, roles: [Role.ADMIN] },
     { id: 'admin', label: 'Admin Paneli', icon: CogIcon, roles: [Role.ADMIN] },

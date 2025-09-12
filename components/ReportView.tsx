@@ -1,7 +1,6 @@
-
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Personnel, WorkDay, User, Role, Income, Expense, Payment, PersonnelPayment } from '../types';
+import { Personnel, WorkDay, User, Customer, CustomerJob, PersonnelPayment } from '../types';
 import { CashIcon, UsersIcon, TrendingDownIcon, TrendingUpIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 
@@ -9,14 +8,13 @@ interface ReportViewProps {
   users: User[];
   personnel: Personnel[];
   workDays: WorkDay[];
-  payments: Payment[];
   personnelPayments: PersonnelPayment[];
-  extraIncomes: Income[];
-  extraExpenses: Expense[];
+  customers: Customer[];
+  customerJobs: CustomerJob[];
   selectedMonth: Date;
 }
 
-const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, payments, personnelPayments, extraIncomes, extraExpenses, selectedMonth }) => {
+const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, personnelPayments, customers, customerJobs, selectedMonth }) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
   }
@@ -30,7 +28,6 @@ const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, pay
     totalExpenses,
     netProfit,
     totalPayments,
-    expensesByForeman,
     monthlyIncomes,
     monthlyExpenses,
   } = useMemo(() => {
@@ -42,48 +39,33 @@ const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, pay
       return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
     };
 
-    const income = extraIncomes
-      .filter(inc => isCurrentMonth(inc.date))
-      .reduce((sum, inc) => sum + inc.amount, 0);
+    const monthlyCustomerJobs = customerJobs.filter(job => isCurrentMonth(job.date));
+    const income = monthlyCustomerJobs.reduce((sum, job) => sum + job.income, 0);
 
-    const extraExp = extraExpenses
-      .filter(exp => isCurrentMonth(exp.date))
-      .reduce((sum, exp) => sum + exp.amount, 0);
-
-    const monthlyForemanPayments = payments.filter(p => isCurrentMonth(p.date));
     const monthlyPersonnelPayments = personnelPayments.filter(p => isCurrentMonth(p.date));
 
-    const foremanPaymentsTotal = monthlyForemanPayments.reduce((sum, p) => sum + p.amount, 0);
-    const personnelPaymentsTotal = monthlyPersonnelPayments.reduce((sum, p) => sum + p.amount, 0);
-    const allPaymentsTotal = foremanPaymentsTotal + personnelPaymentsTotal;
+    const allPaymentsTotal = monthlyPersonnelPayments.reduce((sum, p) => sum + p.amount, 0);
 
-    const totalExp = extraExp + allPaymentsTotal;
+    const totalExp = allPaymentsTotal;
     const profit = income - totalExp;
 
-    // Theoretical earnings by foreman (Hakedişler)
-    const byForeman: { [key: string]: { name: string, total: number } } = {};
-    users.filter(u => u.role === Role.FOREMAN).forEach(f => {
-      byForeman[f.id] = { name: f.name, total: 0 };
-    });
-    workDays.filter(wd => isCurrentMonth(wd.date)).forEach(wd => {
-      const p = personnel.find(p => p.id === wd.personnelId);
-      if (p && byForeman[p.foremanId]) {
-        byForeman[p.foremanId].total += wd.wage;
-      }
-    });
-    
     // Combined list of all expenses for the table
     const combinedExpenses = [
-        ...extraExpenses.filter(exp => isCurrentMonth(exp.date)),
-        ...monthlyForemanPayments.map(p => {
-            const foreman = users.find(u => u.id === p.foremanId);
-            return { id: `pay-${p.id}`, date: p.date, description: `Ödeme: ${foreman?.name || 'Bilinmeyen Ustabaşı'}`, amount: p.amount };
-        }),
         ...monthlyPersonnelPayments.map(p => {
             const pers = personnel.find(per => per.id === p.personnelId);
             return { id: `ppay-${p.id}`, date: p.date, description: `Ödeme: ${pers?.name || 'Bilinmeyen Personel'}`, amount: p.amount };
         }),
     ].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const incomeItems = monthlyCustomerJobs.map(job => {
+        const customer = customers.find(c => c.id === job.customerId);
+        return {
+            id: job.id,
+            date: job.date,
+            description: `${customer?.name || 'Bilinmeyen Müşteri'} - ${job.operation}`,
+            amount: job.income
+        };
+    }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 
     return {
@@ -91,11 +73,10 @@ const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, pay
       totalExpenses: totalExp,
       netProfit: profit,
       totalPayments: allPaymentsTotal,
-      expensesByForeman: Object.values(byForeman),
-      monthlyIncomes: extraIncomes.filter(inc => isCurrentMonth(inc.date)),
+      monthlyIncomes: incomeItems,
       monthlyExpenses: combinedExpenses,
     };
-  }, [personnel, workDays, payments, personnelPayments, extraIncomes, extraExpenses, users, selectedMonth]);
+  }, [personnel, workDays, personnelPayments, customers, customerJobs, users, selectedMonth]);
   
   const chartData = [
     {
@@ -161,32 +142,19 @@ const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, pay
         <StatCard title="Net Kâr" value={formatCurrency(netProfit)} icon={CashIcon} color={netProfit >= 0 ? "blue" : "red"} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-        <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">Gelir & Gider Analizi</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis tickFormatter={(tick) => `${(tick / 1000).toLocaleString('tr-TR')}k ₺`} />
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
-              <Legend />
-              <Bar dataKey="Gelir" fill="#4ade80" name="Aylık Gelir" />
-              <Bar dataKey="Gider" fill="#f87171" name="Aylık Gider" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">Ustabaşı Ekibi Hakedişleri</h3>
-          <ul className="space-y-4">
-            {expensesByForeman.map(foreman => (
-              <li key={foreman.name} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                <span className="font-medium text-gray-600">{foreman.name}</span>
-                <span className="font-bold text-red-500">{formatCurrency(foreman.total)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h3 className="text-xl font-semibold mb-4 text-gray-700">Gelir & Gider Analizi</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={chartData} margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis tickFormatter={(tick) => `${(tick / 1000).toLocaleString('tr-TR')}k ₺`} />
+            <Tooltip formatter={(value: number) => formatCurrency(value)} />
+            <Legend />
+            <Bar dataKey="Gelir" fill="#4ade80" name="Aylık Gelir" />
+            <Bar dataKey="Gider" fill="#f87171" name="Aylık Gider" />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

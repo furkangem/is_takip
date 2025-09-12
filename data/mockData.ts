@@ -1,28 +1,28 @@
-import { Role, User, Personnel, WorkDay, Payment, Income, Expense, PersonnelPayment, Customer, CustomerJob } from '../types';
+
+import { Role, User, Personnel, WorkDay, PersonnelPayment, Customer, CustomerJob, Payment, Income, Expense } from '../types';
 
 export const users: User[] = [
   { id: 'user-1', name: 'Ahmet Yılmaz', email: 'admin@example.com', password: 'password123', role: Role.ADMIN },
-  { id: 'user-2', name: 'Mehmet Öztürk', email: 'mehmet@example.com', password: 'password123', role: Role.FOREMAN },
-  { id: 'user-3', name: 'Hasan Kaya', email: 'hasan@example.com', password: 'password123', role: Role.FOREMAN },
+  // FIX: Add a foreman user to support foreman-related functionality and login.
+  { id: 'user-2', name: 'Mehmet Kaya', email: 'mehmet@example.com', password: 'password123', role: Role.FOREMAN },
 ];
 
 export const personnel: Personnel[] = [
+  // FIX: Assign a foreman to some personnel to demonstrate foreman-specific views.
   { id: 'p-1', name: 'Ali Veli', foremanId: 'user-2' },
   { id: 'p-2', name: 'Ayşe Fatma', foremanId: 'user-2' },
   { id: 'p-3', name: 'Mustafa Demir', foremanId: 'user-2' },
   { id: 'p-4', name: 'Emine Çelik', foremanId: 'user-2' },
   { id: 'p-5', name: 'İbrahim Arslan', foremanId: 'user-2' },
   { id: 'p-6', name: 'Zeynep Doğan', foremanId: 'user-2' },
-  
-  { id: 'p-7', name: 'Hüseyin Kurt', foremanId: 'user-3' },
-  { id: 'p-8', name: 'Elif Şahin', foremanId: 'user-3' },
-  { id: 'p-9', name: 'Murat Yıldız', foremanId: 'user-3' },
-  { id: 'p-10', name: 'Hatice Özer', foremanId: 'user-3' },
-  { id: 'p-11', name: 'Yusuf Aksoy', foremanId: 'user-3' },
-  { id: 'p-12', name: 'Sultan Aydın', foremanId: 'user-3' },
-
-  { id: 'p-13', name: 'Serkan Can', foremanId: 'user-1' },
-  { id: 'p-14', name: 'Derya Deniz', foremanId: 'user-1' },
+  { id: 'p-7', name: 'Hüseyin Kurt' },
+  { id: 'p-8', name: 'Elif Şahin' },
+  { id: 'p-9', name: 'Murat Yıldız' },
+  { id: 'p-10', name: 'Hatice Özer' },
+  { id: 'p-11', name: 'Yusuf Aksoy' },
+  { id: 'p-12', name: 'Sultan Aydın' },
+  { id: 'p-13', name: 'Serkan Can' },
+  { id: 'p-14', name: 'Derya Deniz' },
 ];
 
 const locations = ["Merkez Şantiye", "Ankara Projesi", "İstanbul Depo", "İzmir Ofis", "Bursa Fabrika"];
@@ -62,9 +62,10 @@ export const workDays: WorkDay[] = generateInitialWorkDays();
 
 const today = new Date();
 
+// FIX: Add mock data for foreman payments.
 export const payments: Payment[] = [
-    { id: 'pay-1', foremanId: 'user-2', amount: 50000, date: new Date(today.getTime() - 2 * 60 * 60 * 1000).toISOString() },
-    { id: 'pay-2', foremanId: 'user-3', amount: 45000, date: new Date(today.getTime() - 4 * 60 * 60 * 1000).toISOString() },
+    { id: 'pay-1', foremanId: 'user-2', amount: 15000, date: new Date(new Date().setDate(today.getDate() - 4)).toISOString() },
+    { id: 'pay-2', foremanId: 'user-2', amount: 20000, date: new Date(new Date().setDate(today.getDate() - 10)).toISOString() },
 ];
 
 export const personnelPayments: PersonnelPayment[] = [
@@ -74,18 +75,6 @@ export const personnelPayments: PersonnelPayment[] = [
     { id: 'ppay-4', personnelId: 'p-1', amount: 10000, date: new Date(new Date().setDate(today.getDate() - 5)).toISOString() },
     { id: 'ppay-5', personnelId: 'p-7', amount: 8000, date: new Date(new Date().setDate(today.getDate() - 3)).toISOString() },
 ];
-
-export const extraIncomes: Income[] = [
-    { id: 'inc-1', description: 'Proje Dışı Danışmanlık', amount: 25000, date: new Date(today.getTime() - 24 * 60 * 60 * 1000).toISOString() },
-    { id: 'inc-2', description: 'Hurda Malzeme Satışı', amount: 7500, date: today.toISOString() },
-];
-
-export const extraExpenses: Expense[] = [
-    { id: 'exp-1', description: 'Ofis Kirası', amount: 15000, date: new Date(today.getFullYear(), today.getMonth(), 1).toISOString() },
-    { id: 'exp-2', description: 'Malzeme Alımı - Çimento', amount: 35000, date: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: 'exp-3', description: 'Nakliye Ücreti', amount: 4500, date: today.toISOString() },
-];
-
 
 export const customers: Customer[] = [
   {
@@ -106,15 +95,24 @@ export const customers: Customer[] = [
 
 export const customerJobs: CustomerJob[] = [
     // Jobs for ABC İnşaat
-    { id: 'job-1', customerId: 'cust-1', operation: 'Dış Cephe Mantolama', date: '2024-05-10', quantity: 1250, unit: 'm²', unitPrice: 900, income: 1200000, personnelPayment: 350000, expense: 420000 },
-    { id: 'job-2', customerId: 'cust-1', operation: 'İç Cephe Alçıpan', date: '2024-05-15', quantity: 750, unit: 'm²', unitPrice: 500, income: 400000, personnelPayment: 100000, expense: 110000 },
-    { id: 'job-3', customerId: 'cust-1', operation: 'Zemin Şap Betonu', date: '2024-05-20', quantity: 150, unit: 'm³', unitPrice: 3800, income: 600000, personnelPayment: 70000, expense: 250000 },
-    { id: 'job-4', customerId: 'cust-1', operation: 'Seramik Döşeme', date: '2024-06-01', quantity: 400, unit: 'm²', unitPrice: 600, income: 250000, personnelPayment: 45000, expense: 75000 },
-    { id: 'job-8', customerId: 'cust-1', operation: 'Elektrik Tesisatı', date: '2024-06-05', quantity: 1, unit: 'proje', unitPrice: 150000, income: 180000, personnelPayment: 50000, expense: 35000 },
+    { id: 'job-1', customerId: 'cust-1', location: 'Ankara Merkez Plaza Projesi', operation: 'Dış Cephe Mantolama', date: '2024-05-10', quantity: 1250, unit: 'm²', unitPrice: 900, income: 1200000, personnelPayment: 350000, expense: 420000, personnelIds: ['p-1', 'p-2', 'p-7'] },
+    { id: 'job-2', customerId: 'cust-1', location: 'Ankara Merkez Plaza Projesi', operation: 'İç Cephe Alçıpan', date: '2024-05-15', quantity: 750, unit: 'm²', unitPrice: 500, income: 400000, personnelPayment: 100000, expense: 110000, personnelIds: ['p-3', 'p-4'] },
+    { id: 'job-3', customerId: 'cust-1', location: 'İstanbul Depo İnşaatı', operation: 'Zemin Şap Betonu', date: '2024-05-20', quantity: 150, unit: 'm³', unitPrice: 3800, income: 600000, personnelPayment: 70000, expense: 250000, personnelIds: ['p-8', 'p-9', 'p-10'] },
+    { id: 'job-4', customerId: 'cust-1', location: 'Ankara Merkez Plaza Projesi', operation: 'Seramik Döşeme', date: '2024-06-01', quantity: 400, unit: 'm²', unitPrice: 600, income: 250000, personnelPayment: 45000, expense: 75000, personnelIds: ['p-5', 'p-6'] },
+    { id: 'job-8', customerId: 'cust-1', location: 'İstanbul Depo İnşaatı', operation: 'Elektrik Tesisatı', date: '2024-06-05', quantity: 1, unit: 'proje', unitPrice: 150000, income: 180000, personnelPayment: 50000, expense: 35000, personnelIds: ['p-11', 'p-12'] },
     
     // Jobs for Yıldız Konutları
-    { id: 'job-5', customerId: 'cust-2', operation: 'Bahçe Duvarı İnşaatı', date: '2024-06-02', quantity: 300, unit: 'm²', unitPrice: 1100, income: 350000, personnelPayment: 90000, expense: 110000 },
-    { id: 'job-6', customerId: 'cust-2', operation: 'Kamelya Montajı', date: '2024-06-05', quantity: 8, unit: 'adet', unitPrice: 18000, income: 150000, personnelPayment: 20000, expense: 40000 },
-    { id: 'job-7', customerId: 'cust-2', operation: 'Peyzaj Sulama Sistemi', date: '2024-06-10', quantity: 1, unit: 'sistem', unitPrice: 95000, income: 100000, personnelPayment: 22000, expense: 33000 },
-    { id: 'job-9', customerId: 'cust-2', operation: 'Çatı İzolasyonu', date: '2024-06-12', quantity: 550, unit: 'm²', unitPrice: 450, income: 280000, personnelPayment: 75000, expense: 90000 },
+    { id: 'job-5', customerId: 'cust-2', location: 'Site Ortak Alanlar', operation: 'Bahçe Duvarı İnşaatı', date: '2024-06-02', quantity: 300, unit: 'm²', unitPrice: 1100, income: 350000, personnelPayment: 90000, expense: 110000, personnelIds: ['p-1', 'p-3', 'p-5', 'p-7'] },
+    { id: 'job-6', customerId: 'cust-2', location: 'A Blok Tadilat', operation: 'Kamelya Montajı', date: '2024-06-05', quantity: 8, unit: 'adet', unitPrice: 18000, income: 150000, personnelPayment: 20000, expense: 40000, personnelIds: ['p-13'] },
+    { id: 'job-7', customerId: 'cust-2', location: 'Site Ortak Alanlar', operation: 'Peyzaj Sulama Sistemi', date: '2024-06-10', quantity: 1, unit: 'sistem', unitPrice: 95000, income: 100000, personnelPayment: 22000, expense: 33000, personnelIds: ['p-14', 'p-8'] },
+    { id: 'job-9', customerId: 'cust-2', location: 'A Blok Tadilat', operation: 'Çatı İzolasyonu', date: '2024-06-12', quantity: 550, unit: 'm²', unitPrice: 450, income: 280000, personnelPayment: 75000, expense: 90000, personnelIds: ['p-2', 'p-4', 'p-6'] },
+];
+
+export const extraIncomes: Income[] = [
+    { id: 'inc-1', description: 'Hurda Malzeme Satışı', amount: 2500, date: new Date().toISOString() }
+];
+
+export const extraExpenses: Expense[] = [
+    { id: 'exp-1', description: 'Ofis Kira Ödemesi', amount: 10000, date: new Date().toISOString() },
+    { id: 'exp-2', description: 'Şantiye Malzeme Alımı', amount: 45000, date: new Date(new Date().setDate(today.getDate() - 3)).toISOString() }
 ];

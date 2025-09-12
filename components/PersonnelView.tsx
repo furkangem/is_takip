@@ -160,36 +160,30 @@ const PersonnelEditorModal: React.FC<{
     onClose: () => void;
     onSave: (personnel: Personnel | Omit<Personnel, 'id'>) => void;
     personnelToEdit: Personnel | null;
-    currentUser: User;
-    allUsers: User[];
-}> = ({ isOpen, onClose, onSave, personnelToEdit, currentUser, allUsers }) => {
+}> = ({ isOpen, onClose, onSave, personnelToEdit }) => {
     const [name, setName] = useState('');
-    const [foremanId, setForemanId] = useState('');
 
     useEffect(() => {
         if (isOpen) {
             if (personnelToEdit) {
                 setName(personnelToEdit.name);
-                setForemanId(personnelToEdit.foremanId);
             } else {
                 setName('');
-                setForemanId(currentUser.role === Role.FOREMAN ? currentUser.id : '');
             }
         }
-    }, [isOpen, personnelToEdit, currentUser]);
+    }, [isOpen, personnelToEdit]);
 
     if (!isOpen) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim() || (currentUser.role === Role.ADMIN && !foremanId)) {
+        if (!name.trim()) {
             alert('Lütfen tüm alanları doğru bir şekilde doldurun.');
             return;
         }
 
         const personnelData = {
             name,
-            foremanId
         };
         
         if (personnelToEdit) {
@@ -199,8 +193,6 @@ const PersonnelEditorModal: React.FC<{
         }
         onClose();
     };
-
-    const foremen = allUsers.filter(u => u.role === Role.FOREMAN);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog">
@@ -225,23 +217,6 @@ const PersonnelEditorModal: React.FC<{
                             required autoFocus
                         />
                     </div>
-                    {currentUser.role === Role.ADMIN && (
-                        <div>
-                            <label htmlFor="foreman-select" className="block text-sm font-medium text-gray-700">Bağlı Olduğu Ustabaşı</label>
-                            <select
-                                id="foreman-select"
-                                value={foremanId}
-                                onChange={(e) => setForemanId(e.target.value)}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                required
-                            >
-                                <option value="" disabled>Ustabaşı Seçin...</option>
-                                {foremen.map(foreman => (
-                                    <option key={foreman.id} value={foreman.id}>{foreman.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
                     <div className="mt-6 flex justify-end gap-3">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
                             İptal
@@ -427,7 +402,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
   const formatDateTime = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-  const isEditable = currentUser.role === Role.ADMIN || (currentUser.role === Role.FOREMAN && selectedPersonnel?.foremanId === currentUser.id);
+  const isEditable = currentUser.role === Role.ADMIN;
 
   return (
     <>
@@ -435,7 +410,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
       <div className="w-full md:w-1/3 lg:w-1/4 bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
         <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
           <h3 className="text-lg font-semibold flex items-center"><UserGroupIcon className="h-6 w-6 mr-2 text-blue-500" />Personel Listesi</h3>
-          {currentUser.role === Role.ADMIN && <button onClick={handleOpenAddModal} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800" aria-label="Yeni Personel Ekle"><PlusIcon className="h-5 w-5 mr-1" /> Ekle</button>}
+          {isEditable && <button onClick={handleOpenAddModal} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800" aria-label="Yeni Personel Ekle"><PlusIcon className="h-5 w-5 mr-1" /> Ekle</button>}
         </div>
         <div className="p-2 border-b">
             <div className="relative">
@@ -446,11 +421,9 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
         <div className="overflow-y-auto flex-1 max-h-80 md:max-h-none">
             {filteredPersonnel.length > 0 ? (
                 <ul>{filteredPersonnel.map(p => {
-                    const foremanName = users.find(u => u.id === p.foremanId)?.name;
                     return (
                         <li key={p.id}><button onClick={() => handleSelectPersonnel(p)} className={`w-full text-left p-4 transition-colors duration-150 ${selectedPersonnel?.id === p.id ? 'bg-blue-100 border-l-4 border-blue-500' : 'hover:bg-gray-100'}`}>
                             <p className="font-semibold text-gray-800">{p.name}</p>
-                            {foremanName && <p className="text-xs text-gray-500">{foremanName}</p>}
                         </button></li>
                     );
                 })}</ul>
@@ -517,7 +490,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
         )}
       </div>
     </div>
-    <PersonnelEditorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSavePersonnel} personnelToEdit={personnelToEdit} currentUser={currentUser} allUsers={users}/>
+    <PersonnelEditorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSavePersonnel} personnelToEdit={personnelToEdit} />
     <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleConfirmDelete} title="Personeli Sil" message={`'${personnelToDelete?.name}' adlı personeli silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}/>
     {selectedPersonnel && isEditable && <AddPaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} onSave={handleAddPayment} personnel={selectedPersonnel} />}
     <ConfirmationModal isOpen={!!paymentToDelete} onClose={() => setPaymentToDelete(null)} onConfirm={handleConfirmDeletePayment} title="Ödemeyi Sil" message={`${paymentToDelete ? formatDateTime(paymentToDelete.date) : ''} tarihli ${paymentToDelete ? formatCurrency(paymentToDelete.amount) : ''} tutarındaki ödemeyi silmek istediğinizden emin misiniz?`}/>

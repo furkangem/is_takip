@@ -1,15 +1,28 @@
-import React, { useMemo } from 'react';
-import { Personnel, WorkDay, User, Role } from '../types';
-import { UserGroupIcon } from './icons/Icons';
+import React, { useMemo, useState } from 'react';
+import { Personnel, WorkDay } from '../types';
+import { UserGroupIcon, ChevronDownIcon, ChevronUpIcon } from './icons/Icons';
 
 interface TimeSheetViewProps {
-  users: User[];
   personnel: Personnel[];
   workDays: WorkDay[];
   selectedMonth: Date;
 }
 
-const TimeSheetView: React.FC<TimeSheetViewProps> = ({ users, personnel, workDays, selectedMonth }) => {
+const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, workDays, selectedMonth }) => {
+  const [expandedPersonnel, setExpandedPersonnel] = useState<Set<string>>(new Set());
+
+  const togglePersonnel = (personnelId: string) => {
+    setExpandedPersonnel(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(personnelId)) {
+            newSet.delete(personnelId);
+        } else {
+            newSet.add(personnelId);
+        }
+        return newSet;
+    });
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
   }
@@ -18,44 +31,34 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ users, personnel, workDay
     return new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
-  const dataByForeman = useMemo(() => {
-    const foremen = users.filter(u => u.role === Role.FOREMAN);
+  const personnelData = useMemo(() => {
     const currentMonth = selectedMonth.getMonth();
     const currentYear = selectedMonth.getFullYear();
 
-    return foremen.map(foreman => {
-        const foremanPersonnel = personnel
-            .map(p => {
-                if(p.foremanId !== foreman.id) return null;
+    return personnel
+        .map(p => {
+            const monthlyWorkDays = workDays.filter(wd => {
+                const workDate = new Date(wd.date);
+                return wd.personnelId === p.id && workDate.getMonth() === currentMonth && workDate.getFullYear() === currentYear;
+            }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-                const monthlyWorkDays = workDays.filter(wd => {
-                    const workDate = new Date(wd.date);
-                    return wd.personnelId === p.id && workDate.getMonth() === currentMonth && workDate.getFullYear() === currentYear;
-                }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            if (monthlyWorkDays.length === 0) return null;
 
-                if (monthlyWorkDays.length === 0) return null;
+            const totalDays = monthlyWorkDays.length;
+            const totalHours = monthlyWorkDays.reduce((sum, wd) => sum + (wd.hours || 8), 0);
+            const totalEarnings = monthlyWorkDays.reduce((sum, wd) => sum + wd.wage, 0);
 
-                const totalDays = monthlyWorkDays.length;
-                const totalHours = monthlyWorkDays.reduce((sum, wd) => sum + (wd.hours || 8), 0);
-                const totalEarnings = monthlyWorkDays.reduce((sum, wd) => sum + wd.wage, 0);
-
-                return {
-                    ...p,
-                    workRecords: monthlyWorkDays,
-                    totalDays,
-                    totalHours,
-                    totalEarnings,
-                };
-            }).filter((p): p is NonNullable<typeof p> => p !== null);
-
-        if (foremanPersonnel.length === 0) return null;
-
-        return {
-            ...foreman,
-            personnel: foremanPersonnel,
-        };
-    }).filter((f): f is NonNullable<typeof f> => f !== null);
-  }, [users, personnel, workDays, selectedMonth]);
+            return {
+                ...p,
+                workRecords: monthlyWorkDays,
+                totalDays,
+                totalHours,
+                totalEarnings,
+            };
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== null)
+        .sort((a,b) => a.name.localeCompare(b.name));
+  }, [personnel, workDays, selectedMonth]);
 
   return (
     <div>
@@ -63,50 +66,65 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ users, personnel, workDay
         <h2 className="text-3xl font-bold text-gray-700">Aylık Puantaj Raporu</h2>
       </div>
 
-      <div className="space-y-8">
-        {dataByForeman.length > 0 ? dataByForeman.map(foreman => (
-          <div key={foreman.id}>
-            <h3 className="text-2xl font-semibold text-gray-700 mb-4 pb-2 border-b-2 border-gray-200">{foreman.name}</h3>
-            <div className="space-y-6">
-              {foreman.personnel.map(p => (
-                <div key={p.id} className="bg-white p-4 rounded-lg shadow-md">
-                  <h4 className="font-bold text-lg text-gray-800 mb-3">{p.name}</h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
+      <div className="space-y-2">
+        {personnelData.length > 0 ? personnelData.map(p => {
+          const isExpanded = expandedPersonnel.has(p.id);
+          return (
+          <div key={p.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div
+                  className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => togglePersonnel(p.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePersonnel(p.id); } }}
+                  aria-expanded={isExpanded}
+                  aria-controls={`personnel-details-${p.id}`}
+              >
+                  <h4 className="font-bold text-lg text-gray-800">{p.name}</h4>
+                  <div className="flex items-center space-x-4">
+                      <span className="text-sm text-gray-500 hidden sm:inline">{p.totalDays} gün</span>
+                      <span className="font-semibold text-gray-700">{formatCurrency(p.totalEarnings)}</span>
+                      {isExpanded ? <ChevronUpIcon className="h-5 w-5 text-gray-500" /> : <ChevronDownIcon className="h-5 w-5 text-gray-500" />}
+                  </div>
+              </div>
+              {isExpanded && (
+              <div id={`personnel-details-${p.id}`} className="px-4 pb-4">
+                  <div className="overflow-x-auto border-t pt-2">
+                  <table className="w-full text-sm text-left">
                       <thead className="bg-gray-100">
-                        <tr>
+                      <tr>
                           <th className="p-2 font-semibold text-gray-600">Tarih</th>
                           <th className="p-2 font-semibold text-gray-600">Konum</th>
                           <th className="p-2 font-semibold text-gray-600">Yapılan İş</th>
                           <th className="p-2 font-semibold text-gray-600 text-center">Saat</th>
                           <th className="p-2 font-semibold text-gray-600 text-right">Yevmiye</th>
-                        </tr>
+                      </tr>
                       </thead>
                       <tbody>
-                        {p.workRecords.map(wd => (
+                      {p.workRecords.map(wd => (
                           <tr key={wd.id} className="border-b">
-                            <td className="p-2 text-gray-600">{formatDate(wd.date)}</td>
-                            <td className="p-2 text-gray-800">{wd.location}</td>
-                            <td className="p-2 text-gray-800">{wd.jobDescription}</td>
-                            <td className="p-2 text-gray-600 text-center">{wd.hours || 8} saat</td>
-                            <td className="p-2 font-semibold text-gray-800 text-right">{formatCurrency(wd.wage)}</td>
+                          <td className="p-2 text-gray-600">{formatDate(wd.date)}</td>
+                          <td className="p-2 text-gray-800">{wd.location}</td>
+                          <td className="p-2 text-gray-800">{wd.jobDescription}</td>
+                          <td className="p-2 text-gray-600 text-center">{wd.hours || 8} saat</td>
+                          <td className="p-2 font-semibold text-gray-800 text-right">{formatCurrency(wd.wage)}</td>
                           </tr>
-                        ))}
+                      ))}
                       </tbody>
                       <tfoot className="bg-gray-50">
-                        <tr className="font-bold">
+                      <tr className="font-bold">
                           <td colSpan={3} className="p-2 text-gray-700 text-right">Aylık Toplam:</td>
                           <td className="p-2 text-gray-800 text-center">{p.totalHours} saat</td>
                           <td className="p-2 text-gray-800 text-right">{formatCurrency(p.totalEarnings)}</td>
-                        </tr>
+                      </tr>
                       </tfoot>
-                    </table>
+                  </table>
                   </div>
-                </div>
-              ))}
-            </div>
+              </div>
+              )}
           </div>
-        )) : (
+          );
+        }) : (
           <div className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow-md p-10">
             <UserGroupIcon className="h-16 w-16 text-gray-300 mb-4" />
             <p className="text-gray-500 text-lg font-medium">Veri Bulunamadı</p>

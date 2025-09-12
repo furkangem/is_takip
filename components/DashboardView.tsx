@@ -1,25 +1,19 @@
-
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Personnel, WorkDay, User, Role, Payment, Income, Expense, PersonnelPayment } from '../types';
-import { CashIcon, UsersIcon, TrendingDownIcon, TrendingUpIcon, DocumentCheckIcon, ChevronDownIcon, ChevronUpIcon } from './icons/Icons';
+import { Personnel, WorkDay, User, Role, PersonnelPayment, CustomerJob } from '../types';
+import { CashIcon, UsersIcon, TrendingDownIcon, TrendingUpIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
-import ForemanPayments from './ForemanPayments';
 
 interface DashboardViewProps {
   currentUser: User;
-  users: User[];
   personnel: Personnel[];
   workDays: WorkDay[];
-  payments: Payment[];
   personnelPayments: PersonnelPayment[];
-  extraIncomes: Income[];
-  extraExpenses: Expense[];
-  onAddPayment: (payment: Omit<Payment, 'id'>) => void;
+  customerJobs: CustomerJob[];
   selectedMonth: Date;
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, users, personnel, workDays, payments, personnelPayments, extraIncomes, extraExpenses, onAddPayment, selectedMonth }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, personnel, workDays, personnelPayments, customerJobs, selectedMonth }) => {
   
   const currentMonthName = selectedMonth.toLocaleString('tr-TR', { month: 'long' });
   const formatCurrency = (value: number) => {
@@ -28,7 +22,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, users, perso
 
   // ADMIN DASHBOARD
   if (currentUser.role === Role.ADMIN) {
-    const { totalIncome, totalExpenses, netProfit, expensesByForeman } = useMemo(() => {
+    const { totalIncome, totalExpenses, netProfit, topPersonnel } = useMemo(() => {
       const currentMonth = selectedMonth.getMonth();
       const currentYear = selectedMonth.getFullYear();
       
@@ -37,46 +31,40 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, users, perso
           return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
       };
 
-      const income = extraIncomes
-          .filter(inc => isCurrentMonth(inc.date))
-          .reduce((sum, inc) => sum + inc.amount, 0);
-
-      const extraExp = extraExpenses
-          .filter(exp => isCurrentMonth(exp.date))
-          .reduce((sum, exp) => sum + exp.amount, 0);
+      const incomeFromJobs = customerJobs
+          .filter(job => isCurrentMonth(job.date))
+          .reduce((sum, job) => sum + job.income, 0);
           
-      const foremanPaymentsTotal = payments
-          .filter(p => isCurrentMonth(p.date))
-          .reduce((sum, p) => sum + p.amount, 0);
-
       const personnelPaymentsTotal = personnelPayments
           .filter(p => isCurrentMonth(p.date))
           .reduce((sum, p) => sum + p.amount, 0);
 
-      const totalPaidExpenses = foremanPaymentsTotal + personnelPaymentsTotal;
-      const totalExp = extraExp + totalPaidExpenses;
-      const profit = income - totalExp;
+      const totalPaidExpenses = personnelPaymentsTotal;
+      const profit = incomeFromJobs - totalPaidExpenses;
 
-      // Calculate theoretical earnings by foreman for the "Hakedişler" table
-      const byForeman: { [key: string]: { name: string, total: number } } = {};
-      users.filter(u => u.role === Role.FOREMAN).forEach(f => {
-          byForeman[f.id] = { name: f.name, total: 0 };
-      });
+      // Calculate top earning personnel for the month
       const monthlyWorkDays = workDays.filter(wd => isCurrentMonth(wd.date));
+      const personnelEarnings: { [key: string]: { name: string, total: number } } = {};
+      personnel.forEach(p => {
+        personnelEarnings[p.id] = { name: p.name, total: 0 };
+      });
       monthlyWorkDays.forEach(wd => {
-        const p = personnel.find(p => p.id === wd.personnelId);
-        if(p && byForeman[p.foremanId]) {
-           byForeman[p.foremanId].total += wd.wage;
+        if (personnelEarnings[wd.personnelId]) {
+           personnelEarnings[wd.personnelId].total += wd.wage;
         }
       });
+      const topEarningPersonnel = Object.values(personnelEarnings)
+        .filter(p => p.total > 0)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5);
       
       return { 
-          totalIncome: income,
-          totalExpenses: totalExp,
+          totalIncome: incomeFromJobs,
+          totalExpenses: totalPaidExpenses,
           netProfit: profit,
-          expensesByForeman: Object.values(byForeman)
+          topPersonnel: topEarningPersonnel,
       };
-    }, [personnel, workDays, payments, personnelPayments, extraIncomes, extraExpenses, users, selectedMonth]);
+    }, [personnel, workDays, personnelPayments, customerJobs, selectedMonth]);
 
     const chartData = [
       {
@@ -126,186 +114,21 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, users, perso
             </ResponsiveContainer>
           </div>
           <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-semibold mb-4 text-gray-700">Ustabaşı Ekibi Hakedişleri</h3>
-              <ul className="space-y-4">
-                  {expensesByForeman.map(foreman => (
-                      <li key={foreman.name} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                          <span className="font-medium text-gray-600">{foreman.name}</span>
-                          <span className="font-bold text-red-500">{formatCurrency(foreman.total)}</span>
-                      </li>
-                  ))}
-              </ul>
-          </div>
-        </div>
-        <div className="mt-8">
-          <ForemanPayments 
-            users={users}
-            personnel={personnel}
-            workDays={workDays}
-            payments={payments}
-            onAddPayment={onAddPayment}
-            selectedMonth={selectedMonth}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // FOREMAN DASHBOARD
-  if (currentUser.role === Role.FOREMAN) {
-     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-
-     const toggleRow = (personnelId: string) => {
-        setExpandedRows(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(personnelId)) {
-                newSet.delete(personnelId);
-            } else {
-                newSet.add(personnelId);
-            }
-            return newSet;
-        });
-    };
-
-    const { totalPersonnelDue, totalPaid, balance, personnelWorkDetails } = useMemo(() => {
-      const currentMonth = selectedMonth.getMonth();
-      const currentYear = selectedMonth.getFullYear();
-      
-      const isCurrentMonth = (dateString: string) => {
-          const date = new Date(dateString);
-          return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-      };
-
-      const foremanPersonnel = personnel.filter(p => p.foremanId === currentUser.id);
-
-      let due = 0;
-      const workDetails = foremanPersonnel.map(p => {
-        const monthlyWorkDays = workDays.filter(wd => 
-            wd.personnelId === p.id && isCurrentMonth(wd.date)
-        ).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        
-        const monthlyEarning = monthlyWorkDays.reduce((sum, wd) => sum + wd.wage, 0);
-        due += monthlyEarning;
-
-        return {
-          id: p.id,
-          name: p.name,
-          daysWorked: monthlyWorkDays.length,
-          monthlyEarning: monthlyEarning,
-          workRecords: monthlyWorkDays,
-        };
-      });
-
-      const paid = payments
-        .filter(p => p.foremanId === currentUser.id && isCurrentMonth(p.date))
-        .reduce((sum, p) => sum + p.amount, 0);
-
-      return {
-        totalPersonnelDue: due,
-        totalPaid: paid,
-        balance: due - paid,
-        personnelWorkDetails: workDetails,
-      };
-    }, [personnel, workDays, payments, currentUser.id, selectedMonth]);
-    
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
-    }
-
-    return (
-      <div>
-        <h2 className="text-3xl font-bold mb-6 text-gray-700">{selectedMonth.toLocaleString('tr-TR', { month: 'long', year: 'numeric' })} Ayı Ekip Özeti</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <StatCard 
-            title="Toplam Personel Hakedişi" 
-            value={formatCurrency(totalPersonnelDue)} 
-            icon={UsersIcon}
-            color="blue"
-          />
-          <StatCard 
-            title="Alınan Toplam Ödeme" 
-            value={formatCurrency(totalPaid)} 
-            icon={TrendingUpIcon}
-            color="green"
-          />
-          <StatCard 
-            title="Kalan Bakiye" 
-            value={formatCurrency(balance)}
-            icon={CashIcon}
-            color={balance > 0 ? "red" : "blue"}
-          />
-        </div>
-
-        <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-xl font-semibold mb-4 text-gray-700 flex items-center">
-            <DocumentCheckIcon className="h-6 w-6 mr-3 text-gray-600"/>
-            Personel Çalışma Durumu
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="p-3 font-semibold text-gray-600">Personel Adı</th>
-                  <th className="p-3 font-semibold text-gray-600">Konum</th>
-                  <th className="p-3 font-semibold text-gray-600">İş Tanımı</th>
-                  <th className="p-3 font-semibold text-gray-600 text-center">Çalışılan Gün</th>
-                  <th className="p-3 font-semibold text-gray-600 text-right">Aylık Hakediş</th>
-                </tr>
-              </thead>
-              <tbody>
-                {personnelWorkDetails.map(p => (
-                   <React.Fragment key={p.id}>
-                    <tr 
-                      className="border-b hover:bg-gray-50 cursor-pointer"
-                      onClick={() => toggleRow(p.id)}
-                    >
-                      <td className="p-3 font-medium text-gray-800 flex items-center">
-                        {expandedRows.has(p.id) ? <ChevronUpIcon className="h-4 w-4 mr-2" /> : <ChevronDownIcon className="h-4 w-4 mr-2" />}
-                        {p.name}
-                      </td>
-                      <td className="p-3 text-gray-600 truncate max-w-xs">{p.workRecords[p.workRecords.length - 1]?.location || '-'}</td>
-                      <td className="p-3 text-gray-600 truncate max-w-xs">{p.workRecords[p.workRecords.length - 1]?.jobDescription || '-'}</td>
-                      <td className="p-3 text-center text-gray-600">{p.daysWorked} gün</td>
-                      <td className="p-3 font-semibold text-gray-800 text-right">{formatCurrency(p.monthlyEarning)}</td>
-                    </tr>
-                    {expandedRows.has(p.id) && (
-                        <tr className="bg-gray-50">
-                            <td colSpan={5} className="p-0">
-                                <div className="p-4">
-                                    <h4 className="font-semibold text-gray-700 mb-2 ml-2">Çalışma Detayları:</h4>
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-gray-200">
-                                            <tr>
-                                                <th className="p-2 font-medium text-gray-600">Tarih</th>
-                                                <th className="p-2 font-medium text-gray-600">Konum</th>
-                                                <th className="p-2 font-medium text-gray-600">Yapılan İş</th>
-                                                <th className="p-2 font-medium text-gray-600 text-right">Yevmiye</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {p.workRecords.map(record => (
-                                                <tr key={record.id} className="border-b border-gray-200">
-                                                    <td className="p-2 text-gray-700">{formatDate(record.date)}</td>
-                                                    <td className="p-2 text-gray-700">{record.location}</td>
-                                                    <td className="p-2 text-gray-700">{record.jobDescription}</td>
-                                                    <td className="p-2 text-gray-700 font-semibold text-right">{formatCurrency(record.wage)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </td>
-                        </tr>
-                    )}
-                   </React.Fragment>
-                ))}
-                {personnelWorkDetails.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-4 text-center text-gray-500">Bu ay için personel çalışma verisi bulunamadı.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              <h3 className="text-xl font-semibold mb-4 text-gray-700">Ayın En Çok Kazanan Personelleri</h3>
+              {topPersonnel.length > 0 ? (
+                <ul className="space-y-4">
+                    {topPersonnel.map(p => (
+                        <li key={p.name} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+                            <span className="font-medium text-gray-600">{p.name}</span>
+                            <span className="font-bold text-blue-500">{formatCurrency(p.total)}</span>
+                        </li>
+                    ))}
+                </ul>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-500">Bu ay için veri bulunamadı.</p>
+                </div>
+              )}
           </div>
         </div>
       </div>

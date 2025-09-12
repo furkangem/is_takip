@@ -1,5 +1,7 @@
+
 export enum Role {
   ADMIN = 'ADMIN',
+  // FIX: Add FOREMAN role to support foreman-specific views and logic.
   FOREMAN = 'FOREMAN',
 }
 
@@ -14,7 +16,8 @@ export interface User {
 export interface Personnel {
   id: string;
   name: string;
-  foremanId: string;
+  // FIX: Add optional foremanId to link personnel to a foreman.
+  foremanId?: string;
 }
 
 export interface WorkDay {
@@ -27,6 +30,7 @@ export interface WorkDay {
   hours?: number;
 }
 
+// FIX: Add missing Payment interface for foreman payments, which was causing compilation errors.
 export interface Payment {
   id: string;
   foremanId: string;
@@ -41,20 +45,6 @@ export interface PersonnelPayment {
   date: string; // ISO Date String
 }
 
-export interface Income {
-    id:string;
-    description: string;
-    amount: number;
-    date: string; // ISO Date String
-}
-
-export interface Expense {
-    id: string;
-    description: string;
-    amount: number;
-    date: string; // ISO Date String
-}
-
 export interface Customer {
   id: string;
   name: string;
@@ -66,6 +56,7 @@ export interface Customer {
 export interface CustomerJob {
   id: string;
   customerId: string;
+  location: string;
   operation: string;
   date: string; // YYYY-MM-DD
   quantity: number;
@@ -74,4 +65,20 @@ export interface CustomerJob {
   income: number;
   personnelPayment: number;
   expense: number;
+  personnelIds: string[];
+}
+
+// FIX: Add Income and Expense interfaces for extra financial transactions.
+export interface Income {
+  id: string;
+  description: string;
+  amount: number;
+  date: string; // ISO Date String
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  date: string; // ISO Date String
 }

@@ -1,21 +1,18 @@
 
 import React from 'react';
-import { User, Role } from '../types';
+import { User } from '../types';
 import { UserCircleIcon, LogoutIcon, ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
 
 interface HeaderProps {
   currentUser: User;
-  users: User[];
-  onUserChange: (userId: string) => void;
   onLogout: () => void;
   selectedMonth: Date;
   setSelectedMonth: (date: Date) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, users, onUserChange, onLogout, selectedMonth, setSelectedMonth }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, selectedMonth, setSelectedMonth }) => {
   const getRoleName = (role: string) => {
       if (role === 'ADMIN') return 'Admin';
-      if (role === 'FOREMAN') return 'Ustabaşı';
       return 'Kullanıcı';
   }
 
@@ -51,17 +48,6 @@ const Header: React.FC<HeaderProps> = ({ currentUser, users, onUserChange, onLog
               <span className="font-semibold text-gray-700">{currentUser.name}</span>
               <span className="text-sm text-gray-500 block">{getRoleName(currentUser.role)}</span>
             </div>
-            {currentUser.role === Role.ADMIN && (
-                <select
-                value={currentUser.id}
-                onChange={(e) => onUserChange(e.target.value)}
-                className="ml-2 bg-gray-200 text-gray-900 rounded-md p-1 pr-8 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
-                >
-                {users.map(user => (
-                    <option key={user.id} value={user.id}>{user.name}</option>
-                ))}
-                </select>
-            )}
           </div>
         </div>
          <div className="h-8 w-px bg-gray-200 hidden sm:block"></div>

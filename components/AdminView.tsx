@@ -21,7 +21,7 @@ const UserEditorModal: React.FC<{
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState<Role>(Role.FOREMAN);
+    const [role, setRole] = useState<Role>(Role.ADMIN);
 
     useEffect(() => {
         if (isOpen) {
@@ -34,7 +34,7 @@ const UserEditorModal: React.FC<{
                 setName('');
                 setEmail('');
                 setPassword('');
-                setRole(Role.FOREMAN);
+                setRole(Role.ADMIN);
             }
         }
     }, [isOpen, userToEdit]);
@@ -112,7 +112,6 @@ const UserEditorModal: React.FC<{
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             required
                         >
-                            <option value={Role.FOREMAN}>Ustabaşı</option>
                             <option value={Role.ADMIN}>Admin</option>
                         </select>
                     </div>
@@ -148,7 +147,6 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
 
     const getRoleName = (role: Role) => {
         if (role === Role.ADMIN) return { name: 'Admin', color: 'bg-blue-100 text-blue-800' };
-        if (role === Role.FOREMAN) return { name: 'Ustabaşı', color: 'bg-yellow-100 text-yellow-800' };
         return { name: 'Bilinmeyen', color: 'bg-gray-100 text-gray-800' };
     };
 
@@ -178,16 +176,6 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
     const handleConfirmDelete = () => {
         if (!userToDelete) return;
         
-        if (userToDelete.role === Role.FOREMAN) {
-            const hasPersonnel = personnel.some(p => p.foremanId === userToDelete.id);
-            if (hasPersonnel) {
-                alert(`'${userToDelete.name}' isimli ustabaşı, kendisine atanmış personel olduğu için silinemez. Lütfen önce personeli başka bir ustabaşına atayın veya silin.`);
-                setIsDeleteModalOpen(false);
-                setUserToDelete(null);
-                return;
-            }
-        }
-
         onDeleteUser(userToDelete.id);
         setIsDeleteModalOpen(false);
         setUserToDelete(null);
