@@ -94,7 +94,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, workDays, sele
                       <thead className="bg-gray-100">
                       <tr>
                           <th className="p-2 font-semibold text-gray-600">Tarih</th>
-                          <th className="p-2 font-semibold text-gray-600">Konum</th>
+                          <th className="p-2 font-semibold text-gray-600 hidden md:table-cell">Konum</th>
                           <th className="p-2 font-semibold text-gray-600">Yapılan İş</th>
                           <th className="p-2 font-semibold text-gray-600 text-center">Saat</th>
                           <th className="p-2 font-semibold text-gray-600 text-right">Yevmiye</th>
@@ -104,7 +104,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, workDays, sele
                       {p.workRecords.map(wd => (
                           <tr key={wd.id} className="border-b">
                           <td className="p-2 text-gray-600">{formatDate(wd.date)}</td>
-                          <td className="p-2 text-gray-800">{wd.location}</td>
+                          <td className="p-2 text-gray-800 hidden md:table-cell">{wd.location}</td>
                           <td className="p-2 text-gray-800">{wd.jobDescription}</td>
                           <td className="p-2 text-gray-600 text-center">{wd.hours || 8} saat</td>
                           <td className="p-2 font-semibold text-gray-800 text-right">{formatCurrency(wd.wage)}</td>
@@ -113,7 +113,8 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, workDays, sele
                       </tbody>
                       <tfoot className="bg-gray-50">
                       <tr className="font-bold">
-                          <td colSpan={3} className="p-2 text-gray-700 text-right">Aylık Toplam:</td>
+                          <td colSpan={2} className="p-2 text-gray-700 text-right md:hidden">Aylık Toplam:</td>
+                          <td colSpan={3} className="p-2 text-gray-700 text-right hidden md:table-cell">Aylık Toplam:</td>
                           <td className="p-2 text-gray-800 text-center">{p.totalHours} saat</td>
                           <td className="p-2 text-gray-800 text-right">{formatCurrency(p.totalEarnings)}</td>
                       </tr>

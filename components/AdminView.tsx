@@ -213,7 +213,7 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
                                 <tr>
                                     <th className="p-4 font-semibold text-gray-600">İsim</th>
                                     <th className="p-4 font-semibold text-gray-600">E-posta</th>
-                                    <th className="p-4 font-semibold text-gray-600">Şifre</th>
+                                    <th className="p-4 font-semibold text-gray-600 hidden md:table-cell">Şifre</th>
                                     <th className="p-4 font-semibold text-gray-600">Rol</th>
                                     <th className="p-4 font-semibold text-gray-600 text-right">İşlemler</th>
                                 </tr>
@@ -229,7 +229,7 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
                                                 {user.name}
                                             </td>
                                             <td className="p-4 text-gray-600">{user.email}</td>
-                                            <td className="p-4 text-gray-600 font-mono text-sm">{user.password}</td>
+                                            <td className="p-4 text-gray-600 font-mono text-sm hidden md:table-cell">{user.password}</td>
                                             <td className="p-4">
                                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${roleInfo.color}`}>
                                                     {roleInfo.name}

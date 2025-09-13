@@ -624,7 +624,7 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                                             <thead className="bg-gray-50">
                                                                 <tr>
                                                                     <th className="p-3 font-semibold text-gray-600">İşlem</th>
-                                                                    <th className="p-3 font-semibold text-gray-600">Personeller</th>
+                                                                    <th className="p-3 font-semibold text-gray-600 hidden sm:table-cell">Personeller</th>
                                                                     <th className="p-3 font-semibold text-gray-600 text-right">Gelir</th>
                                                                     <th className="p-3 font-semibold text-gray-600 text-right">Maliyet</th>
                                                                     <th className="p-3 font-semibold text-gray-600 text-right">Kar</th>
@@ -637,7 +637,7 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                                                     return (
                                                                         <tr key={job.id} className="hover:bg-gray-50 group cursor-pointer" onClick={() => { setJobToView(job); setIsJobDetailModalOpen(true); }}>
                                                                             <td className="p-3"><p className="font-medium text-gray-800">{job.operation}</p><p className="text-xs text-gray-500">{formatDate(job.date)}</p></td>
-                                                                            <td className="p-3 text-gray-600" title={getAllPersonnelNames(job.personnelIds)}>{getPersonnelNames(job.personnelIds)}</td>
+                                                                            <td className="p-3 text-gray-600 hidden sm:table-cell" title={getAllPersonnelNames(job.personnelIds)}>{getPersonnelNames(job.personnelIds)}</td>
                                                                             <td className="p-3 font-semibold text-green-600 text-right">{formatCurrency(job.income)}</td>
                                                                             <td className="p-3 font-semibold text-red-600 text-right">{formatCurrency(cost)}</td>
                                                                             <td className={`p-3 font-semibold text-right ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(profit)}</td>

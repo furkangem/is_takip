@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { User } from '../types';
 import { UserCircleIcon, LogoutIcon, ChevronLeftIcon, ChevronRightIcon } from './icons/Icons';
@@ -57,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, selectedMonth, s
             aria-label="Çıkış Yap"
         >
             <LogoutIcon className="h-6 w-6" />
-            <span className="font-medium text-sm">Çıkış Yap</span>
+            <span className="font-medium text-sm hidden sm:block">Çıkış Yap</span>
         </button>
       </div>
     </header>
