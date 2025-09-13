@@ -1,8 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Customer, CustomerJob, Personnel } from '../types';
+import { Customer, CustomerJob, Personnel, Material, JobPersonnelPayment } from '../types';
 import { BuildingOffice2Icon, IdentificationIcon, PhoneIcon, MapPinIcon, DocumentTextIcon, XMarkIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CashIcon, TrendingUpIcon, TrendingDownIcon, ChevronUpIcon, ChevronDownIcon, UsersIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
 import StatCard from './ui/StatCard';
+
+// FIX: Define formatCurrency in the module scope to be accessible by all components in this file.
+const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
 
 interface CustomerViewProps {
   customers: Customer[];
@@ -107,7 +110,7 @@ const CustomerEditorModal: React.FC<{
 const JobEditorModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onSave: (job: Omit<CustomerJob, 'id'>) => void;
+    onSave: (job: Omit<CustomerJob, 'id'> | CustomerJob) => void;
     jobToEdit: CustomerJob | null;
     customerId: string;
     personnel: Personnel[];
@@ -121,10 +124,13 @@ const JobEditorModal: React.FC<{
         unit: '',
         unitPrice: '',
         income: '',
-        personnelPayment: '',
-        expense: '',
+        otherExpenses: '',
     });
+
     const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<string[]>([]);
+    const [personnelPayments, setPersonnelPayments] = useState<Map<string, string>>(new Map());
+    const [materials, setMaterials] = useState<Omit<Material, 'id'>[]>([]);
+    
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [personnelSearch, setPersonnelSearch] = useState('');
 
@@ -139,43 +145,72 @@ const JobEditorModal: React.FC<{
                     unit: jobToEdit.unit,
                     unitPrice: String(jobToEdit.unitPrice),
                     income: String(jobToEdit.income),
-                    personnelPayment: String(jobToEdit.personnelPayment),
-                    expense: String(jobToEdit.expense),
+                    otherExpenses: String(jobToEdit.otherExpenses),
                 });
                 setSelectedPersonnelIds(jobToEdit.personnelIds || []);
+                setMaterials(jobToEdit.materials.map(({id, ...rest}) => rest) || []);
+                const paymentsMap = new Map<string, string>();
+                jobToEdit.personnelPayments.forEach(p => paymentsMap.set(p.personnelId, String(p.payment)));
+                setPersonnelPayments(paymentsMap);
             } else {
                  setFormData({
                     date: new Date().toISOString().split('T')[0],
                     location: initialLocation || '',
-                    operation: '',
-                    quantity: '',
-                    unit: '',
-                    unitPrice: '',
-                    income: '',
-                    personnelPayment: '',
-                    expense: '',
+                    operation: '', quantity: '', unit: '', unitPrice: '', income: '', otherExpenses: '',
                 });
                 setSelectedPersonnelIds([]);
+                setMaterials([]);
+                setPersonnelPayments(new Map());
             }
             setPersonnelSearch('');
             setIsDropdownOpen(false);
         }
     }, [isOpen, jobToEdit, initialLocation]);
+    
+    const totalPersonnelPayment = useMemo(() => {
+        return Array.from(personnelPayments.values()).reduce((sum, payment) => sum + (parseFloat(payment) || 0), 0);
+    }, [personnelPayments]);
+
+    const totalMaterialCost = useMemo(() => {
+        return materials.reduce((sum, mat) => sum + (mat.quantity * mat.unitPrice), 0);
+    }, [materials]);
 
     if (!isOpen) return null;
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
     
     const handlePersonnelSelect = (personnelId: string) => {
-        setSelectedPersonnelIds(prev =>
-            prev.includes(personnelId)
-                ? prev.filter(id => id !== personnelId)
-                : [...prev, personnelId]
-        );
+        const newIds = new Set(selectedPersonnelIds);
+        if (newIds.has(personnelId)) {
+            newIds.delete(personnelId);
+        } else {
+            newIds.add(personnelId);
+        }
+        setSelectedPersonnelIds(Array.from(newIds));
     };
+    
+    const handlePaymentChange = (personnelId: string, value: string) => {
+        setPersonnelPayments(prev => new Map(prev).set(personnelId, value));
+    };
+
+    const handleAddMaterial = () => {
+        setMaterials(prev => [...prev, { name: '', quantity: 1, unitPrice: 0 }]);
+    };
+
+    const handleMaterialChange = (index: number, field: keyof Omit<Material, 'id'>, value: string | number) => {
+        const newMaterials = [...materials];
+        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+        (newMaterials[index] as any)[field] = field === 'name' ? value : (isNaN(numValue) ? 0 : numValue);
+        setMaterials(newMaterials);
+    };
+
+    const handleRemoveMaterial = (index: number) => {
+        setMaterials(prev => prev.filter((_, i) => i !== index));
+    };
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -188,28 +223,34 @@ const JobEditorModal: React.FC<{
             unit: formData.unit,
             unitPrice: parseFloat(formData.unitPrice) || 0,
             income: parseFloat(formData.income) || 0,
-            personnelPayment: parseFloat(formData.personnelPayment) || 0,
-            expense: parseFloat(formData.expense) || 0,
+            otherExpenses: parseFloat(formData.otherExpenses) || 0,
             personnelIds: selectedPersonnelIds,
+            personnelPayments: Array.from(personnelPayments.entries())
+                .filter(([_, payment]) => (parseFloat(payment) || 0) > 0)
+                .map(([personnelId, payment]) => ({ personnelId, payment: parseFloat(payment) })),
+            materials: materials.map(m => ({ ...m, id: `mat-${Math.random()}`})),
         };
-
-        onSave(jobData);
+        
+        if (jobToEdit) {
+            onSave({ ...jobData, id: jobToEdit.id });
+        } else {
+            onSave(jobData);
+        }
         onClose();
     };
 
     const commonInputClass = "block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500";
-
     const filteredPersonnel = personnel.filter(p => p.name.toLowerCase().includes(personnelSearch.toLowerCase()));
-    const selectedPersonnel = personnel.filter(p => selectedPersonnelIds.includes(p.id));
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl">
                 <div className="flex justify-between items-center p-4 border-b">
                     <h3 className="text-lg font-semibold text-gray-800">{jobToEdit ? 'İşi Düzenle' : 'Yeni İş Ekle'}</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><XMarkIcon className="h-6 w-6" /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                    {/* Job Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <div>
                             <label htmlFor="location" className="block text-sm font-medium text-gray-700">Konum / Şantiye Adı</label>
@@ -225,76 +266,71 @@ const JobEditorModal: React.FC<{
                         <input type="text" name="operation" value={formData.operation} onChange={handleChange} required className={commonInputClass} />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Adet</label>
-                            <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} className={commonInputClass} />
-                        </div>
-                         <div>
-                            <label htmlFor="unit" className="block text-sm font-medium text-gray-700">Birim</label>
-                            <input type="text" name="unit" value={formData.unit} onChange={handleChange} placeholder="m², adet, vb." className={commonInputClass} />
-                        </div>
-                        <div>
-                            <label htmlFor="unitPrice" className="block text-sm font-medium text-gray-700">Birim Fiyat (₺)</label>
-                            <input type="number" name="unitPrice" value={formData.unitPrice} onChange={handleChange} className={commonInputClass} />
-                        </div>
+                        <div><label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Adet</label><input type="number" name="quantity" value={formData.quantity} onChange={handleChange} className={commonInputClass} /></div>
+                         <div><label htmlFor="unit" className="block text-sm font-medium text-gray-700">Birim</label><input type="text" name="unit" value={formData.unit} onChange={handleChange} placeholder="m², adet, vb." className={commonInputClass} /></div>
+                        <div><label htmlFor="unitPrice" className="block text-sm font-medium text-gray-700">Birim Fiyat (₺)</label><input type="number" name="unitPrice" value={formData.unitPrice} onChange={handleChange} className={commonInputClass} /></div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Personel Seç</label>
+
+                    {/* Personnel */}
+                     <div className="pt-4 border-t">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Personel Seçimi ve Yevmiyeler</label>
                          <div className="relative">
-                            <div className="w-full p-2 border border-gray-300 rounded-md bg-white min-h-[42px] cursor-text" onClick={() => setIsDropdownOpen(true)}>
-                                {selectedPersonnel.length > 0 ? (
-                                    <div className="flex flex-wrap gap-1">
-                                        {selectedPersonnel.map(p => (
-                                            <span key={p.id} className="flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                                                {p.name}
-                                                <button type="button" onClick={(e) => { e.stopPropagation(); handlePersonnelSelect(p.id); }} className="text-blue-600 hover:text-blue-800">
-                                                    <XMarkIcon className="h-3 w-3" />
-                                                </button>
-                                            </span>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <span className="text-gray-500">Personel seçmek için tıklayın...</span>
-                                )}
-                            </div>
+                            <button type="button" onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full text-left p-2 border border-gray-300 rounded-md bg-white min-h-[42px]">{selectedPersonnelIds.length} personel seçildi</button>
                              {isDropdownOpen && (
                                 <div className="absolute z-10 mt-1 w-full bg-white shadow-lg border rounded-md max-h-60 overflow-auto">
-                                     <div className="p-2 border-b">
-                                        <input
-                                            type="text"
-                                            placeholder="Personel ara..."
-                                            value={personnelSearch}
-                                            onChange={(e) => setPersonnelSearch(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                        />
-                                    </div>
+                                     <div className="p-2 border-b"><input type="text" placeholder="Personel ara..." value={personnelSearch} onChange={(e) => setPersonnelSearch(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"/></div>
                                     <ul>{filteredPersonnel.map(p => (
                                         <li key={p.id} onClick={() => handlePersonnelSelect(p.id)} className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between">
-                                            {p.name}
-                                            <input type="checkbox" readOnly checked={selectedPersonnelIds.includes(p.id)} className="form-checkbox h-4 w-4 text-blue-600" />
+                                            {p.name} <input type="checkbox" readOnly checked={selectedPersonnelIds.includes(p.id)} className="form-checkbox h-4 w-4 text-blue-600" />
                                         </li>
                                     ))}</ul>
-                                    <div className="p-2 border-t text-right">
-                                        <button type="button" onClick={() => setIsDropdownOpen(false)} className="px-3 py-1 text-sm bg-gray-200 rounded">Kapat</button>
-                                    </div>
                                 </div>
                             )}
                         </div>
+                        {selectedPersonnelIds.length > 0 && <div className="mt-2 space-y-2 p-3 bg-gray-50 rounded-md max-h-40 overflow-y-auto">{personnel.filter(p => selectedPersonnelIds.includes(p.id)).map(p => (
+                            <div key={p.id} className="flex items-center justify-between gap-4">
+                                <span className="text-sm font-medium text-gray-800">{p.name}</span>
+                                <input type="number" placeholder="Yevmiye (₺)" value={personnelPayments.get(p.id) || ''} onChange={(e) => handlePaymentChange(p.id, e.target.value)} className="w-32 px-2 py-1 border border-gray-300 rounded-md text-sm bg-white text-gray-900" />
+                            </div>
+                        ))}</div>}
                     </div>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                    
+                    {/* Materials */}
+                    <div className="pt-4 border-t">
+                         <div className="flex justify-between items-center mb-2">
+                            <label className="text-sm font-medium text-gray-700">Malzemeler</label>
+                            <button type="button" onClick={handleAddMaterial} className="flex items-center text-xs font-medium text-blue-600 hover:text-blue-800"><PlusIcon className="h-4 w-4 mr-1"/>Malzeme Ekle</button>
+                        </div>
+                        <div className="space-y-2 max-h-40 overflow-y-auto p-2 bg-gray-50 rounded-md">{materials.map((mat, index) => (
+                             <div key={index} className="grid grid-cols-12 gap-2 items-center">
+                                <input type="text" placeholder="Malzeme Adı" value={mat.name} onChange={e => handleMaterialChange(index, 'name', e.target.value)} className="col-span-5 px-2 py-1 border rounded-md text-sm bg-white text-gray-900"/>
+                                <input type="number" placeholder="Adet" value={mat.quantity} onChange={e => handleMaterialChange(index, 'quantity', e.target.value)} className="col-span-2 px-2 py-1 border rounded-md text-sm bg-white text-gray-900"/>
+                                <input type="number" placeholder="Birim Fiyat" value={mat.unitPrice} onChange={e => handleMaterialChange(index, 'unitPrice', e.target.value)} className="col-span-3 px-2 py-1 border rounded-md text-sm bg-white text-gray-900"/>
+                                <div className="col-span-2 flex items-center justify-end">
+                                    <span className="text-xs font-semibold w-16 text-right">{formatCurrency(mat.quantity * mat.unitPrice)}</span>
+                                    <button type="button" onClick={() => handleRemoveMaterial(index)} className="ml-2 text-red-500 hover:text-red-700"><TrashIcon className="h-4 w-4"/></button>
+                                </div>
+                            </div>
+                        ))}</div>
+                    </div>
+                    
+                    {/* Financials */}
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                          <div>
-                            <label htmlFor="income" className="flex items-center text-sm font-medium text-green-700"><TrendingUpIcon className="h-4 w-4 mr-1"/> Gelir (₺)</label>
-                            <input type="number" name="income" value={formData.income} onChange={handleChange} required className="block w-full px-3 py-2 border border-green-300 rounded-md shadow-sm bg-green-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500" />
+                            <label htmlFor="income" className="flex items-center text-sm font-medium text-green-700"><TrendingUpIcon className="h-4 w-4 mr-1"/> Müşteri Fiyatı (Gelir ₺)</label>
+                            <input type="number" name="income" value={formData.income} onChange={handleChange} required className="block w-full px-3 py-2 border border-green-300 rounded-md shadow-sm bg-green-50" />
                         </div>
                         <div>
-                            <label htmlFor="personnelPayment" className="flex items-center text-sm font-medium text-red-700"><UsersIcon className="h-4 w-4 mr-1"/> Personel Maliyeti (₺)</label>
-                            <input type="number" name="personnelPayment" value={formData.personnelPayment} onChange={handleChange} className="block w-full px-3 py-2 border border-red-300 rounded-md shadow-sm bg-red-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500" />
-                        </div>
-                        <div>
-                            <label htmlFor="expense" className="flex items-center text-sm font-medium text-red-700"><TrendingDownIcon className="h-4 w-4 mr-1"/> Diğer Gider (₺)</label>
-                            <input type="number" name="expense" value={formData.expense} onChange={handleChange} className="block w-full px-3 py-2 border border-red-300 rounded-md shadow-sm bg-red-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-red-500 focus:border-red-500" />
+                            <label htmlFor="otherExpenses" className="flex items-center text-sm font-medium text-red-700"><TrendingDownIcon className="h-4 w-4 mr-1"/> Diğer Giderler (₺)</label>
+                            <input type="number" name="otherExpenses" value={formData.otherExpenses} onChange={handleChange} className="block w-full px-3 py-2 border border-red-300 rounded-md shadow-sm bg-red-50" />
                         </div>
                     </div>
+                    <div className="mt-2 bg-gray-100 p-2 rounded-md text-sm grid grid-cols-3 gap-2 text-center">
+                        <div className="font-semibold">Personel: <span className="text-red-600">{formatCurrency(totalPersonnelPayment)}</span></div>
+                        <div className="font-semibold">Malzeme: <span className="text-red-600">{formatCurrency(totalMaterialCost)}</span></div>
+                        <div className="font-bold text-base">Toplam Maliyet: <span className="text-red-700">{formatCurrency(totalPersonnelPayment + totalMaterialCost + (parseFloat(formData.otherExpenses) || 0))}</span></div>
+                    </div>
+                    
                     <div className="flex justify-end gap-3 pt-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">İptal</button>
                         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Kaydet</button>
@@ -315,88 +351,59 @@ const JobDetailModal: React.FC<{
 }> = ({ isOpen, onClose, onEdit, onDelete, job, personnel }) => {
     if (!isOpen || !job) return null;
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-    const totalCost = job.personnelPayment + job.expense;
+    const totalPersonnelCost = useMemo(() => job.personnelPayments.reduce((sum, p) => sum + p.payment, 0), [job.personnelPayments]);
+    const totalMaterialCost = useMemo(() => job.materials.reduce((sum, m) => sum + (m.quantity * m.unitPrice), 0), [job.materials]);
+    const totalCost = totalPersonnelCost + totalMaterialCost + job.otherExpenses;
     const netProfit = job.income - totalCost;
-    const assignedPersonnel = job.personnelIds.map(id => personnel.find(p => p.id === id)?.name).filter(Boolean);
-
-    const DetailRow: React.FC<{ label: string; value: React.ReactNode; className?: string }> = ({ label, value, className }) => (
-        <div className="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-200 last:border-b-0">
-            <dt className="text-sm font-medium text-gray-500">{label}</dt>
-            <dd className={`mt-1 text-sm text-gray-900 sm:mt-0 font-semibold ${className}`}>{value}</dd>
-        </div>
-    );
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-3xl transform transition-all" onClick={e => e.stopPropagation()}>
+            <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-4xl transform transition-all" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-5 border-b bg-white rounded-t-xl">
                     <div>
                         <h3 className="text-xl font-bold text-gray-900">{job.operation}</h3>
                         <p className="text-sm text-gray-500">{job.location}</p>
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-100">
-                        <XMarkIcon className="h-6 w-6" />
-                    </button>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-100"><XMarkIcon className="h-6 w-6" /></button>
                 </div>
                 <div className="p-6 max-h-[75vh] overflow-y-auto space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                        <div className="bg-green-100 p-4 rounded-lg">
-                            <p className="text-sm font-medium text-green-800">Müşteri Fiyatı (Gelir)</p>
-                            <p className="text-2xl font-bold text-green-700">{formatCurrency(job.income)}</p>
-                        </div>
-                        <div className="bg-red-100 p-4 rounded-lg">
-                             <p className="text-sm font-medium text-red-800">Toplam Maliyet</p>
-                            <p className="text-2xl font-bold text-red-700">{formatCurrency(totalCost)}</p>
-                        </div>
-                        <div className={`p-4 rounded-lg ${netProfit >= 0 ? 'bg-blue-100' : 'bg-red-200'}`}>
-                            <p className={`text-sm font-medium ${netProfit >= 0 ? 'text-blue-800' : 'text-red-900'}`}>Kalan Para (Net Kar)</p>
-                            <p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-blue-700' : 'text-red-800'}`}>{formatCurrency(netProfit)}</p>
-                        </div>
+                        <div className="bg-green-100 p-4 rounded-lg"><p className="text-sm font-medium text-green-800">Gelir</p><p className="text-2xl font-bold text-green-700">{formatCurrency(job.income)}</p></div>
+                        <div className="bg-red-100 p-4 rounded-lg"><p className="text-sm font-medium text-red-800">Toplam Maliyet</p><p className="text-2xl font-bold text-red-700">{formatCurrency(totalCost)}</p></div>
+                        <div className={`p-4 rounded-lg ${netProfit >= 0 ? 'bg-blue-100' : 'bg-red-200'}`}><p className={`text-sm font-medium ${netProfit >= 0 ? 'text-blue-800' : 'text-red-900'}`}>Net Kar</p><p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-blue-700' : 'text-red-800'}`}>{formatCurrency(netProfit)}</p></div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-white p-4 rounded-lg border">
-                             <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">İş Detayları</h4>
-                             <dl>
-                                <DetailRow label="Tarih" value={formatDate(job.date)} />
-                                <DetailRow label="Adet / Tür" value={`${job.quantity} ${job.unit}`} />
-                                <DetailRow label="Birim Fiyat" value={formatCurrency(job.unitPrice)} />
-                             </dl>
+                            <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">İş Detayları</h4>
+                            <dl className="space-y-2 text-sm">
+                                <div className="flex justify-between"><dt className="text-gray-500">Tarih:</dt><dd className="font-medium">{formatDate(job.date)}</dd></div>
+                                <div className="flex justify-between"><dt className="text-gray-500">Adet / Tür:</dt><dd className="font-medium">{job.quantity} {job.unit}</dd></div>
+                                <div className="flex justify-between"><dt className="text-gray-500">Birim Fiyat:</dt><dd className="font-medium">{formatCurrency(job.unitPrice)}</dd></div>
+                            </dl>
                         </div>
                         <div className="bg-white p-4 rounded-lg border">
                              <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">Maliyet Dökümü</h4>
-                             <dl>
-                                <DetailRow label="Personel Maliyeti" value={formatCurrency(job.personnelPayment)} className="text-red-600" />
-                                <DetailRow label="Diğer Giderler" value={formatCurrency(job.expense)} className="text-red-600" />
+                             <dl className="space-y-2 text-sm">
+                                <div className="flex justify-between"><dt className="text-gray-500">Personel Maliyeti:</dt><dd className="font-medium text-red-600">{formatCurrency(totalPersonnelCost)}</dd></div>
+                                <div className="flex justify-between"><dt className="text-gray-500">Malzeme Maliyeti:</dt><dd className="font-medium text-red-600">{formatCurrency(totalMaterialCost)}</dd></div>
+                                <div className="flex justify-between"><dt className="text-gray-500">Diğer Giderler:</dt><dd className="font-medium text-red-600">{formatCurrency(job.otherExpenses)}</dd></div>
                              </dl>
                         </div>
                     </div>
-
-                    {assignedPersonnel.length > 0 && (
-                        <div className="bg-white p-4 rounded-lg border">
-                            <h4 className="text-md font-semibold text-gray-700 mb-2">Görevli Personel</h4>
-                            <div className="flex flex-wrap gap-2">
-                                {assignedPersonnel.map(name => (
-                                    <span key={name} className="bg-gray-200 text-gray-800 text-sm font-medium px-3 py-1 rounded-full">{name}</span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {job.personnelPayments.length > 0 && <div className="bg-white p-4 rounded-lg border"><h4 className="text-md font-semibold text-gray-700 mb-2">Personel Yevmiyeleri</h4><ul className="space-y-1 text-sm max-h-40 overflow-y-auto">{job.personnelPayments.map(p => <li key={p.personnelId} className="flex justify-between items-center"><span className="text-gray-600">{personnel.find(per => per.id === p.personnelId)?.name || 'Bilinmeyen'}</span><span className="font-semibold">{formatCurrency(p.payment)}</span></li>)}</ul></div>}
+                        {job.materials.length > 0 && <div className="bg-white p-4 rounded-lg border"><h4 className="text-md font-semibold text-gray-700 mb-2">Kullanılan Malzemeler</h4><ul className="space-y-1 text-sm max-h-40 overflow-y-auto">{job.materials.map(m => <li key={m.id} className="grid grid-cols-3 gap-2"><span className="text-gray-600 col-span-2">{m.name}</span><span className="font-semibold text-right">{m.quantity} x {formatCurrency(m.unitPrice)} = {formatCurrency(m.quantity*m.unitPrice)}</span></li>)}</ul></div>}
+                    </div>
                 </div>
                 <div className="px-6 py-4 bg-gray-100 flex justify-between items-center rounded-b-xl border-t">
-                     <button type="button" onClick={() => onDelete(job)} className="flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100">
-                        <TrashIcon className="h-4 w-4 mr-2"/> Sil
-                    </button>
+                     <button type="button" onClick={() => onDelete(job)} className="flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"><TrashIcon className="h-4 w-4 mr-2"/> Sil</button>
                     <div className="flex justify-end gap-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                            Kapat
-                        </button>
-                        <button type="button" onClick={() => onEdit(job)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                            <PencilIcon className="h-4 w-4 mr-2"/> Düzenle
-                        </button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Kapat</button>
+                        <button type="button" onClick={() => onEdit(job)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"><PencilIcon className="h-4 w-4 mr-2"/> Düzenle</button>
                     </div>
                 </div>
             </div>
@@ -426,7 +433,6 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
     const [isJobDetailModalOpen, setIsJobDetailModalOpen] = useState(false);
     const [jobToView, setJobToView] = useState<CustomerJob | null>(null);
     
-    const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
 
     const filteredCustomers = useMemo(() => {
@@ -446,7 +452,11 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
         if (!selectedCustomer) return { selectedCustomerJobs: [], totalIncome: 0, totalCost: 0, netProfit: 0 };
         const jobs = customerJobs.filter(j => j.customerId === selectedCustomer.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const income = jobs.reduce((sum, job) => sum + job.income, 0);
-        const cost = jobs.reduce((sum, job) => sum + job.personnelPayment + job.expense, 0);
+        const cost = jobs.reduce((sum, job) => {
+            const personnelCost = job.personnelPayments.reduce((s, p) => s + p.payment, 0);
+            const materialCost = job.materials.reduce((s, m) => s + (m.quantity * m.unitPrice), 0);
+            return sum + personnelCost + materialCost + job.otherExpenses;
+        }, 0);
         return {
             selectedCustomerJobs: jobs,
             totalIncome: income,
@@ -489,9 +499,9 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
         }
     };
     
-    const handleSaveJob = (data: Omit<CustomerJob, 'id'>) => {
-        if (jobToEdit) {
-            onUpdateCustomerJob({ ...data, id: jobToEdit.id });
+    const handleSaveJob = (data: Omit<CustomerJob, 'id'> | CustomerJob) => {
+        if ('id' in data) {
+            onUpdateCustomerJob(data);
         } else {
             onAddCustomerJob(data);
         }
@@ -507,22 +517,26 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
     
     const handleOpenEditFromDetail = (job: CustomerJob) => {
         setIsJobDetailModalOpen(false);
-        setJobToEdit(job);
-        setInitialLocationForModal(job.location);
-        setIsJobModalOpen(true);
+        setTimeout(() => { // Allow state to update before opening next modal
+            setJobToEdit(job);
+            setInitialLocationForModal(job.location);
+            setIsJobModalOpen(true);
+        }, 50);
     };
 
     const handleDeleteFromDetail = (job: CustomerJob) => {
         setIsJobDetailModalOpen(false);
-        setJobToDelete(job);
-        setIsDeleteJobModalOpen(true);
+        setTimeout(() => {
+            setJobToDelete(job);
+            setIsDeleteJobModalOpen(true);
+        }, 50);
     };
 
     const getPersonnelNames = (personnelIds: string[]) => {
         if (!personnelIds || personnelIds.length === 0) return '-';
         const names = personnelIds.map(id => personnel.find(p => p.id === id)?.name || 'Bilinmeyen');
-        if (names.length > 3) {
-            return `${names.slice(0, 3).join(', ')} ve ${names.length - 3} diğer kişi`;
+        if (names.length > 2) {
+            return `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
         }
         return names.join(', ');
     }
@@ -610,59 +624,38 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                     return (
                                         <div key={location} className="bg-white rounded-lg shadow-md overflow-hidden">
                                             <div onClick={() => handleToggleLocation(location)} className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50">
+                                                <div className="flex items-center"><h4 className="font-bold text-lg text-blue-700">{location}</h4><span className="ml-3 text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{jobs.length} iş</span></div>
                                                 <div className="flex items-center">
-                                                    {isExpanded ? <ChevronUpIcon className="h-5 w-5 text-gray-500 mr-3"/> : <ChevronDownIcon className="h-5 w-5 text-gray-500 mr-3"/>}
-                                                    <h4 className="font-bold text-lg text-blue-700">{location}</h4>
-                                                    <span className="ml-3 text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{jobs.length} iş</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); setJobToEdit(null); setInitialLocationForModal(location); setIsJobModalOpen(true); }} className="flex items-center text-xs font-medium text-blue-600 hover:text-blue-800"><PlusIcon className="h-4 w-4 mr-1"/>İş Ekle</button>
+                                                    {isExpanded ? <ChevronUpIcon className="h-5 w-5 text-gray-500 ml-3"/> : <ChevronDownIcon className="h-5 w-5 text-gray-500 ml-3"/>}
                                                 </div>
-                                                <button onClick={(e) => { e.stopPropagation(); setJobToEdit(null); setInitialLocationForModal(location); setIsJobModalOpen(true); }} className="flex items-center text-xs font-medium text-blue-600 hover:text-blue-800"><PlusIcon className="h-4 w-4 mr-1"/>Bu Konuma İş Ekle</button>
                                             </div>
                                             {isExpanded && (
-                                                <div className="border-t">
-                                                    <div className="overflow-x-auto">
-                                                        <table className="w-full text-sm text-left">
-                                                            <thead className="bg-gray-50">
-                                                                <tr>
-                                                                    <th className="p-3 font-semibold text-gray-600">İşlem</th>
-                                                                    <th className="p-3 font-semibold text-gray-600 hidden sm:table-cell">Personeller</th>
-                                                                    <th className="p-3 font-semibold text-gray-600 text-right">Gelir</th>
-                                                                    <th className="p-3 font-semibold text-gray-600 text-right">Maliyet</th>
-                                                                    <th className="p-3 font-semibold text-gray-600 text-right">Kar</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-gray-200">
-                                                                {jobs.map(job => {
-                                                                    const cost = job.personnelPayment + job.expense;
-                                                                    const profit = job.income - cost;
-                                                                    return (
-                                                                        <tr key={job.id} className="hover:bg-gray-50 group cursor-pointer" onClick={() => { setJobToView(job); setIsJobDetailModalOpen(true); }}>
-                                                                            <td className="p-3"><p className="font-medium text-gray-800">{job.operation}</p><p className="text-xs text-gray-500">{formatDate(job.date)}</p></td>
-                                                                            <td className="p-3 text-gray-600 hidden sm:table-cell" title={getAllPersonnelNames(job.personnelIds)}>{getPersonnelNames(job.personnelIds)}</td>
-                                                                            <td className="p-3 font-semibold text-green-600 text-right">{formatCurrency(job.income)}</td>
-                                                                            <td className="p-3 font-semibold text-red-600 text-right">{formatCurrency(cost)}</td>
-                                                                            <td className={`p-3 font-semibold text-right ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(profit)}</td>
-                                                                        </tr>
-                                                                    );
-                                                                })}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            )}
+                                                <div className="border-t"><div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-gray-50"><tr>
+                                                    <th className="p-3 font-semibold text-gray-600">İşlem</th><th className="p-3 font-semibold text-gray-600 hidden sm:table-cell">Personeller</th>
+                                                    <th className="p-3 font-semibold text-gray-600 text-right">Gelir</th><th className="p-3 font-semibold text-gray-600 text-right">Maliyet</th>
+                                                    <th className="p-3 font-semibold text-gray-600 text-right">Kar</th></tr></thead>
+                                                <tbody className="divide-y divide-gray-200">{jobs.map(job => {
+                                                    const personnelCost = job.personnelPayments.reduce((s, p) => s + p.payment, 0);
+                                                    const materialCost = job.materials.reduce((s, m) => s + (m.quantity * m.unitPrice), 0);
+                                                    const cost = personnelCost + materialCost + job.otherExpenses;
+                                                    const profit = job.income - cost;
+                                                    return (<tr key={job.id} className="hover:bg-gray-50 group cursor-pointer" onClick={() => { setJobToView(job); setIsJobDetailModalOpen(true); }}>
+                                                        <td className="p-3"><p className="font-medium text-gray-800">{job.operation}</p><p className="text-xs text-gray-500">{formatDate(job.date)}</p></td>
+                                                        <td className="p-3 text-gray-600 hidden sm:table-cell" title={getAllPersonnelNames(job.personnelIds)}>{getPersonnelNames(job.personnelIds)}</td>
+                                                        <td className="p-3 font-semibold text-green-600 text-right">{formatCurrency(job.income)}</td>
+                                                        <td className="p-3 font-semibold text-red-600 text-right">{formatCurrency(cost)}</td>
+                                                        <td className={`p-3 font-semibold text-right ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(profit)}</td>
+                                                    </tr>);
+                                                })}</tbody></table></div></div>)}
                                         </div>
                                     );
-                                }) : (
-                                    <div className="text-center p-6 text-gray-500 bg-white rounded-lg shadow-md">
-                                        Bu müşteri için henüz iş eklenmemiş.
-                                    </div>
-                                )}
+                                }) : (<div className="text-center p-6 text-gray-500 bg-white rounded-lg shadow-md">Bu müşteri için henüz iş eklenmemiş.</div>)}
                             </div>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow-md">
-                            <BuildingOffice2Icon className="h-16 w-16 text-gray-300 mb-4"/>
-                            <p className="text-gray-500 text-lg font-medium">Müşteri Seçilmedi</p>
-                            <p className="text-gray-400">Detayları görmek için bir müşteri seçin.</p>
+                            <BuildingOffice2Icon className="h-16 w-16 text-gray-300 mb-4"/><p className="text-gray-500 text-lg font-medium">Müşteri Seçilmedi</p><p className="text-gray-400">Detayları görmek için bir müşteri seçin.</p>
                         </div>
                     )}
                 </div>
@@ -674,14 +667,7 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
             {selectedCustomer && <JobEditorModal isOpen={isJobModalOpen} onClose={() => setIsJobModalOpen(false)} onSave={handleSaveJob} jobToEdit={jobToEdit} customerId={selectedCustomer.id} personnel={personnel} initialLocation={initialLocationForModal} />}
             <ConfirmationModal isOpen={isDeleteJobModalOpen} onClose={() => setIsDeleteJobModalOpen(false)} onConfirm={handleConfirmDeleteJob} title="İşi Sil" message={`'${jobToDelete?.operation}' adlı işi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`} />
 
-            <JobDetailModal 
-                isOpen={isJobDetailModalOpen}
-                onClose={() => setIsJobDetailModalOpen(false)}
-                onEdit={handleOpenEditFromDetail}
-                onDelete={handleDeleteFromDetail}
-                job={jobToView}
-                personnel={personnel}
-            />
+            <JobDetailModal isOpen={isJobDetailModalOpen} onClose={() => setIsJobDetailModalOpen(false)} onEdit={handleOpenEditFromDetail} onDelete={handleDeleteFromDetail} job={jobToView} personnel={personnel} />
         </>
     );
 };

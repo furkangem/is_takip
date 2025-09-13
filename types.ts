@@ -1,4 +1,5 @@
 
+
 export enum Role {
   ADMIN = 'ADMIN',
   // FIX: Add FOREMAN role to support foreman-specific views and logic.
@@ -53,6 +54,18 @@ export interface Customer {
   jobDescription: string;
 }
 
+export interface Material {
+    id: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+}
+
+export interface JobPersonnelPayment {
+    personnelId: string;
+    payment: number;
+}
+
 export interface CustomerJob {
   id: string;
   customerId: string;
@@ -63,9 +76,10 @@ export interface CustomerJob {
   unit: string;
   unitPrice: number;
   income: number;
-  personnelPayment: number;
-  expense: number;
   personnelIds: string[];
+  personnelPayments: JobPersonnelPayment[];
+  materials: Material[];
+  otherExpenses: number;
 }
 
 // FIX: Add Income and Expense interfaces for extra financial transactions.
