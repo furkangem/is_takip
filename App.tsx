@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
-import { users as initialUsers, personnel as initialPersonnel, workDays as initialWorkDays, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs } from './data/mockData';
-import { Role, User, Personnel, WorkDay, PersonnelPayment, Customer, CustomerJob } from './types';
+
+import React, { useState, useEffect } from 'react';
+import { users as initialUsers, personnel as initialPersonnel, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs, defterEntries as initialDefterEntries, payments as initialPayments, sharedExpenses as initialSharedExpenses } from './data/mockData';
+import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, Payment, SharedExpense } from './types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
@@ -9,10 +10,11 @@ import PersonnelView from './components/PersonnelView';
 import LoginView from './components/LoginView';
 import ReportView from './components/ReportView';
 import AdminView from './components/AdminView';
-import TimeSheetView from './components/TimeSheetView';
 import CustomerView from './components/CustomerView';
+import KasaView from './components/LedgerView';
+import GlobalSearchView from './components/GlobalSearchView';
 
-type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'timesheet' | 'customers';
+type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -22,10 +24,38 @@ export default function App() {
   
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [personnel, setPersonnel] = useState<Personnel[]>(initialPersonnel);
-  const [workDays, setWorkDays] = useState<WorkDay[]>(initialWorkDays);
   const [personnelPayments, setPersonnelPayments] = useState<PersonnelPayment[]>(initialPersonnelPayments);
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [customerJobs, setCustomerJobs] = useState<CustomerJob[]>(initialCustomerJobs);
+  const [defterEntries, setDefterEntries] = useState<DefterEntry[]>(initialDefterEntries);
+  const [payments, setPayments] = useState<Payment[]>(initialPayments);
+  const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>(initialSharedExpenses);
+  
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [navigateToItem, setNavigateToItem] = useState<{ view: View, id: string } | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (navigateToItem) {
+      setCurrentView(navigateToItem.view);
+    }
+  }, [navigateToItem]);
+
+  const handleNavigation = (view: View, id: string) => {
+    setGlobalSearchQuery('');
+    // For kasa, there is no item to select, just switch view
+    if (view === 'kasa') {
+        setCurrentView('kasa');
+        setNavigateToItem(null);
+    } else {
+        setNavigateToItem({ view, id });
+    }
+  };
+  
+  const handleNavigationComplete = () => {
+    setNavigateToItem(null);
+  }
+
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
@@ -36,18 +66,6 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     setIsAuthenticated(false);
-  };
-
-  const addWorkDay = (newWorkDay: Omit<WorkDay, 'id'>) => {
-    setWorkDays(prev => [...prev, { ...newWorkDay, id: `${newWorkDay.personnelId}-${newWorkDay.date}-${Math.random()}` }]);
-  };
-
-  const updateWorkDay = (updatedWorkDay: WorkDay) => {
-    setWorkDays(prev => prev.map(wd => wd.id === updatedWorkDay.id ? updatedWorkDay : wd));
-  };
-
-  const deleteWorkDay = (workDayId: string) => {
-    setWorkDays(prev => prev.filter(wd => wd.id !== workDayId));
   };
   
   const addPersonnelPayment = (newPayment: Omit<PersonnelPayment, 'id'>) => {
@@ -72,7 +90,6 @@ export default function App() {
 
   const deletePersonnel = (personnelId: string) => {
     setPersonnel(prev => prev.filter(p => p.id !== personnelId));
-    setWorkDays(prev => prev.filter(wd => wd.personnelId !== personnelId));
     setPersonnelPayments(prev => prev.filter(p => p.personnelId !== personnelId));
     // Also remove personnel from customer jobs
     setCustomerJobs(prev => prev.map(job => ({
@@ -126,16 +143,57 @@ export default function App() {
     setCustomerJobs(prev => prev.filter(job => job.id !== jobId));
   };
 
+  // Defter Entry CRUD
+  const addDefterEntry = (newEntryData: Omit<DefterEntry, 'id'>) => {
+    const newEntry: DefterEntry = { ...newEntryData, id: `de-${Date.now()}` };
+    setDefterEntries(prev => [...prev, newEntry]);
+  };
+
+  const updateDefterEntry = (updatedEntry: DefterEntry) => {
+    setDefterEntries(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e));
+  };
+
+  const deleteDefterEntry = (entryId: string) => {
+    setDefterEntries(prev => prev.filter(e => e.id !== entryId));
+  };
+
+  // Shared Expense CRUD
+  const addSharedExpense = (newExpenseData: Omit<SharedExpense, 'id'>) => {
+      const newExpense: SharedExpense = { ...newExpenseData, id: `se-${Date.now()}` };
+      setSharedExpenses(prev => [...prev, newExpense]);
+  }
+
+  const updateSharedExpense = (updatedExpense: SharedExpense) => {
+      setSharedExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
+  }
+  
+  const deleteSharedExpense = (expenseId: string) => {
+      setSharedExpenses(prev => prev.filter(e => e.id !== expenseId));
+  }
+
+
   if (!isAuthenticated || !currentUser) {
     return <LoginView users={users} onLogin={handleLogin} />;
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-800">
+    <div className="relative min-h-screen md:flex">
+       {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-20 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        ></div>
+      )}
       <Sidebar 
         currentView={currentView} 
-        setCurrentView={setCurrentView}
+        setCurrentView={(view) => {
+            setGlobalSearchQuery('');
+            setCurrentView(view);
+            setIsSidebarOpen(false);
+        }}
         currentUser={currentUser}
+        isOpen={isSidebarOpen}
       />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header
@@ -143,75 +201,104 @@ export default function App() {
           onLogout={handleLogout}
           selectedMonth={selectedMonth}
           setSelectedMonth={setSelectedMonth}
+          globalSearchQuery={globalSearchQuery}
+          setGlobalSearchQuery={setGlobalSearchQuery}
+          onMenuClick={() => setIsSidebarOpen(true)}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-8 min-w-0">
-          {currentView === 'dashboard' && (
-            <DashboardView
-              currentUser={currentUser}
-              personnel={personnel}
-              workDays={workDays}
-              personnelPayments={personnelPayments}
-              customerJobs={customerJobs}
-              selectedMonth={selectedMonth}
-            />
-          )}
-          {currentView === 'personnel' && (
-            <PersonnelView
-              currentUser={currentUser}
-              users={users}
-              personnel={personnel}
-              workDays={workDays}
-              personnelPayments={personnelPayments}
-              onAddWorkDay={addWorkDay}
-              onUpdateWorkDay={updateWorkDay}
-              onDeleteWorkDay={deleteWorkDay}
-              onAddPersonnel={addPersonnel}
-              onUpdatePersonnel={updatePersonnel}
-              onDeletePersonnel={deletePersonnel}
-              onAddPersonnelPayment={addPersonnelPayment}
-              onDeletePersonnelPayment={deletePersonnelPayment}
-            />
-          )}
-           {currentView === 'customers' && currentUser.role === Role.ADMIN && (
-             <CustomerView
+          {globalSearchQuery ? (
+             <GlobalSearchView
+                query={globalSearchQuery}
+                personnel={personnel}
                 customers={customers}
                 customerJobs={customerJobs}
-                personnel={personnel}
-                onAddCustomer={addCustomer}
-                onUpdateCustomer={updateCustomer}
-                onDeleteCustomer={deleteCustomer}
-                onAddCustomerJob={addCustomerJob}
-                onUpdateCustomerJob={updateCustomerJob}
-                onDeleteCustomerJob={deleteCustomerJob}
+                defterEntries={defterEntries}
+                sharedExpenses={sharedExpenses}
+                onNavigate={handleNavigation}
              />
-          )}
-          {currentView === 'reports' && currentUser.role === Role.ADMIN && (
-             <ReportView
-                users={users}
-                personnel={personnel}
-                workDays={workDays}
-                personnelPayments={personnelPayments}
-                customers={customers}
-                customerJobs={customerJobs}
-                selectedMonth={selectedMonth}
-             />
-          )}
-          {currentView === 'timesheet' && currentUser.role === Role.ADMIN && (
-             <TimeSheetView
-                personnel={personnel}
-                workDays={workDays}
-                selectedMonth={selectedMonth}
-             />
-          )}
-          {currentView === 'admin' && currentUser.role === Role.ADMIN && (
-             <AdminView
-                currentUser={currentUser}
-                users={users}
-                personnel={personnel}
-                onAddUser={addUser}
-                onUpdateUser={updateUser}
-                onDeleteUser={deleteUser}
-             />
+          ) : (
+            <>
+              {currentView === 'dashboard' && (
+                <DashboardView
+                  currentUser={currentUser}
+                  personnel={personnel}
+                  personnelPayments={personnelPayments}
+                  customerJobs={customerJobs}
+                  selectedMonth={selectedMonth}
+                  payments={payments}
+                />
+              )}
+              {currentView === 'personnel' && (
+                <PersonnelView
+                  currentUser={currentUser}
+                  users={users}
+                  personnel={personnel}
+                  customers={customers}
+                  customerJobs={customerJobs}
+                  personnelPayments={personnelPayments}
+                  onAddPersonnel={addPersonnel}
+                  onUpdatePersonnel={updatePersonnel}
+                  onDeletePersonnel={deletePersonnel}
+                  onAddPersonnelPayment={addPersonnelPayment}
+                  onDeletePersonnelPayment={deletePersonnelPayment}
+                  navigateToId={navigateToItem?.view === 'personnel' ? navigateToItem.id : null}
+                  onNavigationComplete={handleNavigationComplete}
+                />
+              )}
+               {currentView === 'customers' && currentUser.role === Role.ADMIN && (
+                 <CustomerView
+                    customers={customers}
+                    customerJobs={customerJobs}
+                    personnel={personnel}
+                    onAddCustomer={addCustomer}
+                    onUpdateCustomer={updateCustomer}
+                    onDeleteCustomer={deleteCustomer}
+                    onAddCustomerJob={addCustomerJob}
+                    onUpdateCustomerJob={updateCustomerJob}
+                    onDeleteCustomerJob={deleteCustomerJob}
+                    navigateToId={navigateToItem?.view === 'customers' ? navigateToItem.id : null}
+                    onNavigationComplete={handleNavigationComplete}
+                 />
+              )}
+              {currentView === 'kasa' && currentUser.role === Role.ADMIN && (
+                 <KasaView
+                    customers={customers}
+                    customerJobs={customerJobs}
+                    personnel={personnel}
+                    personnelPayments={personnelPayments}
+                    defterEntries={defterEntries}
+                    sharedExpenses={sharedExpenses}
+                    onAddDefterEntry={addDefterEntry}
+                    onUpdateDefterEntry={updateDefterEntry}
+                    onDeleteDefterEntry={deleteDefterEntry}
+                    onAddSharedExpense={addSharedExpense}
+                    onUpdateSharedExpense={updateSharedExpense}
+                    onDeleteSharedExpense={deleteSharedExpense}
+                    onAddPersonnelPayment={addPersonnelPayment}
+                    onDeletePersonnelPayment={deletePersonnelPayment}
+                 />
+              )}
+              {currentView === 'reports' && currentUser.role === Role.ADMIN && (
+                 <ReportView
+                    users={users}
+                    personnel={personnel}
+                    personnelPayments={personnelPayments}
+                    customers={customers}
+                    customerJobs={customerJobs}
+                    selectedMonth={selectedMonth}
+                 />
+              )}
+              {currentView === 'admin' && currentUser.role === Role.ADMIN && (
+                 <AdminView
+                    currentUser={currentUser}
+                    users={users}
+                    personnel={personnel}
+                    onAddUser={addUser}
+                    onUpdateUser={updateUser}
+                    onDeleteUser={deleteUser}
+                 />
+              )}
+            </>
           )}
         </main>
       </div>

@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, Role, Personnel } from '../types';
 import { XMarkIcon, PlusIcon, UserGroupIcon, IdentificationIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon } from './icons/Icons';
@@ -208,27 +210,27 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
 
                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-100">
+                        <table className="w-full text-left min-w-[600px]">
+                            <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
                                 <tr>
-                                    <th className="p-4 font-semibold text-gray-600">İsim</th>
-                                    <th className="p-4 font-semibold text-gray-600">E-posta</th>
-                                    <th className="p-4 font-semibold text-gray-600 hidden md:table-cell">Şifre</th>
-                                    <th className="p-4 font-semibold text-gray-600">Rol</th>
-                                    <th className="p-4 font-semibold text-gray-600 text-right">İşlemler</th>
+                                    <th className="p-4 font-semibold">İsim</th>
+                                    <th className="p-4 font-semibold">E-posta</th>
+                                    <th className="p-4 font-semibold hidden md:table-cell">Şifre</th>
+                                    <th className="p-4 font-semibold">Rol</th>
+                                    <th className="p-4 font-semibold text-right">İşlemler</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-gray-200">
                                 {filteredUsers.map(user => {
                                     const roleInfo = getRoleName(user.role);
                                     const isCurrentUser = user.id === currentUser.id;
                                     return (
-                                        <tr key={user.id} className="border-b hover:bg-gray-50">
-                                            <td className="p-4 font-medium text-gray-800 flex items-center">
+                                        <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="p-4 font-medium text-gray-800 flex items-center whitespace-nowrap">
                                                 <IdentificationIcon className="h-5 w-5 mr-3 text-gray-400"/>
                                                 {user.name}
                                             </td>
-                                            <td className="p-4 text-gray-600">{user.email}</td>
+                                            <td className="p-4 text-gray-600 whitespace-nowrap">{user.email}</td>
                                             <td className="p-4 text-gray-600 font-mono text-sm hidden md:table-cell">{user.password}</td>
                                             <td className="p-4">
                                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${roleInfo.color}`}>
@@ -240,7 +242,7 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
                                                     <button 
                                                         onClick={() => handleOpenEditModal(user)} 
                                                         disabled={isCurrentUser}
-                                                        className="flex items-center text-sm font-medium text-gray-600 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                                        className="p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
                                                         aria-label="Kullanıcıyı Düzenle"
                                                     >
                                                         <PencilIcon className="h-5 w-5" />
@@ -248,7 +250,7 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
                                                     <button 
                                                         onClick={() => handleOpenDeleteModal(user)} 
                                                         disabled={isCurrentUser}
-                                                        className="flex items-center text-sm font-medium text-red-600 hover:text-red-800 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                                        className="p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
                                                         aria-label="Kullanıcıyı Sil"
                                                     >
                                                         <TrashIcon className="h-5 w-5" />

@@ -1,3 +1,6 @@
+
+
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Customer, CustomerJob, Personnel, Material, JobPersonnelPayment } from '../types';
 import { BuildingOffice2Icon, IdentificationIcon, PhoneIcon, MapPinIcon, DocumentTextIcon, XMarkIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CashIcon, TrendingUpIcon, TrendingDownIcon, ChevronUpIcon, ChevronDownIcon, UsersIcon } from './icons/Icons';
@@ -17,6 +20,8 @@ interface CustomerViewProps {
   onAddCustomerJob: (job: Omit<CustomerJob, 'id'>) => void;
   onUpdateCustomerJob: (job: CustomerJob) => void;
   onDeleteCustomerJob: (jobId: string) => void;
+  navigateToId: string | null;
+  onNavigationComplete: () => void;
 }
 
 const CustomerEditorModal: React.FC<{
@@ -119,10 +124,7 @@ const JobEditorModal: React.FC<{
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
         location: '',
-        operation: '',
-        quantity: '',
-        unit: '',
-        unitPrice: '',
+        description: '',
         income: '',
         otherExpenses: '',
     });
@@ -140,10 +142,7 @@ const JobEditorModal: React.FC<{
                 setFormData({
                     date: jobToEdit.date,
                     location: jobToEdit.location,
-                    operation: jobToEdit.operation,
-                    quantity: String(jobToEdit.quantity),
-                    unit: jobToEdit.unit,
-                    unitPrice: String(jobToEdit.unitPrice),
+                    description: jobToEdit.description,
                     income: String(jobToEdit.income),
                     otherExpenses: String(jobToEdit.otherExpenses),
                 });
@@ -156,7 +155,7 @@ const JobEditorModal: React.FC<{
                  setFormData({
                     date: new Date().toISOString().split('T')[0],
                     location: initialLocation || '',
-                    operation: '', quantity: '', unit: '', unitPrice: '', income: '', otherExpenses: '',
+                    description: '', income: '', otherExpenses: '',
                 });
                 setSelectedPersonnelIds([]);
                 setMaterials([]);
@@ -172,12 +171,14 @@ const JobEditorModal: React.FC<{
     }, [personnelPayments]);
 
     const totalMaterialCost = useMemo(() => {
-        return materials.reduce((sum, mat) => sum + (mat.quantity * mat.unitPrice), 0);
+        // FIX: Explicitly type the accumulator 'sum' as a number to prevent TypeScript
+        // from inferring it as 'unknown', which causes a type error with the '+' operator.
+        return materials.reduce((sum: number, mat) => sum + (mat.quantity * mat.unitPrice), 0);
     }, [materials]);
 
     if (!isOpen) return null;
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -218,10 +219,7 @@ const JobEditorModal: React.FC<{
             customerId,
             date: formData.date,
             location: formData.location,
-            operation: formData.operation,
-            quantity: parseFloat(formData.quantity) || 0,
-            unit: formData.unit,
-            unitPrice: parseFloat(formData.unitPrice) || 0,
+            description: formData.description,
             income: parseFloat(formData.income) || 0,
             otherExpenses: parseFloat(formData.otherExpenses) || 0,
             personnelIds: selectedPersonnelIds,
@@ -262,13 +260,8 @@ const JobEditorModal: React.FC<{
                         </div>
                     </div>
                      <div>
-                        <label htmlFor="operation" className="block text-sm font-medium text-gray-700">İşlem</label>
-                        <input type="text" name="operation" value={formData.operation} onChange={handleChange} required className={commonInputClass} />
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Adet</label><input type="number" name="quantity" value={formData.quantity} onChange={handleChange} className={commonInputClass} /></div>
-                         <div><label htmlFor="unit" className="block text-sm font-medium text-gray-700">Birim</label><input type="text" name="unit" value={formData.unit} onChange={handleChange} placeholder="m², adet, vb." className={commonInputClass} /></div>
-                        <div><label htmlFor="unitPrice" className="block text-sm font-medium text-gray-700">Birim Fiyat (₺)</label><input type="number" name="unitPrice" value={formData.unitPrice} onChange={handleChange} className={commonInputClass} /></div>
+                        <label htmlFor="description" className="block text-sm font-medium text-gray-700">İş Açıklaması</label>
+                        <textarea name="description" value={formData.description} onChange={handleChange} required className={commonInputClass} rows={2} placeholder="Yapılan işin açıklaması..."></textarea>
                     </div>
 
                     {/* Personnel */}
@@ -363,8 +356,8 @@ const JobDetailModal: React.FC<{
             <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-4xl transform transition-all" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-5 border-b bg-white rounded-t-xl">
                     <div>
-                        <h3 className="text-xl font-bold text-gray-900">{job.operation}</h3>
-                        <p className="text-sm text-gray-500">{job.location}</p>
+                        <h3 className="text-xl font-bold text-gray-900">{job.location}</h3>
+                        <p className="text-sm text-gray-500">{formatDate(job.date)}</p>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-100"><XMarkIcon className="h-6 w-6" /></button>
                 </div>
@@ -378,11 +371,10 @@ const JobDetailModal: React.FC<{
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-white p-4 rounded-lg border">
                             <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">İş Detayları</h4>
-                            <dl className="space-y-2 text-sm">
-                                <div className="flex justify-between"><dt className="text-gray-500">Tarih:</dt><dd className="font-medium">{formatDate(job.date)}</dd></div>
-                                <div className="flex justify-between"><dt className="text-gray-500">Adet / Tür:</dt><dd className="font-medium">{job.quantity} {job.unit}</dd></div>
-                                <div className="flex justify-between"><dt className="text-gray-500">Birim Fiyat:</dt><dd className="font-medium">{formatCurrency(job.unitPrice)}</dd></div>
-                            </dl>
+                            <div>
+                                <dt className="text-gray-500 text-sm font-medium">İş Açıklaması:</dt>
+                                <dd className="mt-1 text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded-md">{job.description}</dd>
+                            </div>
                         </div>
                         <div className="bg-white p-4 rounded-lg border">
                              <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">Maliyet Dökümü</h4>
@@ -413,7 +405,7 @@ const JobDetailModal: React.FC<{
 
 
 const CustomerView: React.FC<CustomerViewProps> = (props) => {
-    const { customers, customerJobs, personnel, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onAddCustomerJob, onUpdateCustomerJob, onDeleteCustomerJob } = props;
+    const { customers, customerJobs, personnel, onAddCustomer, onUpdateCustomer, onDeleteCustomer, onAddCustomerJob, onUpdateCustomerJob, onDeleteCustomerJob, navigateToId, onNavigationComplete } = props;
     
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(customers.length > 0 ? customers[0] : null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -434,6 +426,17 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
     const [jobToView, setJobToView] = useState<CustomerJob | null>(null);
     
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    useEffect(() => {
+        if (navigateToId) {
+            const customer = customers.find(c => c.id === navigateToId);
+            if (customer) {
+                setSelectedCustomer(customer);
+                setSearchQuery('');
+            }
+            onNavigationComplete();
+        }
+    }, [navigateToId, customers, onNavigationComplete]);
 
     const filteredCustomers = useMemo(() => {
         if (!searchQuery) return customers;
@@ -465,7 +468,10 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
         };
     }, [selectedCustomer, customerJobs]);
 
-    const jobsByLocation = useMemo(() => {
+    // FIX: Explicitly type 'jobsByLocation' to ensure TypeScript correctly infers it as
+    // an object with string keys and CustomerJob arrays as values, resolving subsequent
+    // property access errors (e.g., on '.length' and '.map').
+    const jobsByLocation: Record<string, CustomerJob[]> = useMemo(() => {
       if (!selectedCustomerJobs) return {};
       return selectedCustomerJobs.reduce<Record<string, CustomerJob[]>>((acc, job) => {
         const location = job.location || 'Genel İşler';
@@ -611,6 +617,40 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                 </div>
                             </div>
                             
+                            {/* Gelen Ödemeler */}
+                            <div className="bg-white p-6 rounded-lg shadow-md">
+                                <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                                    <CashIcon className="h-6 w-6 mr-3 text-green-500" />
+                                    Müşteri Hakedişleri ve Gelen Ödemeler
+                                </h3>
+                                <div className="overflow-x-auto max-h-72">
+                                    <table className="w-full text-left text-sm min-w-[500px]">
+                                        <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider sticky top-0">
+                                            <tr>
+                                                <th className="p-3 font-semibold">Tarih</th>
+                                                <th className="p-3 font-semibold">İş Açıklaması</th>
+                                                <th className="p-3 font-semibold text-right">Tutar</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {selectedCustomerJobs.length > 0 ? selectedCustomerJobs.map(job => (
+                                                <tr key={job.id} className="hover:bg-gray-50/50">
+                                                    <td className="p-3 text-gray-500 whitespace-nowrap">{formatDate(job.date)}</td>
+                                                    <td className="p-3 text-gray-800 font-medium">
+                                                        <span className="font-bold text-gray-600">{job.location}:</span> {job.description}
+                                                    </td>
+                                                    <td className="p-3 text-green-600 font-bold text-right whitespace-nowrap">{formatCurrency(job.income)}</td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan={3} className="p-4 text-center text-gray-500">Bu müşteri için gelir kaydı bulunmuyor.</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
                             <div className="bg-white p-4 rounded-lg shadow-md">
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-lg font-semibold text-gray-800">İş Lokasyonları</h3>
@@ -631,8 +671,8 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                                 </div>
                                             </div>
                                             {isExpanded && (
-                                                <div className="border-t"><div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-gray-50"><tr>
-                                                    <th className="p-3 font-semibold text-gray-600">İşlem</th><th className="p-3 font-semibold text-gray-600 hidden sm:table-cell">Personeller</th>
+                                                <div className="border-t"><div className="overflow-x-auto"><table className="w-full text-sm text-left min-w-[600px]"><thead className="bg-gray-50"><tr>
+                                                    <th className="p-3 font-semibold text-gray-600">Açıklama</th><th className="p-3 font-semibold text-gray-600 hidden sm:table-cell">Personeller</th>
                                                     <th className="p-3 font-semibold text-gray-600 text-right">Gelir</th><th className="p-3 font-semibold text-gray-600 text-right">Maliyet</th>
                                                     <th className="p-3 font-semibold text-gray-600 text-right">Kar</th></tr></thead>
                                                 <tbody className="divide-y divide-gray-200">{jobs.map(job => {
@@ -641,11 +681,11 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                                     const cost = personnelCost + materialCost + job.otherExpenses;
                                                     const profit = job.income - cost;
                                                     return (<tr key={job.id} className="hover:bg-gray-50 group cursor-pointer" onClick={() => { setJobToView(job); setIsJobDetailModalOpen(true); }}>
-                                                        <td className="p-3"><p className="font-medium text-gray-800">{job.operation}</p><p className="text-xs text-gray-500">{formatDate(job.date)}</p></td>
+                                                        <td className="p-3"><p className="font-medium text-gray-800 truncate max-w-[200px]" title={job.description}>{job.description}</p><p className="text-xs text-gray-500">{formatDate(job.date)}</p></td>
                                                         <td className="p-3 text-gray-600 hidden sm:table-cell" title={getAllPersonnelNames(job.personnelIds)}>{getPersonnelNames(job.personnelIds)}</td>
-                                                        <td className="p-3 font-semibold text-green-600 text-right">{formatCurrency(job.income)}</td>
-                                                        <td className="p-3 font-semibold text-red-600 text-right">{formatCurrency(cost)}</td>
-                                                        <td className={`p-3 font-semibold text-right ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(profit)}</td>
+                                                        <td className="p-3 font-semibold text-green-600 text-right whitespace-nowrap">{formatCurrency(job.income)}</td>
+                                                        <td className="p-3 font-semibold text-red-600 text-right whitespace-nowrap">{formatCurrency(cost)}</td>
+                                                        <td className={`p-3 font-semibold text-right whitespace-nowrap ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(profit)}</td>
                                                     </tr>);
                                                 })}</tbody></table></div></div>)}
                                         </div>
@@ -665,7 +705,7 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
             <ConfirmationModal isOpen={isDeleteCustomerModalOpen} onClose={() => setIsDeleteCustomerModalOpen(false)} onConfirm={handleConfirmDeleteCustomer} title="Müşteriyi Sil" message={`'${customerToDelete?.name}' adlı müşteriyi silmek istediğinizden emin misiniz? Bu müşteriye ait tüm iş kayıtları da silinecektir.`} />
             
             {selectedCustomer && <JobEditorModal isOpen={isJobModalOpen} onClose={() => setIsJobModalOpen(false)} onSave={handleSaveJob} jobToEdit={jobToEdit} customerId={selectedCustomer.id} personnel={personnel} initialLocation={initialLocationForModal} />}
-            <ConfirmationModal isOpen={isDeleteJobModalOpen} onClose={() => setIsDeleteJobModalOpen(false)} onConfirm={handleConfirmDeleteJob} title="İşi Sil" message={`'${jobToDelete?.operation}' adlı işi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`} />
+            <ConfirmationModal isOpen={isDeleteJobModalOpen} onClose={() => setIsDeleteJobModalOpen(false)} onConfirm={handleConfirmDeleteJob} title="İşi Sil" message={`'${jobToDelete?.description}' adlı işi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`} />
 
             <JobDetailModal isOpen={isJobDetailModalOpen} onClose={() => setIsJobDetailModalOpen(false)} onEdit={handleOpenEditFromDetail} onDelete={handleDeleteFromDetail} job={jobToView} personnel={personnel} />
         </>

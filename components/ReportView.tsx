@@ -1,20 +1,21 @@
+
+
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Personnel, WorkDay, User, Customer, CustomerJob, PersonnelPayment } from '../types';
+import { Personnel, User, Customer, CustomerJob, PersonnelPayment } from '../types';
 import { CashIcon, UsersIcon, TrendingDownIcon, TrendingUpIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 
 interface ReportViewProps {
   users: User[];
   personnel: Personnel[];
-  workDays: WorkDay[];
   personnelPayments: PersonnelPayment[];
   customers: Customer[];
   customerJobs: CustomerJob[];
   selectedMonth: Date;
 }
 
-const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, personnelPayments, customers, customerJobs, selectedMonth }) => {
+const ReportView: React.FC<ReportViewProps> = ({ users, personnel, personnelPayments, customers, customerJobs, selectedMonth }) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
   }
@@ -62,7 +63,7 @@ const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, per
         return {
             id: job.id,
             date: job.date,
-            description: `${customer?.name || 'Bilinmeyen Müşteri'} - ${job.operation}`,
+            description: `${customer?.name || 'Bilinmeyen Müşteri'} - ${job.description}`,
             amount: job.income
         };
     }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -76,7 +77,7 @@ const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, per
       monthlyIncomes: incomeItems,
       monthlyExpenses: combinedExpenses,
     };
-  }, [personnel, workDays, personnelPayments, customers, customerJobs, users, selectedMonth]);
+  }, [personnel, personnelPayments, customers, customerJobs, users, selectedMonth]);
   
   const chartData = [
     {
@@ -94,20 +95,20 @@ const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, per
         <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className={`text-xl font-semibold mb-4 ${type === 'income' ? 'text-green-600' : 'text-red-600'}`}>{title}</h3>
             <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50">
+                <table className="w-full text-left text-sm min-w-[400px]">
+                    <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
                         <tr>
-                            <th className="p-2 font-semibold text-gray-600">Tarih</th>
-                            <th className="p-2 font-semibold text-gray-600">Açıklama</th>
-                            <th className="p-2 font-semibold text-gray-600 text-right">Tutar</th>
+                            <th className="p-3 font-semibold">Tarih</th>
+                            <th className="p-3 font-semibold">Açıklama</th>
+                            <th className="p-3 font-semibold text-right">Tutar</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-200">
                         {data.length > 0 ? data.map(item => (
-                            <tr key={item.id} className="border-b hover:bg-gray-50">
-                                <td className="p-2 text-gray-500">{formatDate(item.date)}</td>
-                                <td className="p-2 text-gray-800 font-medium">{item.description}</td>
-                                <td className="p-2 text-gray-800 font-bold text-right">{formatCurrency(item.amount)}</td>
+                            <tr key={item.id} className="hover:bg-gray-50/50">
+                                <td className="p-3 text-gray-500 whitespace-nowrap">{formatDate(item.date)}</td>
+                                <td className="p-3 text-gray-800 font-medium">{item.description}</td>
+                                <td className="p-3 text-gray-800 font-bold text-right whitespace-nowrap">{formatCurrency(item.amount)}</td>
                             </tr>
                         )) : (
                             <tr>
@@ -157,7 +158,7 @@ const ReportView: React.FC<ReportViewProps> = ({ users, personnel, workDays, per
         </ResponsiveContainer>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <TransactionTable title="Aylık Gelir Kalemleri" data={monthlyIncomes} type="income" />
             <TransactionTable title="Aylık Gider Kalemleri" data={monthlyExpenses} type="expense" />
       </div>

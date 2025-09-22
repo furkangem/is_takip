@@ -1,159 +1,25 @@
+
+
 import React, { useState, useMemo, useEffect } from 'react';
-import { Personnel, WorkDay, User, Role, PersonnelPayment } from '../types';
-import Calendar from './Calendar';
-import { UserGroupIcon, IdentificationIcon, CashIcon, ClockIcon, MapPinIcon, DocumentTextIcon, XMarkIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon } from './icons/Icons';
+import { Personnel, User, Role, PersonnelPayment, CustomerJob, Customer } from '../types';
+import { UserGroupIcon, IdentificationIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon, XMarkIcon, BriefcaseIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
 
 interface PersonnelViewProps {
   currentUser: User;
   users: User[];
   personnel: Personnel[];
-  workDays: WorkDay[];
+  customers: Customer[];
+  customerJobs: CustomerJob[];
   personnelPayments: PersonnelPayment[];
-  onAddWorkDay: (workDay: Omit<WorkDay, 'id'>) => void;
-  onUpdateWorkDay: (workDay: WorkDay) => void;
-  onDeleteWorkDay: (workDayId: string) => void;
   onAddPersonnel: (personnel: Omit<Personnel, 'id'>) => void;
   onUpdatePersonnel: (personnel: Personnel) => void;
   onDeletePersonnel: (personnelId: string) => void;
   onAddPersonnelPayment: (payment: Omit<PersonnelPayment, 'id'>) => void;
   onDeletePersonnelPayment: (paymentId: string) => void;
+  navigateToId: string | null;
+  onNavigationComplete: () => void;
 }
-
-const WorkDayEditor: React.FC<{
-    selectedDate: string;
-    selectedPersonnel: Personnel;
-    existingWorkDay: WorkDay | undefined;
-    onAdd: (workDay: Omit<WorkDay, 'id'>) => void;
-    onUpdate: (workDay: WorkDay) => void;
-    onDelete: (workDayId: string) => void;
-    isEditable: boolean;
-    onClose: () => void;
-}> = ({ selectedDate, selectedPersonnel, existingWorkDay, onAdd, onUpdate, onDelete, isEditable, onClose }) => {
-    
-    const [location, setLocation] = useState(existingWorkDay?.location || '');
-    const [jobDescription, setJobDescription] = useState(existingWorkDay?.jobDescription || '');
-    const [wage, setWage] = useState(existingWorkDay?.wage.toString() || '');
-    const [hours, setHours] = useState(existingWorkDay?.hours?.toString() || '8');
-
-
-    useEffect(() => {
-        setLocation(existingWorkDay?.location || '');
-        setJobDescription(existingWorkDay?.jobDescription || '');
-        setWage(existingWorkDay?.wage.toString() || '');
-        setHours(existingWorkDay?.hours?.toString() || '8');
-    }, [existingWorkDay]);
-
-    const handleSave = () => {
-        const numericWage = parseFloat(wage);
-        const numericHours = parseFloat(hours);
-        if(isNaN(numericWage) || numericWage <= 0 || isNaN(numericHours) || numericHours <= 0) {
-            alert('Lütfen geçerli bir yevmiye ve çalışma saati girin.');
-            return;
-        }
-
-        if (existingWorkDay) {
-            onUpdate({ ...existingWorkDay, location, jobDescription, wage: numericWage, hours: numericHours });
-        } else {
-            onAdd({ personnelId: selectedPersonnel.id, date: selectedDate, location, jobDescription, wage: numericWage, hours: numericHours });
-        }
-    };
-    
-    const handleDelete = () => {
-        if(existingWorkDay) {
-            onDelete(existingWorkDay.id);
-            onClose();
-        }
-    }
-
-    const formattedDate = new Date(selectedDate).toLocaleDateString('tr-TR', {
-        year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
-    });
-
-    return (
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-             <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                İş Detayları - <span className="text-blue-600">{formattedDate}</span>
-             </h3>
-            <div className="space-y-4">
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                     <div>
-                        <label htmlFor="wage" className="block text-sm font-medium text-gray-700 mb-1">
-                            <CashIcon className="h-4 w-4 inline-block mr-1" />
-                            Günlük Yevmiye (₺)
-                        </label>
-                        <input
-                            type="number"
-                            id="wage"
-                            value={wage}
-                            onChange={(e) => setWage(e.target.value)}
-                            disabled={!isEditable}
-                            placeholder="Örn: 1250"
-                            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-200"
-                        />
-                    </div>
-                     <div>
-                        <label htmlFor="hours" className="block text-sm font-medium text-gray-700 mb-1">
-                            <ClockIcon className="h-4 w-4 inline-block mr-1" />
-                            Çalışma Saati
-                        </label>
-                        <input
-                            type="number"
-                            id="hours"
-                            value={hours}
-                            onChange={(e) => setHours(e.target.value)}
-                            disabled={!isEditable}
-                            placeholder="Örn: 8"
-                            className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-200"
-                        />
-                    </div>
-                </div>
-                <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-                        <MapPinIcon className="h-4 w-4 inline-block mr-1" />
-                        Konum
-                    </label>
-                    <input
-                        type="text"
-                        id="location"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        disabled={!isEditable}
-                        placeholder="Örn: Merkez Şantiye"
-                        className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-200"
-                    />
-                </div>
-                <div>
-                    <label htmlFor="jobDescription" className="block text-sm font-medium text-gray-700 mb-1">
-                        <DocumentTextIcon className="h-4 w-4 inline-block mr-1" />
-                        İş Tanımı
-                    </label>
-                    <textarea
-                        id="jobDescription"
-                        rows={3}
-                        value={jobDescription}
-                        onChange={(e) => setJobDescription(e.target.value)}
-                        disabled={!isEditable}
-                        placeholder="Yapılan işin kısa açıklaması"
-                        className="w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-200"
-                    />
-                </div>
-                {isEditable && (
-                    <div className="flex justify-end items-center gap-3">
-                        {existingWorkDay && (
-                           <button onClick={handleDelete} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                               Sil
-                           </button>
-                        )}
-                        <button onClick={handleSave} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                           {existingWorkDay ? 'Güncelle' : 'Kaydet'}
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
 
 const PersonnelEditorModal: React.FC<{
     isOpen: boolean;
@@ -234,13 +100,18 @@ const PersonnelEditorModal: React.FC<{
 const AddPaymentModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onSave: (amount: number) => void;
+    onSave: (paymentData: {amount: number, jobId?: string}) => void;
     personnel: Personnel;
-}> = ({ isOpen, onClose, onSave, personnel }) => {
+    personnelJobs: CustomerJob[];
+}> = ({ isOpen, onClose, onSave, personnel, personnelJobs }) => {
     const [amount, setAmount] = useState('');
+    const [jobId, setJobId] = useState<string>('');
 
     useEffect(() => {
-        if (!isOpen) setAmount('');
+        if (!isOpen) {
+            setAmount('');
+            setJobId('');
+        }
     }, [isOpen]);
 
     if (!isOpen) return null;
@@ -252,7 +123,7 @@ const AddPaymentModal: React.FC<{
             alert('Lütfen geçerli bir ödeme tutarı girin.');
             return;
         }
-        onSave(numericAmount);
+        onSave({amount: numericAmount, jobId: jobId || undefined});
         onClose();
     };
 
@@ -276,6 +147,20 @@ const AddPaymentModal: React.FC<{
                             placeholder="Örn: 5000"
                         />
                     </div>
+                     <div>
+                        <label htmlFor="job-id" className="block text-sm font-medium text-gray-700">İş (Opsiyonel)</label>
+                        <select
+                            id="job-id"
+                            value={jobId}
+                            onChange={(e) => setJobId(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value="">Genel Ödeme</option>
+                            {personnelJobs.map(job => (
+                                <option key={job.id} value={job.id}>{job.location} - {job.description}</option>
+                            ))}
+                        </select>
+                    </div>
                     <div className="mt-6 flex justify-end gap-3">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">İptal</button>
                         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Kaydet</button>
@@ -286,10 +171,8 @@ const AddPaymentModal: React.FC<{
     );
 };
 
-const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, personnel, workDays, personnelPayments, onAddWorkDay, onUpdateWorkDay, onDeleteWorkDay, onAddPersonnel, onUpdatePersonnel, onDeletePersonnel, onAddPersonnelPayment, onDeletePersonnelPayment }) => {
+const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, personnel, customers, customerJobs, personnelPayments, onAddPersonnel, onUpdatePersonnel, onDeletePersonnel, onAddPersonnelPayment, onDeletePersonnelPayment, navigateToId, onNavigationComplete }) => {
   const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(personnel.length > 0 ? personnel[0] : null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [viewDate, setViewDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [personnelToEdit, setPersonnelToEdit] = useState<Personnel | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -297,6 +180,17 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   const [searchQuery, setSearchQuery] = useState('');
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<PersonnelPayment | null>(null);
+
+  useEffect(() => {
+    if (navigateToId) {
+        const person = personnel.find(p => p.id === navigateToId);
+        if (person) {
+            setSelectedPersonnel(person);
+            setSearchQuery('');
+        }
+        onNavigationComplete();
+    }
+  }, [navigateToId, personnel, onNavigationComplete]);
 
   const filteredPersonnel = useMemo(() => {
     if (!searchQuery) return personnel;
@@ -314,12 +208,6 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
         setSelectedPersonnel(null);
     }
   }, [filteredPersonnel, selectedPersonnel]);
-
-  useEffect(() => {
-    setSelectedDate(null);
-    setViewDate(new Date());
-  }, [selectedPersonnel]);
-
 
   const handleOpenAddModal = () => { setPersonnelToEdit(null); setIsModalOpen(true); };
   const handleOpenEditModal = (p: Personnel) => { setPersonnelToEdit(p); setIsModalOpen(true); };
@@ -357,51 +245,41 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     }
   };
 
-  const handleAddPayment = (amount: number) => {
+  const handleAddPayment = (paymentData: {amount: number, jobId?: string}) => {
     if(selectedPersonnel) {
         onAddPersonnelPayment({
             personnelId: selectedPersonnel.id,
-            amount,
+            amount: paymentData.amount,
+            customerJobId: paymentData.jobId,
             date: new Date().toISOString()
         });
     }
   };
 
-  const { selectedPersonnelWorkDays, totalPaymentDue, totalPaid, balance, monthlyPayments } = useMemo(() => {
-    if (!selectedPersonnel) return { selectedPersonnelWorkDays: [], totalPaymentDue: 0, totalPaid: 0, balance: 0, monthlyPayments: [] };
-    const viewYear = viewDate.getFullYear();
-    const viewMonth = viewDate.getMonth();
+  const { totalPaymentDue, totalPaid, balance, jobs, payments } = useMemo(() => {
+    if (!selectedPersonnel) return { totalPaymentDue: 0, totalPaid: 0, balance: 0, jobs: [], payments: [] };
     
-    const workDaysForPersonnel = workDays.filter(wd => {
-        const workDate = new Date(wd.date);
-        return wd.personnelId === selectedPersonnel.id && workDate.getMonth() === viewMonth && workDate.getFullYear() === viewYear;
-    });
+    const personnelJobs = customerJobs.filter(job => job.personnelIds.includes(selectedPersonnel.id));
+    
+    const due = personnelJobs.reduce((sum, job) => {
+        const personnelEarning = job.personnelPayments.find(p => p.personnelId === selectedPersonnel.id);
+        return sum + (personnelEarning?.payment || 0);
+    }, 0);
 
-    const paymentsForPersonnel = personnelPayments.filter(pp => {
-        const paymentDate = new Date(pp.date);
-        return pp.personnelId === selectedPersonnel.id && paymentDate.getMonth() === viewMonth && paymentDate.getFullYear() === viewYear;
-    });
-
-    const due = workDaysForPersonnel.reduce((sum, wd) => sum + wd.wage, 0);
-    const paid = paymentsForPersonnel.reduce((sum, pp) => sum + pp.amount, 0);
+    const personnelPayRecords = personnelPayments.filter(p => p.personnelId === selectedPersonnel.id);
+    const paid = personnelPayRecords.reduce((sum, p) => sum + p.amount, 0);
     
     return {
-        selectedPersonnelWorkDays: workDaysForPersonnel,
         totalPaymentDue: due,
         totalPaid: paid,
         balance: due - paid,
-        monthlyPayments: paymentsForPersonnel.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+        jobs: personnelJobs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+        payments: personnelPayRecords.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     };
-  }, [selectedPersonnel, workDays, personnelPayments, viewDate]);
-  
-  const workDayForSelectedDate = useMemo(() => {
-      if (!selectedDate || !selectedPersonnel) return undefined;
-      return selectedPersonnelWorkDays.find(wd => wd.date === selectedDate);
-  }, [selectedDate, selectedPersonnelWorkDays]);
+  }, [selectedPersonnel, customerJobs, personnelPayments]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
   const formatDateTime = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
   const isEditable = currentUser.role === Role.ADMIN;
 
   return (
@@ -449,39 +327,66 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
                         <button onClick={() => handleOpenDeleteModal(selectedPersonnel)} className="flex items-center text-sm font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors"><TrashIcon className="h-4 w-4 mr-2" />Sil</button>
                    </div>}
                 </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-500">Çalışılan Gün</p><p className="text-lg font-bold text-gray-800">{selectedPersonnelWorkDays.length}</p></div>
-                <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-500">Aylık Hakediş</p><p className="text-lg font-bold text-gray-800">{formatCurrency(totalPaymentDue)}</p></div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-500">Toplam Hakediş</p><p className="text-lg font-bold text-gray-800">{formatCurrency(totalPaymentDue)}</p></div>
                 <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-500">Ödenen Tutar</p><p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p></div>
                 <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-500">Kalan Bakiye</p><p className={`text-lg font-bold ${balance > 0 ? 'text-red-600' : 'text-blue-600'}`}>{formatCurrency(balance)}</p></div>
               </div>
             </div>
             
-            {isEditable && (
-                <div className="mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
+                <div className="flex flex-col">
                     <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-lg font-semibold text-gray-700">Aylık Ödemeler</h3>
-                        <button onClick={() => setIsPaymentModalOpen(true)} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md"><CreditCardIcon className="h-4 w-4 mr-2" />Ödeme Ekle</button>
+                        <h3 className="text-lg font-semibold text-gray-700">Yapılan Ödemeler</h3>
+                        {isEditable && <button onClick={() => setIsPaymentModalOpen(true)} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md"><CreditCardIcon className="h-4 w-4 mr-2" />Ödeme Ekle</button>}
                     </div>
-                    <div className="bg-gray-50 rounded-lg border max-h-40 overflow-y-auto">
-                        {monthlyPayments.length > 0 ? (
-                            <ul className="divide-y divide-gray-200">{monthlyPayments.map(p => (
+                    <div className="bg-gray-50 rounded-lg border flex-1 overflow-y-auto">
+                        {payments.length > 0 ? (
+                            <ul className="divide-y divide-gray-200">{payments.map(p => {
+                                const job = customerJobs.find(j => j.id === p.customerJobId);
+                                return (
                                 <li key={p.id} className="p-3 flex justify-between items-center group">
-                                    <div><p className="font-medium text-gray-800">{formatCurrency(p.amount)}</p><p className="text-xs text-gray-500">{formatDateTime(p.date)}</p></div>
-                                    <button onClick={() => setPaymentToDelete(p)} className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><TrashIcon className="h-4 w-4" /></button>
+                                    <div>
+                                        <p className="font-medium text-gray-800">{formatCurrency(p.amount)}</p>
+                                        <p className="text-xs text-gray-500">{formatDateTime(p.date)}</p>
+                                        {job && <p className="text-xs text-blue-600 mt-1">{job.location}</p>}
+                                    </div>
+                                    {isEditable && <button onClick={() => setPaymentToDelete(p)} className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><TrashIcon className="h-4 w-4" /></button>}
                                 </li>
-                            ))}</ul>
-                        ) : ( <p className="p-4 text-center text-sm text-gray-500">Bu ay hiç ödeme yapılmadı.</p> )}
+                            );
+                            })}</ul>
+                        ) : ( <p className="p-4 text-center text-sm text-gray-500">Bu personele hiç ödeme yapılmadı.</p> )}
                     </div>
                 </div>
-            )}
-
-            <div className="flex-1">
-              <Calendar displayDate={viewDate} onMonthChange={setViewDate} workDays={selectedPersonnelWorkDays} onDayClick={(date) => setSelectedDate(date)} selectedDate={selectedDate}/>
-              {selectedDate && (
-                <WorkDayEditor selectedDate={selectedDate} selectedPersonnel={selectedPersonnel} existingWorkDay={workDayForSelectedDate} onAdd={onAddWorkDay} onUpdate={onUpdateWorkDay} onDelete={onDeleteWorkDay} isEditable={isEditable} onClose={() => setSelectedDate(null)}/>
-              )}
+                 <div className="flex flex-col">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-3">Çalıştığı İşler ve Hakedişleri</h3>
+                    <div className="bg-gray-50 rounded-lg border flex-1 overflow-y-auto">
+                         {jobs.length > 0 ? (
+                            <ul className="divide-y divide-gray-200">{jobs.map(job => {
+                                const earning = job.personnelPayments.find(p=>p.personnelId === selectedPersonnel.id)?.payment || 0;
+                                const customer = customers.find(c => c.id === job.customerId);
+                                return (
+                                    <li key={job.id} className="p-3">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="font-medium text-gray-800">{job.location}</p>
+                                                <p className="text-xs text-gray-500">{customer?.name} - {job.description}</p>
+                                            </div>
+                                            <p className="font-semibold text-blue-600">{formatCurrency(earning)}</p>
+                                        </div>
+                                    </li>
+                                );
+                            })}</ul>
+                        ) : ( 
+                            <div className="p-4 text-center text-sm text-gray-500 h-full flex items-center justify-center">
+                                <BriefcaseIcon className="h-8 w-8 text-gray-300 mb-2"/>
+                                <span>Bu personel henüz bir işte çalışmadı.</span>
+                            </div>
+                         )}
+                    </div>
+                </div>
             </div>
+
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow-md">
@@ -492,7 +397,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     </div>
     <PersonnelEditorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSavePersonnel} personnelToEdit={personnelToEdit} />
     <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleConfirmDelete} title="Personeli Sil" message={`'${personnelToDelete?.name}' adlı personeli silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}/>
-    {selectedPersonnel && isEditable && <AddPaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} onSave={handleAddPayment} personnel={selectedPersonnel} />}
+    {selectedPersonnel && isEditable && <AddPaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} onSave={handleAddPayment} personnel={selectedPersonnel} personnelJobs={jobs}/>}
     <ConfirmationModal isOpen={!!paymentToDelete} onClose={() => setPaymentToDelete(null)} onConfirm={handleConfirmDeletePayment} title="Ödemeyi Sil" message={`${paymentToDelete ? formatDateTime(paymentToDelete.date) : ''} tarihli ${paymentToDelete ? formatCurrency(paymentToDelete.amount) : ''} tutarındaki ödemeyi silmek istediğinizden emin misiniz?`}/>
     </>
   );

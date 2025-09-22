@@ -21,16 +21,6 @@ export interface Personnel {
   foremanId?: string;
 }
 
-export interface WorkDay {
-  id: string;
-  personnelId: string;
-  date: string; // YYYY-MM-DD
-  location: string;
-  jobDescription: string;
-  wage: number;
-  hours?: number;
-}
-
 // FIX: Add missing Payment interface for foreman payments, which was causing compilation errors.
 export interface Payment {
   id: string;
@@ -44,6 +34,7 @@ export interface PersonnelPayment {
   personnelId: string;
   amount: number;
   date: string; // ISO Date String
+  customerJobId?: string;
 }
 
 export interface Customer {
@@ -70,11 +61,8 @@ export interface CustomerJob {
   id: string;
   customerId: string;
   location: string;
-  operation: string;
+  description: string; // Replaced operation, quantity, unit, and unitPrice
   date: string; // YYYY-MM-DD
-  quantity: number;
-  unit: string;
-  unitPrice: number;
   income: number;
   personnelIds: string[];
   personnelPayments: JobPersonnelPayment[];
@@ -95,4 +83,39 @@ export interface Expense {
   description: string;
   amount: number;
   date: string; // ISO Date String
+}
+
+export type PaymentMethod = 'cash' | 'transfer' | 'card';
+
+export interface DefterEntry {
+  id: string;
+  date: string; // YYYY-MM-DD - Entry creation date
+  description: string;
+  amount: number;
+  type: 'income' | 'expense'; // income = alacak, expense = verecek/borç
+  status: 'paid' | 'unpaid';
+  dueDate?: string; // YYYY-MM-DD
+  paidDate?: string; // YYYY-MM-DD
+  notes?: string;
+}
+
+export type Payer = 'Ömer' | 'Barış' | 'Kasa';
+
+export interface SharedExpense {
+  id: string;
+  description: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  payer: Payer;
+  date: string; // ISO string with time
+  status: 'paid' | 'unpaid';
+}
+// FIX: Add missing WorkDay interface. This was causing compilation errors in multiple components.
+export interface WorkDay {
+  id: string;
+  personnelId: string;
+  date: string; // YYYY-MM-DD
+  location: string;
+  jobDescription: string;
+  wage: number;
 }

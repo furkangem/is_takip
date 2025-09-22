@@ -1,39 +1,38 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Personnel, WorkDay, User, Role, PersonnelPayment, CustomerJob } from '../types';
+import { Personnel, User, Role, PersonnelPayment, CustomerJob, Payment } from '../types';
 import { CashIcon, UsersIcon, TrendingDownIcon, TrendingUpIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 
 interface DashboardViewProps {
   currentUser: User;
   personnel: Personnel[];
-  workDays: WorkDay[];
   personnelPayments: PersonnelPayment[];
   customerJobs: CustomerJob[];
   selectedMonth: Date;
+  payments: Payment[];
 }
 
-const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, personnel, workDays, personnelPayments, customerJobs, selectedMonth }) => {
+const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, personnel, personnelPayments, customerJobs, selectedMonth, payments }) => {
   
   const currentMonthName = selectedMonth.toLocaleString('tr-TR', { month: 'long' });
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
   }
 
+  const isCurrentMonth = (dateString: string) => {
+      const date = new Date(dateString);
+      return date.getMonth() === selectedMonth.getMonth() && date.getFullYear() === selectedMonth.getFullYear();
+  };
+
   // ADMIN DASHBOARD
   if (currentUser.role === Role.ADMIN) {
     const { totalIncome, totalExpenses, netProfit, topPersonnel } = useMemo(() => {
-      const currentMonth = selectedMonth.getMonth();
-      const currentYear = selectedMonth.getFullYear();
       
-      const isCurrentMonth = (dateString: string) => {
-          const date = new Date(dateString);
-          return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-      };
-
-      const incomeFromJobs = customerJobs
-          .filter(job => isCurrentMonth(job.date))
-          .reduce((sum, job) => sum + job.income, 0);
+      const monthlyCustomerJobs = customerJobs
+          .filter(job => isCurrentMonth(job.date));
+          
+      const incomeFromJobs = monthlyCustomerJobs.reduce((sum, job) => sum + job.income, 0);
           
       const personnelPaymentsTotal = personnelPayments
           .filter(p => isCurrentMonth(p.date))
@@ -43,16 +42,18 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, personnel, w
       const profit = incomeFromJobs - totalPaidExpenses;
 
       // Calculate top earning personnel for the month
-      const monthlyWorkDays = workDays.filter(wd => isCurrentMonth(wd.date));
       const personnelEarnings: { [key: string]: { name: string, total: number } } = {};
       personnel.forEach(p => {
         personnelEarnings[p.id] = { name: p.name, total: 0 };
       });
-      monthlyWorkDays.forEach(wd => {
-        if (personnelEarnings[wd.personnelId]) {
-           personnelEarnings[wd.personnelId].total += wd.wage;
-        }
+      monthlyCustomerJobs.forEach(job => {
+        job.personnelPayments.forEach(pPayment => {
+          if(personnelEarnings[pPayment.personnelId]){
+            personnelEarnings[pPayment.personnelId].total += pPayment.payment;
+          }
+        })
       });
+
       const topEarningPersonnel = Object.values(personnelEarnings)
         .filter(p => p.total > 0)
         .sort((a, b) => b.total - a.total)
@@ -64,7 +65,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, personnel, w
           netProfit: profit,
           topPersonnel: topEarningPersonnel,
       };
-    }, [personnel, workDays, personnelPayments, customerJobs, selectedMonth]);
+    }, [personnel, personnelPayments, customerJobs, selectedMonth]);
 
     const chartData = [
       {
@@ -116,16 +117,20 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, personnel, w
           <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
               <h3 className="text-xl font-semibold mb-4 text-gray-700">Ayın En Çok Kazanan Personelleri</h3>
               {topPersonnel.length > 0 ? (
-                <ul className="space-y-4">
-                    {topPersonnel.map(p => (
-                        <li key={p.name} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                            <span className="font-medium text-gray-600">{p.name}</span>
-                            <span className="font-bold text-blue-500">{formatCurrency(p.total)}</span>
+                <ul className="space-y-3">
+                    {topPersonnel.map((p, index) => (
+                        <li key={p.name} className="flex justify-between items-center p-3 bg-gray-50/80 hover:bg-gray-100 rounded-md transition-colors">
+                            <div className="flex items-center">
+                                <span className="text-sm font-bold text-gray-400 w-6 text-center">{index + 1}.</span>
+                                <span className="font-medium text-gray-700">{p.name}</span>
+                            </div>
+                            <span className="font-bold text-blue-600">{formatCurrency(p.total)}</span>
                         </li>
                     ))}
                 </ul>
               ) : (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                    <UsersIcon className="h-12 w-12 text-gray-300 mb-2"/>
                     <p className="text-gray-500">Bu ay için veri bulunamadı.</p>
                 </div>
               )}
@@ -134,6 +139,67 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, personnel, w
       </div>
     );
   }
+
+  // FOREMAN DASHBOARD
+  if (currentUser.role === Role.FOREMAN) {
+     const { teamPersonnelCount, teamTotalDue, foremanTotalPaid } = useMemo(() => {
+        const teamPersonnel = personnel.filter(p => p.foremanId === currentUser.id);
+        
+        let totalDue = 0;
+        const monthlyCustomerJobs = customerJobs.filter(job => isCurrentMonth(job.date));
+
+        monthlyCustomerJobs.forEach(job => {
+            job.personnelPayments.forEach(pPayment => {
+                if(teamPersonnel.some(p => p.id === pPayment.personnelId)){
+                    totalDue += pPayment.payment;
+                }
+            });
+        });
+
+        const foremanPayments = payments
+            .filter(p => isCurrentMonth(p.date) && p.foremanId === currentUser.id)
+            .reduce((sum, p) => sum + p.amount, 0);
+        
+        return {
+            teamPersonnelCount: teamPersonnel.length,
+            teamTotalDue: totalDue,
+            foremanTotalPaid: foremanPayments,
+        };
+     }, [personnel, customerJobs, payments, currentUser, selectedMonth]);
+
+     return (
+        <div>
+            <h2 className="text-3xl font-bold mb-6 text-gray-700">{selectedMonth.toLocaleString('tr-TR', { month: 'long', year: 'numeric' })} Ayı Ekip Özeti</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <StatCard 
+                    title="Ekipteki Personel Sayısı" 
+                    value={`${teamPersonnelCount}`} 
+                    icon={UsersIcon}
+                    color="blue"
+                />
+                <StatCard 
+                    title="Ekibin Aylık Toplam Hakedişi" 
+                    value={formatCurrency(teamTotalDue)} 
+                    icon={TrendingUpIcon}
+                    color="green"
+                />
+                <StatCard 
+                    title="Size Yapılan Ödeme" 
+                    value={formatCurrency(foremanTotalPaid)}
+                    icon={CashIcon}
+                    color="blue"
+                />
+            </div>
+             <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
+                 <h3 className="text-xl font-semibold mb-4 text-gray-700">Bilgilendirme</h3>
+                 <p className="text-gray-600">
+                     Bu panel, yönettiğiniz ekibin bu ayki performansını özetlemektedir. Ekip üyelerinizin çalışma günlerini ve detaylarını görmek için sol menüdeki <strong>Ekip Yönetimi</strong> sayfasına gidebilirsiniz.
+                 </p>
+             </div>
+        </div>
+     );
+  }
+
 
   return null; // Should not happen if user is authenticated
 };
