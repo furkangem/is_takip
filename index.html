@@ -14,7 +14,6 @@
   "imports": {
     "react/": "https://aistudiocdn.com/react@^19.1.1/",
     "react": "https://aistudiocdn.com/react@^19.1.1",
-    "recharts": "https://aistudiocdn.com/recharts@^3.1.2",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
     "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
     "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.8.2"
@@ -26,6 +25,14 @@
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(48%) sepia(6%) saturate(415%) hue-rotate(176deg) brightness(93%) contrast(85%); /* Makes it gray-500 */
+    transition: filter 0.2s ease-in-out;
+  }
+  input[type="date"]:hover::-webkit-calendar-picker-indicator {
+    filter: invert(35%) sepia(36%) saturate(4071%) hue-rotate(199deg) brightness(93%) contrast(88%); /* Makes it blue-600 on hover */
   }
 </style>
 </head>

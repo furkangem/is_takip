@@ -1,10 +1,10 @@
 
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Personnel, Customer, CustomerJob, DefterEntry, SharedExpense } from '../types';
 import { UsersIcon, BuildingOffice2Icon, ClipboardDocumentListIcon, BanknotesIcon, MagnifyingGlassIcon } from './icons/Icons';
 
-type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'timesheet' | 'customers' | 'kasa' | 'team';
+type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa';
 
 interface GlobalSearchViewProps {
   query: string;
@@ -16,18 +16,15 @@ interface GlobalSearchViewProps {
   onNavigate: (view: View, id: string) => void;
 }
 
-const SearchResultSection: React.FC<{
-    title: string;
+interface SearchResult {
+    type: 'personnel' | 'customer' | 'job' | 'defter' | 'shared_expense';
+    id: string; // unique key for react list
+    navigateToView: View;
+    navigateToId: string;
+    primaryText: string;
+    secondaryText: string;
     icon: React.ElementType;
-    children: React.ReactNode;
-}> = ({ title, icon: Icon, children }) => (
-    <div className="bg-white rounded-lg shadow-md mb-6">
-        <h3 className="text-lg font-semibold flex items-center p-4 border-b">
-            <Icon className="h-6 w-6 mr-3 text-blue-500" /> {title}
-        </h3>
-        <div className="p-2">{children}</div>
-    </div>
-);
+}
 
 const NoResults: React.FC = () => (
     <div className="text-center py-10 bg-white rounded-lg shadow-md">
@@ -38,112 +35,119 @@ const NoResults: React.FC = () => (
 );
 
 const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ query, personnel, customers, customerJobs, defterEntries, sharedExpenses, onNavigate }) => {
-    const lowerCaseQuery = query.toLowerCase();
-
-    const personnelResults = personnel.filter(p => p.name.toLowerCase().includes(lowerCaseQuery));
-    const customerResults = customers.filter(c => c.name.toLowerCase().includes(lowerCaseQuery));
-    const jobResults = customerJobs.filter(j => j.description.toLowerCase().includes(lowerCaseQuery) || j.location.toLowerCase().includes(lowerCaseQuery));
-    const defterResults = defterEntries.filter(l => l.description.toLowerCase().includes(lowerCaseQuery));
-    const sharedExpenseResults = sharedExpenses.filter(se => se.description.toLowerCase().includes(lowerCaseQuery));
-
-    const hasResults = personnelResults.length > 0 || customerResults.length > 0 || jobResults.length > 0 || defterResults.length > 0 || sharedExpenseResults.length > 0;
     
-    const handleJobClick = (job: CustomerJob) => {
-        onNavigate('customers', job.customerId);
-    }
-    
-    const handleFinanceClick = (id: string) => {
-        onNavigate('kasa', id);
+    const allResults: SearchResult[] = useMemo(() => {
+        const results: SearchResult[] = [];
+        if (!query) return results;
+
+        const lowerCaseQuery = query.toLowerCase();
+
+        // Personnel
+        personnel
+            .filter(p => p.name.toLowerCase().includes(lowerCaseQuery))
+            .forEach(p => results.push({
+                type: 'personnel',
+                id: `personnel-${p.id}`,
+                navigateToView: 'personnel',
+                navigateToId: p.id,
+                primaryText: p.name,
+                secondaryText: 'Personel',
+                icon: UsersIcon,
+            }));
+
+        // Customers
+        customers
+            .filter(c => c.name.toLowerCase().includes(lowerCaseQuery))
+            .forEach(c => results.push({
+                type: 'customer',
+                id: `customer-${c.id}`,
+                navigateToView: 'customers',
+                navigateToId: c.id,
+                primaryText: c.name,
+                secondaryText: 'Müşteri',
+                icon: BuildingOffice2Icon,
+            }));
+        
+        // Customer Jobs
+        customerJobs
+            .filter(j => j.description.toLowerCase().includes(lowerCaseQuery) || j.location.toLowerCase().includes(lowerCaseQuery))
+            .forEach(j => {
+                const customerName = customers.find(c => c.id === j.customerId)?.name || 'Bilinmeyen Müşteri';
+                results.push({
+                    type: 'job',
+                    id: `job-${j.id}`,
+                    navigateToView: 'customers',
+                    navigateToId: j.customerId,
+                    primaryText: `${j.location}: ${j.description}`,
+                    secondaryText: `İş Kaydı (${customerName})`,
+                    icon: ClipboardDocumentListIcon,
+                });
+            });
+
+        // Defter Entries
+        defterEntries
+            .filter(l => l.description.toLowerCase().includes(lowerCaseQuery))
+            .forEach(l => results.push({
+                type: 'defter',
+                id: `defter-${l.id}`,
+                navigateToView: 'kasa',
+                navigateToId: l.id,
+                primaryText: l.description,
+                secondaryText: 'Defter Kaydı',
+                icon: BanknotesIcon,
+            }));
+        
+        // Shared Expenses
+        sharedExpenses
+            .filter(se => se.description.toLowerCase().includes(lowerCaseQuery))
+            .forEach(se => results.push({
+                type: 'shared_expense',
+                id: `shared_expense-${se.id}`,
+                navigateToView: 'kasa',
+                navigateToId: se.id,
+                primaryText: se.description,
+                secondaryText: 'Ortak Kasa Harcaması',
+                icon: BanknotesIcon,
+            }));
+
+        return results;
+    }, [query, personnel, customers, customerJobs, defterEntries, sharedExpenses]);
+
+
+    if (allResults.length === 0) {
+        return <NoResults />;
     }
 
     return (
         <div>
             <h2 className="text-3xl font-bold mb-6 text-gray-700">Arama Sonuçları: <span className="text-blue-600">"{query}"</span></h2>
-
-            {!hasResults && <NoResults />}
-
-            {personnelResults.length > 0 && (
-                <SearchResultSection title="Personeller" icon={UsersIcon}>
-                    <ul>
-                        {personnelResults.map(p => (
-                            <li key={p.id}>
-                                <button onClick={() => onNavigate('personnel', p.id)} className="w-full text-left p-3 hover:bg-gray-100 rounded-md transition-colors">
-                                    {p.name}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </SearchResultSection>
-            )}
-
-            {customerResults.length > 0 && (
-                <SearchResultSection title="Müşteriler" icon={BuildingOffice2Icon}>
-                    <ul>
-                        {customerResults.map(c => (
-                            <li key={c.id}>
-                                <button onClick={() => onNavigate('customers', c.id)} className="w-full text-left p-3 hover:bg-gray-100 rounded-md transition-colors">
-                                    <p className="font-medium">{c.name}</p>
-                                    <p className="text-xs text-gray-500 truncate">{c.jobDescription}</p>
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </SearchResultSection>
-            )}
-
-            {jobResults.length > 0 && (
-                 <SearchResultSection title="Müşteri İşleri" icon={ClipboardDocumentListIcon}>
-                    <ul>
-                        {jobResults.map(j => {
-                            const customer = customers.find(c => c.id === j.customerId);
-                            return (
-                                <li key={j.id}>
-                                    <button onClick={() => handleJobClick(j)} className="w-full text-left p-3 hover:bg-gray-100 rounded-md transition-colors">
-                                        <p className="font-medium">{j.description} - <span className="text-sm text-gray-600">{j.location}</span></p>
-                                        <p className="text-xs text-gray-500">Müşteri: {customer?.name || 'Bilinmiyor'}</p>
-                                    </button>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </SearchResultSection>
-            )}
             
-            {defterResults.length > 0 && (
-                 <SearchResultSection title="Defter Kayıtları" icon={BanknotesIcon}>
-                    <ul>
-                        {defterResults.map(l => (
-                             <li key={l.id}>
-                                <button onClick={() => handleFinanceClick(l.id)} className="w-full text-left p-3 hover:bg-gray-100 rounded-md transition-colors">
-                                    <div className="flex justify-between items-center">
-                                        <p className="font-medium">{l.description}</p>
-                                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${l.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {l.type === 'income' ? 'Alacak' : 'Borç'}
-                                        </span>
+            <div className="bg-white rounded-lg shadow-md">
+                <ul className="divide-y divide-gray-200">
+                    {allResults.map((result) => {
+                        const Icon = result.icon;
+                        return (
+                            <li key={result.id}>
+                                <button 
+                                    onClick={() => onNavigate(result.navigateToView, result.navigateToId)} 
+                                    className="w-full text-left p-4 hover:bg-gray-50 focus:outline-none focus:bg-blue-50 transition-colors"
+                                    aria-label={`Git: ${result.primaryText}, ${result.secondaryText}`}
+                                >
+                                    <div className="flex items-center">
+                                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mr-4">
+                                            <Icon className="h-6 w-6 text-gray-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-gray-800 truncate">{result.primaryText}</p>
+                                            <p className="text-xs text-gray-500">{result.secondaryText}</p>
+                                        </div>
                                     </div>
                                 </button>
                             </li>
-                        ))}
-                    </ul>
-                </SearchResultSection>
-            )}
-            
-            {sharedExpenseResults.length > 0 && (
-                 <SearchResultSection title="Ortak Kasa Harcamaları" icon={BanknotesIcon}>
-                    <ul>
-                        {sharedExpenseResults.map(se => (
-                             <li key={se.id}>
-                                <button onClick={() => handleFinanceClick(se.id)} className="w-full text-left p-3 hover:bg-gray-100 rounded-md transition-colors">
-                                    <div className="flex justify-between items-center">
-                                        <p className="font-medium">{se.description}</p>
-                                        <span className="text-xs text-gray-500">Ödeyen: {se.payer}</span>
-                                    </div>
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </SearchResultSection>
-            )}
+                        );
+                    })}
+                </ul>
+            </div>
         </div>
     );
 };

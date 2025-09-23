@@ -1,5 +1,6 @@
 
 
+
 export enum Role {
   ADMIN = 'ADMIN',
   // FIX: Add FOREMAN role to support foreman-specific views and logic.
@@ -45,9 +46,13 @@ export interface Customer {
   jobDescription: string;
 }
 
+export type IncomePaymentMethod = 'TRY' | 'USD' | 'EUR' | 'GOLD';
+export type GoldType = 'gram' | 'quarter' | 'full';
+
 export interface Material {
     id: string;
     name: string;
+    unit?: string;
     quantity: number;
     unitPrice: number;
 }
@@ -64,6 +69,8 @@ export interface CustomerJob {
   description: string; // Replaced operation, quantity, unit, and unitPrice
   date: string; // YYYY-MM-DD
   income: number;
+  incomePaymentMethod?: IncomePaymentMethod;
+  incomeGoldType?: GoldType;
   personnelIds: string[];
   personnelPayments: JobPersonnelPayment[];
   materials: Material[];
@@ -97,6 +104,13 @@ export interface DefterEntry {
   dueDate?: string; // YYYY-MM-DD
   paidDate?: string; // YYYY-MM-DD
   notes?: string;
+}
+
+export interface DefterNote {
+  id: string;
+  content: string;
+  createdAt: string; // ISO String
+  completed: boolean;
 }
 
 export type Payer = 'Ömer' | 'Barış' | 'Kasa';

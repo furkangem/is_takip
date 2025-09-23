@@ -1,8 +1,9 @@
 
 
+
 import React, { useState, useEffect } from 'react';
-import { users as initialUsers, personnel as initialPersonnel, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs, defterEntries as initialDefterEntries, payments as initialPayments, sharedExpenses as initialSharedExpenses } from './data/mockData';
-import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, Payment, SharedExpense } from './types';
+import { users as initialUsers, personnel as initialPersonnel, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs, defterEntries as initialDefterEntries, payments as initialPayments, sharedExpenses as initialSharedExpenses, defterNotes as initialDefterNotes } from './data/mockData';
+import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, Payment, SharedExpense, DefterNote } from './types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
@@ -28,6 +29,7 @@ export default function App() {
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [customerJobs, setCustomerJobs] = useState<CustomerJob[]>(initialCustomerJobs);
   const [defterEntries, setDefterEntries] = useState<DefterEntry[]>(initialDefterEntries);
+  const [defterNotes, setDefterNotes] = useState<DefterNote[]>(initialDefterNotes);
   const [payments, setPayments] = useState<Payment[]>(initialPayments);
   const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>(initialSharedExpenses);
   
@@ -156,6 +158,25 @@ export default function App() {
   const deleteDefterEntry = (entryId: string) => {
     setDefterEntries(prev => prev.filter(e => e.id !== entryId));
   };
+  
+  // Defter Note CRUD
+  const addDefterNote = (content: string) => {
+    const newNote: DefterNote = {
+      id: `dn-${Date.now()}`,
+      content,
+      createdAt: new Date().toISOString(),
+      completed: false
+    };
+    setDefterNotes(prev => [newNote, ...prev]);
+  };
+
+  const updateDefterNote = (noteToUpdate: DefterNote) => {
+    setDefterNotes(prev => prev.map(n => n.id === noteToUpdate.id ? noteToUpdate : n));
+  };
+
+  const deleteDefterNote = (noteId: string) => {
+    setDefterNotes(prev => prev.filter(n => n.id !== noteId));
+  };
 
   // Shared Expense CRUD
   const addSharedExpense = (newExpenseData: Omit<SharedExpense, 'id'>) => {
@@ -224,6 +245,7 @@ export default function App() {
                   personnel={personnel}
                   personnelPayments={personnelPayments}
                   customerJobs={customerJobs}
+                  defterEntries={defterEntries}
                   selectedMonth={selectedMonth}
                   payments={payments}
                 />
@@ -262,20 +284,18 @@ export default function App() {
               )}
               {currentView === 'kasa' && currentUser.role === Role.ADMIN && (
                  <KasaView
-                    customers={customers}
-                    customerJobs={customerJobs}
-                    personnel={personnel}
-                    personnelPayments={personnelPayments}
                     defterEntries={defterEntries}
                     sharedExpenses={sharedExpenses}
+                    defterNotes={defterNotes}
                     onAddDefterEntry={addDefterEntry}
                     onUpdateDefterEntry={updateDefterEntry}
                     onDeleteDefterEntry={deleteDefterEntry}
+                    onAddDefterNote={addDefterNote}
+                    onUpdateDefterNote={updateDefterNote}
+                    onDeleteDefterNote={deleteDefterNote}
                     onAddSharedExpense={addSharedExpense}
                     onUpdateSharedExpense={updateSharedExpense}
                     onDeleteSharedExpense={deleteSharedExpense}
-                    onAddPersonnelPayment={addPersonnelPayment}
-                    onDeletePersonnelPayment={deletePersonnelPayment}
                  />
               )}
               {currentView === 'reports' && currentUser.role === Role.ADMIN && (

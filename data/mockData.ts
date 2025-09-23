@@ -1,6 +1,7 @@
 
 
-import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, Payment, Income, Expense, DefterEntry, SharedExpense } from '../types';
+
+import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, Payment, Income, Expense, DefterEntry, SharedExpense, DefterNote } from '../types';
 
 export const users: User[] = [
   { id: 'user-1', name: 'Ahmet Yılmaz', email: 'admin@example.com', password: 'password123', role: Role.ADMIN },
@@ -73,32 +74,43 @@ export const customers: Customer[] = [
     address: 'Çayyolu Mah. 8765. Sk. No:2, Çankaya/Ankara',
     jobDescription: 'Site ortak alanlarının tadilatı ve peyzaj düzenlemesi.',
   },
+  {
+    id: 'cust-3',
+    name: 'Mega Marketler Zinciri',
+    contactInfo: '0212 555 0000 - satin_alma@megamarket.com',
+    address: 'Maslak Mah. Büyükdere Cad. No:25, Sarıyer/İstanbul',
+    jobDescription: 'Yeni açılacak şubelerin raf ve stant montaj işleri.',
+  },
 ];
 
 export const customerJobs: CustomerJob[] = [
     // Jobs for ABC İnşaat
     { 
         id: 'job-1', customerId: 'cust-1', location: 'Ankara Merkez Plaza Projesi', description: 'Dış Cephe Mantolama', date: '2024-05-10', income: 1200000, 
+        incomePaymentMethod: 'TRY',
         personnelIds: ['p-1', 'p-2', 'p-7'],
         personnelPayments: [{personnelId: 'p-1', payment: 120000}, {personnelId: 'p-2', payment: 125000}, {personnelId: 'p-7', payment: 105000}],
         materials: [
-            {id: 'mat-1', name: 'Strafor', quantity: 1250, unitPrice: 300},
-            {id: 'mat-2', name: 'Sıva Harcı', quantity: 200, unitPrice: 150},
+            {id: 'mat-1', name: 'Strafor', unit: 'm²', quantity: 1250, unitPrice: 300},
+            {id: 'mat-2', name: 'Sıva Harcı', unit: 'torba', quantity: 200, unitPrice: 150},
         ],
         otherExpenses: 15000,
     },
     { 
         id: 'job-2', customerId: 'cust-1', location: 'Ankara Merkez Plaza Projesi', description: 'İç Cephe Alçıpan', date: '2024-05-15', income: 400000,
+        incomePaymentMethod: 'USD',
         personnelIds: ['p-3', 'p-4'],
         personnelPayments: [{personnelId: 'p-3', payment: 50000}, {personnelId: 'p-4', payment: 50000}],
-        materials: [{id: 'mat-3', name: 'Alçıpan Levha', quantity: 250, unitPrice: 300}],
+        materials: [{id: 'mat-3', name: 'Alçıpan Levha', unit: 'adet', quantity: 250, unitPrice: 300}],
         otherExpenses: 35000,
     },
     { 
-        id: 'job-3', customerId: 'cust-1', location: 'İstanbul Depo İnşaatı', description: 'Zemin Şap Betonu', date: '2024-05-20', income: 600000, 
+        id: 'job-3', customerId: 'cust-1', location: 'İstanbul Depo İnşaatı', description: 'Zemin Şap Betonu', date: '2024-05-20', income: 10, 
+        incomePaymentMethod: 'GOLD',
+        incomeGoldType: 'full',
         personnelIds: ['p-8', 'p-9', 'p-10'],
         personnelPayments: [{personnelId: 'p-8', payment: 25000}, {personnelId: 'p-9', payment: 25000}, {personnelId: 'p-10', payment: 20000}],
-        materials: [{id: 'mat-4', name: 'Hazır Beton', quantity: 150, unitPrice: 1500}],
+        materials: [{id: 'mat-4', name: 'Hazır Beton', unit: 'm³', quantity: 150, unitPrice: 1500}],
         otherExpenses: 25000,
     },
     { 
@@ -145,6 +157,48 @@ export const customerJobs: CustomerJob[] = [
         materials: [{id: 'mat-10', name: 'İzolasyon Malzemesi', quantity: 550, unitPrice: 120}],
         otherExpenses: 24000,
     },
+    // --- NEW MOCK DATA FOR REPORTS ---
+    { 
+        id: 'job-10', customerId: 'cust-1', location: 'İzmir Konut Projesi', description: 'Çatı ve Su Yalıtımı', date: '2024-04-15', income: 500000, 
+        incomePaymentMethod: 'TRY',
+        personnelIds: ['p-1', 'p-8', 'p-9'],
+        personnelPayments: [{personnelId: 'p-1', payment: 30000}, {personnelId: 'p-8', payment: 32000}, {personnelId: 'p-9', payment: 31000}],
+        materials: [
+            {id: 'mat-11', name: 'Membran', unit: 'm²', quantity: 800, unitPrice: 200},
+            {id: 'mat-12', name: 'İzolasyon Malzemesi', unit: 'paket', quantity: 100, unitPrice: 400},
+        ],
+        otherExpenses: 20000,
+    },
+    { 
+        id: 'job-11', customerId: 'cust-3', location: 'Bursa Şubesi', description: 'Acil Raf Sistemi Montajı (Zarar)', date: '2024-03-20', income: 80000, 
+        incomePaymentMethod: 'TRY',
+        personnelIds: ['p-13', 'p-14'],
+        personnelPayments: [{personnelId: 'p-13', payment: 15000}, {personnelId: 'p-14', payment: 15000}],
+        materials: [
+            {id: 'mat-13', name: 'Özel Raf Sistemi', unit: 'adet', quantity: 1, unitPrice: 60000},
+        ],
+        otherExpenses: 5000,
+    },
+    { 
+        id: 'job-12', customerId: 'cust-3', location: 'Eskişehir Şubesi', description: 'Zemin Epoksi Kaplama', date: '2024-02-10', income: 250000, 
+        incomePaymentMethod: 'TRY',
+        personnelIds: ['p-5', 'p-6', 'p-11'],
+        personnelPayments: [{personnelId: 'p-5', payment: 20000}, {personnelId: 'p-6', payment: 20000}, {personnelId: 'p-11', payment: 21000}],
+        materials: [
+            {id: 'mat-14', name: 'Epoksi Reçine ve Sertleştirici', unit: 'set', quantity: 50, unitPrice: 3000},
+        ],
+        otherExpenses: 30000,
+    },
+    { 
+        id: 'job-13', customerId: 'cust-2', location: 'Site Güvenlik Kulübesi', description: 'Güvenlik Kulübesi İnşaatı (Geçen Yıl)', date: '2023-11-15', income: 120000, 
+        incomePaymentMethod: 'TRY',
+        personnelIds: ['p-1', 'p-7'],
+        personnelPayments: [{personnelId: 'p-1', payment: 18000}, {personnelId: 'p-7', payment: 18000}],
+        materials: [
+            {id: 'mat-15', name: 'Prefabrik Güvenlik Kabini', unit: 'adet', quantity: 1, unitPrice: 60000},
+        ],
+        otherExpenses: 10000,
+    },
 ];
 
 
@@ -165,6 +219,12 @@ export const defterEntries: DefterEntry[] = [
   { id: 'le-5', date: getDateInCurrentMonth(7), description: 'Ofis Giderleri - Fatura', amount: 320, type: 'expense', dueDate: getDateInCurrentMonth(20), status: 'unpaid', notes: 'Elektrik faturası' },
   { id: 'le-6', date: new Date(new Date().setDate(today.getDate() - 35)).toISOString().split('T')[0], description: 'Geçen Aydan Devir - ABC İnşaat', amount: 5500, type: 'income', status: 'unpaid' },
   { id: 'le-7', date: getDateInCurrentMonth(4), description: 'Yakıt Gideri', amount: 1200, type: 'expense', status: 'paid', paidDate: getDateInCurrentMonth(4) },
+];
+
+export const defterNotes: DefterNote[] = [
+    { id: 'dn-1', content: 'Ay sonu malzeme listesini kontrol et.', createdAt: new Date().toISOString(), completed: false },
+    { id: 'dn-2', content: 'Yeni proje için müşteriyle görüş.', createdAt: new Date().toISOString(), completed: false },
+    { id: 'dn-3', content: 'Vergi ödemesini yap.', createdAt: new Date().toISOString(), completed: true },
 ];
 
 export const sharedExpenses: SharedExpense[] = [

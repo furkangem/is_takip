@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "react": "^19.1.1",
-    "recharts": "^3.1.2",
     "react-dom": "^19.1.1",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2"

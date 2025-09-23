@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Personnel, User, Role, PersonnelPayment, CustomerJob, Customer } from '../types';
-import { UserGroupIcon, IdentificationIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon, XMarkIcon, BriefcaseIcon } from './icons/Icons';
+import { UserGroupIcon, IdentificationIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon, XMarkIcon, BriefcaseIcon, BanknotesIcon, TrendingUpIcon, TrendingDownIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
+import StatCard from './ui/StatCard';
 
 interface PersonnelViewProps {
   currentUser: User;
@@ -20,6 +21,62 @@ interface PersonnelViewProps {
   navigateToId: string | null;
   onNavigationComplete: () => void;
 }
+
+const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
+
+const JobPaymentDetailsModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    job: CustomerJob | null;
+    personnel: Personnel[];
+    customer: Customer | undefined;
+}> = ({ isOpen, onClose, job, personnel, customer }) => {
+    if (!isOpen || !job) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b">
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                            <BriefcaseIcon className="h-5 w-5 mr-2 text-blue-500" />
+                            İş Hakediş Detayları
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">{job.location} - {customer?.name}</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <XMarkIcon className="h-6 w-6" />
+                    </button>
+                </div>
+                <div className="p-6 max-h-[60vh] overflow-y-auto">
+                    <p className="text-sm text-gray-600 mb-4">Bu işte çalışan personeller ve hakediş tutarları aşağıda listelenmiştir.</p>
+                    {job.personnelIds.length > 0 ? (
+                        <ul className="divide-y divide-gray-200 border rounded-md bg-gray-50/50">
+                            {job.personnelIds.map(personnelId => {
+                                const person = personnel.find(p => p.id === personnelId);
+                                const paymentInfo = job.personnelPayments.find(p => p.personnelId === personnelId);
+                                const paymentAmount = paymentInfo ? paymentInfo.payment : 0;
+                                return (
+                                    <li key={personnelId} className="px-4 py-3 flex justify-between items-center">
+                                        <span className="font-medium text-gray-800">{person ? person.name : 'Bilinmeyen Personel'}</span>
+                                        <span className="font-bold text-blue-600">{formatCurrency(paymentAmount)}</span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    ) : (
+                        <p className="text-center text-gray-500 py-4">Bu işe atanmış personel bulunmuyor.</p>
+                    )}
+                </div>
+                <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-lg">
+                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                        Kapat
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const PersonnelEditorModal: React.FC<{
     isOpen: boolean;
@@ -180,6 +237,10 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   const [searchQuery, setSearchQuery] = useState('');
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<PersonnelPayment | null>(null);
+  const [filters, setFilters] = useState({ startDate: '', endDate: '' });
+  const [jobDetailsModalOpen, setJobDetailsModalOpen] = useState(false);
+  const [selectedJobForDetails, setSelectedJobForDetails] = useState<CustomerJob | null>(null);
+
 
   useEffect(() => {
     if (navigateToId) {
@@ -255,32 +316,75 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
         });
     }
   };
+  
+  const handleOpenJobDetails = (job: CustomerJob) => {
+    setSelectedJobForDetails(job);
+    setJobDetailsModalOpen(true);
+  };
 
   const { totalPaymentDue, totalPaid, balance, jobs, payments } = useMemo(() => {
     if (!selectedPersonnel) return { totalPaymentDue: 0, totalPaid: 0, balance: 0, jobs: [], payments: [] };
     
-    const personnelJobs = customerJobs.filter(job => job.personnelIds.includes(selectedPersonnel.id));
-    
-    const due = personnelJobs.reduce((sum, job) => {
+    // Overall totals (not filtered)
+    const allPersonnelJobs = customerJobs.filter(job => job.personnelIds.includes(selectedPersonnel.id));
+    const due = allPersonnelJobs.reduce((sum, job) => {
         const personnelEarning = job.personnelPayments.find(p => p.personnelId === selectedPersonnel.id);
         return sum + (personnelEarning?.payment || 0);
     }, 0);
+    const allPersonnelPayments = personnelPayments.filter(p => p.personnelId === selectedPersonnel.id);
+    const paid = allPersonnelPayments.reduce((sum, p) => sum + p.amount, 0);
 
-    const personnelPayRecords = personnelPayments.filter(p => p.personnelId === selectedPersonnel.id);
-    const paid = personnelPayRecords.reduce((sum, p) => sum + p.amount, 0);
-    
+    // Filtered lists
+    const start = filters.startDate ? new Date(filters.startDate) : null;
+    if(start) start.setHours(0,0,0,0);
+    const end = filters.endDate ? new Date(filters.endDate) : null;
+    if(end) end.setHours(23,59,59,999);
+
+    const filteredJobs = allPersonnelJobs.filter(j => {
+        const jobDate = new Date(j.date);
+        if(start && jobDate < start) return false;
+        if(end && jobDate > end) return false;
+        return true;
+    }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const filteredPayments = allPersonnelPayments.filter(p => {
+        const paymentDate = new Date(p.date);
+        if(start && paymentDate < start) return false;
+        if(end && paymentDate > end) return false;
+        return true;
+    }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
     return {
         totalPaymentDue: due,
         totalPaid: paid,
         balance: due - paid,
-        jobs: personnelJobs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-        payments: personnelPayRecords.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+        jobs: filteredJobs,
+        payments: filteredPayments,
     };
-  }, [selectedPersonnel, customerJobs, personnelPayments]);
+  }, [selectedPersonnel, customerJobs, personnelPayments, filters]);
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
+  const setDateRange = (period: 'this_month' | 'last_month' | 'all') => {
+    if (period === 'all') {
+        setFilters({ startDate: '', endDate: '' });
+        return;
+    }
+    const now = new Date();
+    let start, end;
+    if (period === 'this_month') {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    } else { // last_month
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        start = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+        end = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+    }
+    setFilters({ startDate: start.toISOString().split('T')[0], endDate: end.toISOString().split('T')[0] });
+  };
+
+
   const formatDateTime = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const isEditable = currentUser.role === Role.ADMIN;
+  const commonInputClass = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-900 focus:ring-blue-500 focus:border-blue-500";
 
   return (
     <>
@@ -316,77 +420,92 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
             )}
         </div>
       </div>
-      <div className="w-full md:w-2/3 lg:w-3-4">
+      <div className="w-full md:w-2/3 lg:w-3/4">
         {selectedPersonnel ? (
-          <div className="bg-white p-6 rounded-lg shadow-md h-full flex flex-col">
-            <div className="border-b pb-6 mb-6">
-                <div className="flex justify-between items-start">
-                  <h2 className="text-2xl font-bold text-gray-800 flex items-center mb-4"><IdentificationIcon className="h-7 w-7 mr-3 text-blue-500"/>{selectedPersonnel.name}</h2>
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800 flex items-center"><IdentificationIcon className="h-7 w-7 mr-3 text-blue-500"/>{selectedPersonnel.name}</h2>
+                    <p className="text-gray-500 text-sm mt-1">Genel bakiye ve hakediş özeti</p>
+                  </div>
                    {isEditable && <div className="flex items-center gap-2">
                         <button onClick={() => handleOpenEditModal(selectedPersonnel)} className="flex items-center text-sm font-medium text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md transition-colors"><PencilIcon className="h-4 w-4 mr-2" />Düzenle</button>
                         <button onClick={() => handleOpenDeleteModal(selectedPersonnel)} className="flex items-center text-sm font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors"><TrashIcon className="h-4 w-4 mr-2" />Sil</button>
                    </div>}
                 </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-500">Toplam Hakediş</p><p className="text-lg font-bold text-gray-800">{formatCurrency(totalPaymentDue)}</p></div>
-                <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-500">Ödenen Tutar</p><p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p></div>
-                <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-500">Kalan Bakiye</p><p className={`text-lg font-bold ${balance > 0 ? 'text-red-600' : 'text-blue-600'}`}>{formatCurrency(balance)}</p></div>
+                <StatCard title="Toplam Hakediş" value={formatCurrency(totalPaymentDue)} icon={TrendingUpIcon} color="green" />
+                <StatCard title="Toplam Ödenen" value={formatCurrency(totalPaid)} icon={TrendingDownIcon} color="red" />
+                <StatCard title="Kalan Bakiye" value={formatCurrency(balance)} icon={BanknotesIcon} color={balance >= 0 ? 'blue' : 'red'} />
               </div>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
-                <div className="flex flex-col">
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-lg font-semibold text-gray-700">Yapılan Ödemeler</h3>
-                        {isEditable && <button onClick={() => setIsPaymentModalOpen(true)} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md"><CreditCardIcon className="h-4 w-4 mr-2" />Ödeme Ekle</button>}
-                    </div>
-                    <div className="bg-gray-50 rounded-lg border flex-1 overflow-y-auto">
-                        {payments.length > 0 ? (
-                            <ul className="divide-y divide-gray-200">{payments.map(p => {
-                                const job = customerJobs.find(j => j.id === p.customerJobId);
-                                return (
-                                <li key={p.id} className="p-3 flex justify-between items-center group">
-                                    <div>
-                                        <p className="font-medium text-gray-800">{formatCurrency(p.amount)}</p>
-                                        <p className="text-xs text-gray-500">{formatDateTime(p.date)}</p>
-                                        {job && <p className="text-xs text-blue-600 mt-1">{job.location}</p>}
-                                    </div>
-                                    {isEditable && <button onClick={() => setPaymentToDelete(p)} className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><TrashIcon className="h-4 w-4" /></button>}
-                                </li>
-                            );
-                            })}</ul>
-                        ) : ( <p className="p-4 text-center text-sm text-gray-500">Bu personele hiç ödeme yapılmadı.</p> )}
+             <div className="bg-white p-4 rounded-lg shadow-md space-y-4">
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <h3 className="text-lg font-semibold text-gray-800">Finansal Döküm</h3>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 items-end">
+                        <input type="date" value={filters.startDate} onChange={e => setFilters(p => ({...p, startDate: e.target.value}))} className={commonInputClass} />
+                        <input type="date" value={filters.endDate} onChange={e => setFilters(p => ({...p, endDate: e.target.value}))} className={commonInputClass} />
+                        <button onClick={() => setDateRange('this_month')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Bu Ay</button>
+                        <button onClick={() => setDateRange('all')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Tümü</button>
                     </div>
                 </div>
-                 <div className="flex flex-col">
-                    <h3 className="text-lg font-semibold text-gray-700 mb-3">Çalıştığı İşler ve Hakedişleri</h3>
-                    <div className="bg-gray-50 rounded-lg border flex-1 overflow-y-auto">
-                         {jobs.length > 0 ? (
-                            <ul className="divide-y divide-gray-200">{jobs.map(job => {
-                                const earning = job.personnelPayments.find(p=>p.personnelId === selectedPersonnel.id)?.payment || 0;
-                                const customer = customers.find(c => c.id === job.customerId);
-                                return (
-                                    <li key={job.id} className="p-3">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="font-medium text-gray-800">{job.location}</p>
-                                                <p className="text-xs text-gray-500">{customer?.name} - {job.description}</p>
-                                            </div>
-                                            <p className="font-semibold text-blue-600">{formatCurrency(earning)}</p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t">
+                    <div className="flex flex-col">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-lg font-semibold text-gray-700">Yapılan Ödemeler</h3>
+                            {isEditable && <button onClick={() => setIsPaymentModalOpen(true)} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md"><CreditCardIcon className="h-4 w-4 mr-2" />Ödeme Ekle</button>}
+                        </div>
+                        <div className="bg-gray-50 rounded-lg border flex-1 overflow-y-auto min-h-[150px]">
+                            {payments.length > 0 ? (
+                                <ul className="divide-y divide-gray-200">{payments.map(p => {
+                                    const job = customerJobs.find(j => j.id === p.customerJobId);
+                                    return (
+                                    <li key={p.id} className="p-3 flex justify-between items-center group">
+                                        <div>
+                                            <p className="font-medium text-gray-800">{formatCurrency(p.amount)}</p>
+                                            <p className="text-xs text-gray-500">{formatDateTime(p.date)}</p>
+                                            {job && <p className="text-xs text-blue-600 mt-1">{job.location}</p>}
                                         </div>
+                                        {isEditable && <button onClick={() => setPaymentToDelete(p)} className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><TrashIcon className="h-4 w-4" /></button>}
                                     </li>
                                 );
-                            })}</ul>
-                        ) : ( 
-                            <div className="p-4 text-center text-sm text-gray-500 h-full flex items-center justify-center">
-                                <BriefcaseIcon className="h-8 w-8 text-gray-300 mb-2"/>
-                                <span>Bu personel henüz bir işte çalışmadı.</span>
-                            </div>
-                         )}
+                                })}</ul>
+                            ) : ( <p className="p-4 text-center text-sm text-gray-500">Filtrelenmiş ödeme bulunmuyor.</p> )}
+                        </div>
+                    </div>
+                     <div className="flex flex-col">
+                        <h3 className="text-lg font-semibold text-gray-700 mb-3">Çalıştığı İşler ve Hakedişleri</h3>
+                        <div className="bg-gray-50 rounded-lg border flex-1 overflow-y-auto min-h-[150px]">
+                             {jobs.length > 0 ? (
+                                <ul className="divide-y divide-gray-200">{jobs.map(job => {
+                                    const earning = job.personnelPayments.find(p=>p.personnelId === selectedPersonnel.id)?.payment || 0;
+                                    const customer = customers.find(c => c.id === job.customerId);
+                                    return (
+                                        <li key={job.id}>
+                                            <button onClick={() => handleOpenJobDetails(job)} className="p-3 w-full text-left hover:bg-gray-100 rounded-md transition-colors">
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <p className="font-medium text-gray-800">{job.location}</p>
+                                                        <p className="text-xs text-gray-500">{customer?.name} - {job.description}</p>
+                                                    </div>
+                                                    <p className="font-semibold text-blue-600">{formatCurrency(earning)}</p>
+                                                </div>
+                                            </button>
+                                        </li>
+                                    );
+                                })}</ul>
+                            ) : ( 
+                                <div className="p-4 text-center text-sm text-gray-500 h-full flex items-center justify-center">
+                                    <BriefcaseIcon className="h-8 w-8 text-gray-300 mb-2"/>
+                                    <span>Filtrelenmiş iş kaydı bulunmuyor.</span>
+                                </div>
+                             )}
+                        </div>
                     </div>
                 </div>
             </div>
-
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow-md">
@@ -399,6 +518,13 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleConfirmDelete} title="Personeli Sil" message={`'${personnelToDelete?.name}' adlı personeli silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}/>
     {selectedPersonnel && isEditable && <AddPaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} onSave={handleAddPayment} personnel={selectedPersonnel} personnelJobs={jobs}/>}
     <ConfirmationModal isOpen={!!paymentToDelete} onClose={() => setPaymentToDelete(null)} onConfirm={handleConfirmDeletePayment} title="Ödemeyi Sil" message={`${paymentToDelete ? formatDateTime(paymentToDelete.date) : ''} tarihli ${paymentToDelete ? formatCurrency(paymentToDelete.amount) : ''} tutarındaki ödemeyi silmek istediğinizden emin misiniz?`}/>
+    <JobPaymentDetailsModal 
+        isOpen={jobDetailsModalOpen}
+        onClose={() => setJobDetailsModalOpen(false)}
+        job={selectedJobForDetails}
+        personnel={personnel}
+        customer={customers.find(c => c.id === selectedJobForDetails?.customerId)}
+    />
     </>
   );
 };

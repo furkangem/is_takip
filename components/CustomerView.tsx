@@ -1,8 +1,5 @@
-
-
-
 import React, { useState, useMemo, useEffect } from 'react';
-import { Customer, CustomerJob, Personnel, Material, JobPersonnelPayment } from '../types';
+import { Customer, CustomerJob, Personnel, Material, JobPersonnelPayment, IncomePaymentMethod, GoldType } from '../types';
 import { BuildingOffice2Icon, IdentificationIcon, PhoneIcon, MapPinIcon, DocumentTextIcon, XMarkIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CashIcon, TrendingUpIcon, TrendingDownIcon, ChevronUpIcon, ChevronDownIcon, UsersIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
 import StatCard from './ui/StatCard';
@@ -126,6 +123,8 @@ const JobEditorModal: React.FC<{
         location: '',
         description: '',
         income: '',
+        incomePaymentMethod: 'TRY' as IncomePaymentMethod,
+        incomeGoldType: 'gram' as GoldType,
         otherExpenses: '',
     });
 
@@ -143,8 +142,10 @@ const JobEditorModal: React.FC<{
                     date: jobToEdit.date,
                     location: jobToEdit.location,
                     description: jobToEdit.description,
-                    income: String(jobToEdit.income),
-                    otherExpenses: String(jobToEdit.otherExpenses),
+                    income: String(jobToEdit.income || ''),
+                    incomePaymentMethod: jobToEdit.incomePaymentMethod || 'TRY',
+                    incomeGoldType: jobToEdit.incomeGoldType || 'gram',
+                    otherExpenses: String(jobToEdit.otherExpenses || ''),
                 });
                 setSelectedPersonnelIds(jobToEdit.personnelIds || []);
                 setMaterials(jobToEdit.materials.map(({id, ...rest}) => rest) || []);
@@ -155,7 +156,11 @@ const JobEditorModal: React.FC<{
                  setFormData({
                     date: new Date().toISOString().split('T')[0],
                     location: initialLocation || '',
-                    description: '', income: '', otherExpenses: '',
+                    description: '', 
+                    income: '', 
+                    incomePaymentMethod: 'TRY',
+                    incomeGoldType: 'gram',
+                    otherExpenses: '',
                 });
                 setSelectedPersonnelIds([]);
                 setMaterials([]);
@@ -171,14 +176,12 @@ const JobEditorModal: React.FC<{
     }, [personnelPayments]);
 
     const totalMaterialCost = useMemo(() => {
-        // FIX: Explicitly type the accumulator 'sum' as a number to prevent TypeScript
-        // from inferring it as 'unknown', which causes a type error with the '+' operator.
-        return materials.reduce((sum: number, mat) => sum + (mat.quantity * mat.unitPrice), 0);
+        return materials.reduce((sum, mat) => sum + (mat.quantity * mat.unitPrice), 0);
     }, [materials]);
 
     if (!isOpen) return null;
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -198,20 +201,27 @@ const JobEditorModal: React.FC<{
     };
 
     const handleAddMaterial = () => {
-        setMaterials(prev => [...prev, { name: '', quantity: 1, unitPrice: 0 }]);
+        setMaterials(prev => [...prev, { name: '', unit: '', quantity: 1, unitPrice: 0 }]);
     };
 
-    const handleMaterialChange = (index: number, field: keyof Omit<Material, 'id'>, value: string | number) => {
+    const handleMaterialChange = (index: number, field: keyof Omit<Material, 'id'>, value: string) => {
         const newMaterials = [...materials];
-        const numValue = typeof value === 'string' ? parseFloat(value) : value;
-        (newMaterials[index] as any)[field] = field === 'name' ? value : (isNaN(numValue) ? 0 : numValue);
+        const material = { ...newMaterials[index] };
+
+        if (field === 'name' || field === 'unit') {
+            material[field] = value;
+        } else if (field === 'quantity' || field === 'unitPrice') {
+            const numValue = parseFloat(value);
+            (material as any)[field] = isNaN(numValue) ? 0 : numValue;
+        }
+        
+        newMaterials[index] = material;
         setMaterials(newMaterials);
     };
 
     const handleRemoveMaterial = (index: number) => {
         setMaterials(prev => prev.filter((_, i) => i !== index));
     };
-
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -221,12 +231,14 @@ const JobEditorModal: React.FC<{
             location: formData.location,
             description: formData.description,
             income: parseFloat(formData.income) || 0,
+            incomePaymentMethod: formData.incomePaymentMethod,
+            incomeGoldType: formData.incomePaymentMethod === 'GOLD' ? formData.incomeGoldType : undefined,
             otherExpenses: parseFloat(formData.otherExpenses) || 0,
             personnelIds: selectedPersonnelIds,
             personnelPayments: Array.from(personnelPayments.entries())
                 .filter(([_, payment]) => (parseFloat(payment) || 0) > 0)
                 .map(([personnelId, payment]) => ({ personnelId, payment: parseFloat(payment) })),
-            materials: materials.map(m => ({ ...m, id: `mat-${Math.random()}`})),
+            materials: materials.map(m => ({ ...m, id: `mat-${Date.now()}${Math.random()}`})),
         };
         
         if (jobToEdit) {
@@ -273,7 +285,7 @@ const JobEditorModal: React.FC<{
                                 <div className="absolute z-10 mt-1 w-full bg-white shadow-lg border rounded-md max-h-60 overflow-auto">
                                      <div className="p-2 border-b"><input type="text" placeholder="Personel ara..." value={personnelSearch} onChange={(e) => setPersonnelSearch(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"/></div>
                                     <ul>{filteredPersonnel.map(p => (
-                                        <li key={p.id} onClick={() => handlePersonnelSelect(p.id)} className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between">
+                                        <li key={p.id} onClick={() => handlePersonnelSelect(p.id)} className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between text-gray-900">
                                             {p.name} <input type="checkbox" readOnly checked={selectedPersonnelIds.includes(p.id)} className="form-checkbox h-4 w-4 text-blue-600" />
                                         </li>
                                     ))}</ul>
@@ -296,10 +308,11 @@ const JobEditorModal: React.FC<{
                         </div>
                         <div className="space-y-2 max-h-40 overflow-y-auto p-2 bg-gray-50 rounded-md">{materials.map((mat, index) => (
                              <div key={index} className="grid grid-cols-12 gap-2 items-center">
-                                <input type="text" placeholder="Malzeme Adı" value={mat.name} onChange={e => handleMaterialChange(index, 'name', e.target.value)} className="col-span-5 px-2 py-1 border rounded-md text-sm bg-white text-gray-900"/>
+                                <input type="text" placeholder="Malzeme Adı" value={mat.name} onChange={e => handleMaterialChange(index, 'name', e.target.value)} className="col-span-4 px-2 py-1 border rounded-md text-sm bg-white text-gray-900"/>
+                                <input type="text" placeholder="Birim" value={mat.unit || ''} onChange={e => handleMaterialChange(index, 'unit', e.target.value)} className="col-span-1 px-2 py-1 border rounded-md text-sm bg-white text-gray-900"/>
                                 <input type="number" placeholder="Adet" value={mat.quantity} onChange={e => handleMaterialChange(index, 'quantity', e.target.value)} className="col-span-2 px-2 py-1 border rounded-md text-sm bg-white text-gray-900"/>
-                                <input type="number" placeholder="Birim Fiyat" value={mat.unitPrice} onChange={e => handleMaterialChange(index, 'unitPrice', e.target.value)} className="col-span-3 px-2 py-1 border rounded-md text-sm bg-white text-gray-900"/>
-                                <div className="col-span-2 flex items-center justify-end">
+                                <input type="number" placeholder="Birim Fiyat" value={mat.unitPrice} onChange={e => handleMaterialChange(index, 'unitPrice', e.target.value)} className="col-span-2 px-2 py-1 border rounded-md text-sm bg-white text-gray-900"/>
+                                <div className="col-span-3 flex items-center justify-end">
                                     <span className="text-xs font-semibold w-16 text-right">{formatCurrency(mat.quantity * mat.unitPrice)}</span>
                                     <button type="button" onClick={() => handleRemoveMaterial(index)} className="ml-2 text-red-500 hover:text-red-700"><TrashIcon className="h-4 w-4"/></button>
                                 </div>
@@ -309,9 +322,30 @@ const JobEditorModal: React.FC<{
                     
                     {/* Financials */}
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                         <div>
-                            <label htmlFor="income" className="flex items-center text-sm font-medium text-green-700"><TrendingUpIcon className="h-4 w-4 mr-1"/> Müşteri Fiyatı (Gelir ₺)</label>
-                            <input type="number" name="income" value={formData.income} onChange={handleChange} required className="block w-full px-3 py-2 border border-green-300 rounded-md shadow-sm bg-green-50" />
+                        <div className="flex gap-2 items-end">
+                            <div className="flex-grow">
+                                <label htmlFor="income" className="flex items-center text-sm font-medium text-green-700"><TrendingUpIcon className="h-4 w-4 mr-1"/> Müşteri Fiyatı (Gelir)</label>
+                                <input type="number" name="income" value={formData.income} onChange={handleChange} className="block w-full px-3 py-2 border border-green-300 rounded-md shadow-sm bg-green-50" />
+                            </div>
+                            <div className="w-28">
+                                <label htmlFor="incomePaymentMethod" className="block text-sm font-medium text-gray-700">Birim</label>
+                                <select name="incomePaymentMethod" value={formData.incomePaymentMethod} onChange={handleChange} className={commonInputClass}>
+                                    <option value="TRY">₺ (TL)</option>
+                                    <option value="USD">$ (Dolar)</option>
+                                    <option value="EUR">€ (Euro)</option>
+                                    <option value="GOLD">Altın</option>
+                                </select>
+                            </div>
+                            {formData.incomePaymentMethod === 'GOLD' && (
+                                <div className="w-28">
+                                    <label htmlFor="incomeGoldType" className="block text-sm font-medium text-gray-700">Türü</label>
+                                    <select name="incomeGoldType" value={formData.incomeGoldType} onChange={handleChange} className={commonInputClass}>
+                                        <option value="gram">Gram</option>
+                                        <option value="quarter">Çeyrek</option>
+                                        <option value="full">Tam</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label htmlFor="otherExpenses" className="flex items-center text-sm font-medium text-red-700"><TrendingDownIcon className="h-4 w-4 mr-1"/> Diğer Giderler (₺)</label>
@@ -319,9 +353,9 @@ const JobEditorModal: React.FC<{
                         </div>
                     </div>
                     <div className="mt-2 bg-gray-100 p-2 rounded-md text-sm grid grid-cols-3 gap-2 text-center">
-                        <div className="font-semibold">Personel: <span className="text-red-600">{formatCurrency(totalPersonnelPayment)}</span></div>
-                        <div className="font-semibold">Malzeme: <span className="text-red-600">{formatCurrency(totalMaterialCost)}</span></div>
-                        <div className="font-bold text-base">Toplam Maliyet: <span className="text-red-700">{formatCurrency(totalPersonnelPayment + totalMaterialCost + (parseFloat(formData.otherExpenses) || 0))}</span></div>
+                        <div className="font-semibold text-gray-800">Personel: <span className="text-red-600">{formatCurrency(totalPersonnelPayment)}</span></div>
+                        <div className="font-semibold text-gray-800">Malzeme: <span className="text-red-600">{formatCurrency(totalMaterialCost)}</span></div>
+                        <div className="font-bold text-base text-gray-900">Toplam Maliyet: <span className="text-red-700">{formatCurrency(totalPersonnelPayment + totalMaterialCost + (parseFloat(formData.otherExpenses) || 0))}</span></div>
                     </div>
                     
                     <div className="flex justify-end gap-3 pt-4">
@@ -342,9 +376,27 @@ const JobDetailModal: React.FC<{
     job: CustomerJob | null;
     personnel: Personnel[];
 }> = ({ isOpen, onClose, onEdit, onDelete, job, personnel }) => {
+
     if (!isOpen || !job) return null;
 
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const formatIncome = (job: CustomerJob): string => {
+        if (job.incomePaymentMethod === 'GOLD') {
+            const goldTypes = { gram: 'Gram', quarter: 'Çeyrek', full: 'Tam' };
+            const type = job.incomeGoldType ? goldTypes[job.incomeGoldType] : '';
+            return `${job.income} ${type} Altın`;
+        }
+        if (job.incomePaymentMethod === 'USD') {
+             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(job.income);
+        }
+        if (job.incomePaymentMethod === 'EUR') {
+            return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(job.income);
+        }
+        // Default to TRY
+        return formatCurrency(job.income);
+    }
+
 
     const totalPersonnelCost = useMemo(() => job.personnelPayments.reduce((sum, p) => sum + p.payment, 0), [job.personnelPayments]);
     const totalMaterialCost = useMemo(() => job.materials.reduce((sum, m) => sum + (m.quantity * m.unitPrice), 0), [job.materials]);
@@ -352,54 +404,69 @@ const JobDetailModal: React.FC<{
     const netProfit = job.income - totalCost;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-4xl transform transition-all" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-5 border-b bg-white rounded-t-xl">
-                    <div>
-                        <h3 className="text-xl font-bold text-gray-900">{job.location}</h3>
-                        <p className="text-sm text-gray-500">{formatDate(job.date)}</p>
+        <>
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={onClose}>
+                <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-4xl transform transition-all" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-between items-center p-5 border-b bg-white rounded-t-xl">
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-900">{job.location}</h3>
+                            <p className="text-sm text-gray-500">{formatDate(job.date)}</p>
+                        </div>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-100"><XMarkIcon className="h-6 w-6" /></button>
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-100"><XMarkIcon className="h-6 w-6" /></button>
-                </div>
-                <div className="p-6 max-h-[75vh] overflow-y-auto space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                        <div className="bg-green-100 p-4 rounded-lg"><p className="text-sm font-medium text-green-800">Gelir</p><p className="text-2xl font-bold text-green-700">{formatCurrency(job.income)}</p></div>
-                        <div className="bg-red-100 p-4 rounded-lg"><p className="text-sm font-medium text-red-800">Toplam Maliyet</p><p className="text-2xl font-bold text-red-700">{formatCurrency(totalCost)}</p></div>
-                        <div className={`p-4 rounded-lg ${netProfit >= 0 ? 'bg-blue-100' : 'bg-red-200'}`}><p className={`text-sm font-medium ${netProfit >= 0 ? 'text-blue-800' : 'text-red-900'}`}>Net Kar</p><p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-blue-700' : 'text-red-800'}`}>{formatCurrency(netProfit)}</p></div>
-                    </div>
+                    <div className="p-6 max-h-[75vh] overflow-y-auto space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                            <div className="bg-green-100 p-4 rounded-lg"><p className="text-sm font-medium text-green-800">Gelir</p><p className="text-2xl font-bold text-green-700">{formatIncome(job)}</p></div>
+                            <div className="bg-red-100 p-4 rounded-lg"><p className="text-sm font-medium text-red-800">Toplam Maliyet</p><p className="text-2xl font-bold text-red-700">{formatCurrency(totalCost)}</p></div>
+                            <div className={`p-4 rounded-lg ${netProfit >= 0 ? 'bg-blue-100' : 'bg-red-200'}`}><p className={`text-sm font-medium ${netProfit >= 0 ? 'text-blue-800' : 'text-red-900'}`}>Net Kar</p><p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-blue-700' : 'text-red-800'}`}>{formatCurrency(netProfit)}</p></div>
+                        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white p-4 rounded-lg border">
-                            <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">İş Detayları</h4>
-                            <div>
-                                <dt className="text-gray-500 text-sm font-medium">İş Açıklaması:</dt>
-                                <dd className="mt-1 text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded-md">{job.description}</dd>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-white p-4 rounded-lg border">
+                                <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">İş Detayları</h4>
+                                <div>
+                                    <dt className="text-gray-500 text-sm font-medium">İş Açıklaması:</dt>
+                                    <dd className="mt-1 text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded-md">{job.description}</dd>
+                                </div>
+                            </div>
+                            <div className="bg-white p-4 rounded-lg border">
+                                 <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">Maliyet Dökümü</h4>
+                                 <dl className="space-y-2 text-sm">
+                                    <div className="flex justify-between"><dt className="text-gray-500">Personel Maliyeti:</dt><dd className="font-medium text-red-600">{formatCurrency(totalPersonnelCost)}</dd></div>
+                                    <div className="flex justify-between"><dt className="text-gray-500">Malzeme Maliyeti:</dt><dd className="font-medium text-red-600">{formatCurrency(totalMaterialCost)}</dd></div>
+                                    <div className="flex justify-between"><dt className="text-gray-500">Diğer Giderler:</dt><dd className="font-medium text-red-600">{formatCurrency(job.otherExpenses)}</dd></div>
+                                 </dl>
                             </div>
                         </div>
-                        <div className="bg-white p-4 rounded-lg border">
-                             <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">Maliyet Dökümü</h4>
-                             <dl className="space-y-2 text-sm">
-                                <div className="flex justify-between"><dt className="text-gray-500">Personel Maliyeti:</dt><dd className="font-medium text-red-600">{formatCurrency(totalPersonnelCost)}</dd></div>
-                                <div className="flex justify-between"><dt className="text-gray-500">Malzeme Maliyeti:</dt><dd className="font-medium text-red-600">{formatCurrency(totalMaterialCost)}</dd></div>
-                                <div className="flex justify-between"><dt className="text-gray-500">Diğer Giderler:</dt><dd className="font-medium text-red-600">{formatCurrency(job.otherExpenses)}</dd></div>
-                             </dl>
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-white p-4 rounded-lg border">
+                                <h4 className="text-md font-semibold text-gray-700 mb-2">Çalışan Personeller ve Hakedişleri</h4>
+                                <ul className="space-y-1 text-sm max-h-40 overflow-y-auto">
+                                    {job.personnelIds.map(pId => {
+                                        const payment = job.personnelPayments.find(p => p.personnelId === pId)?.payment || 0;
+                                        return (
+                                            <li key={pId} className="flex justify-between items-center">
+                                                <span className="text-gray-600">{personnel.find(per => per.id === pId)?.name || 'Bilinmeyen'}</span>
+                                                <span className="font-semibold">{formatCurrency(payment)}</span>
+                                            </li>
+                                        )
+                                    })}
+                                </ul>
+                            </div>
+                            {job.materials.length > 0 && <div className="bg-white p-4 rounded-lg border"><h4 className="text-md font-semibold text-gray-700 mb-2">Kullanılan Malzemeler</h4><ul className="space-y-1 text-sm max-h-40 overflow-y-auto">{job.materials.map(m => <li key={m.id} className="grid grid-cols-3 gap-2"><span className="text-gray-600 col-span-2">{m.name}</span><span className="font-semibold text-right">{m.quantity}{m.unit ? ` ${m.unit}` : ''} x {formatCurrency(m.unitPrice)} = {formatCurrency(m.quantity*m.unitPrice)}</span></li>)}</ul></div>}
                         </div>
                     </div>
-                    
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {job.personnelPayments.length > 0 && <div className="bg-white p-4 rounded-lg border"><h4 className="text-md font-semibold text-gray-700 mb-2">Personel Yevmiyeleri</h4><ul className="space-y-1 text-sm max-h-40 overflow-y-auto">{job.personnelPayments.map(p => <li key={p.personnelId} className="flex justify-between items-center"><span className="text-gray-600">{personnel.find(per => per.id === p.personnelId)?.name || 'Bilinmeyen'}</span><span className="font-semibold">{formatCurrency(p.payment)}</span></li>)}</ul></div>}
-                        {job.materials.length > 0 && <div className="bg-white p-4 rounded-lg border"><h4 className="text-md font-semibold text-gray-700 mb-2">Kullanılan Malzemeler</h4><ul className="space-y-1 text-sm max-h-40 overflow-y-auto">{job.materials.map(m => <li key={m.id} className="grid grid-cols-3 gap-2"><span className="text-gray-600 col-span-2">{m.name}</span><span className="font-semibold text-right">{m.quantity} x {formatCurrency(m.unitPrice)} = {formatCurrency(m.quantity*m.unitPrice)}</span></li>)}</ul></div>}
-                    </div>
-                </div>
-                <div className="px-6 py-4 bg-gray-100 flex justify-between items-center rounded-b-xl border-t">
-                     <button type="button" onClick={() => onDelete(job)} className="flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"><TrashIcon className="h-4 w-4 mr-2"/> Sil</button>
-                    <div className="flex justify-end gap-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Kapat</button>
-                        <button type="button" onClick={() => onEdit(job)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"><PencilIcon className="h-4 w-4 mr-2"/> Düzenle</button>
+                    <div className="px-6 py-4 bg-gray-100 flex justify-between items-center rounded-b-xl border-t">
+                         <button type="button" onClick={() => onDelete(job)} className="flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"><TrashIcon className="h-4 w-4 mr-2"/> Sil</button>
+                        <div className="flex justify-end gap-3">
+                            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Kapat</button>
+                            <button type="button" onClick={() => onEdit(job)} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"><PencilIcon className="h-4 w-4 mr-2"/> Düzenle</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 
@@ -468,9 +535,6 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
         };
     }, [selectedCustomer, customerJobs]);
 
-    // FIX: Explicitly type 'jobsByLocation' to ensure TypeScript correctly infers it as
-    // an object with string keys and CustomerJob arrays as values, resolving subsequent
-    // property access errors (e.g., on '.length' and '.map').
     const jobsByLocation: Record<string, CustomerJob[]> = useMemo(() => {
       if (!selectedCustomerJobs) return {};
       return selectedCustomerJobs.reduce<Record<string, CustomerJob[]>>((acc, job) => {
