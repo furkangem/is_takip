@@ -16,9 +16,9 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, selectedMonth, setSelectedMonth, globalSearchQuery, setGlobalSearchQuery, onMenuClick }) => {
   const getRoleName = (role: string) => {
-      if (role === 'ADMIN') return 'Admin';
-      if (role === 'FOREMAN') return 'Ustabaşı';
-      return 'Kullanıcı';
+      if (role === 'SUPER_ADMIN') return 'Süper Admin';
+      if (role === 'VIEWER') return 'Görüntüleyici';
+      return role;
   }
 
   const handlePrevMonth = () => {

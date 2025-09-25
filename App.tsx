@@ -1,9 +1,8 @@
 
 
-
 import React, { useState, useEffect } from 'react';
-import { users as initialUsers, personnel as initialPersonnel, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs, defterEntries as initialDefterEntries, payments as initialPayments, sharedExpenses as initialSharedExpenses, defterNotes as initialDefterNotes } from './data/mockData';
-import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, Payment, SharedExpense, DefterNote } from './types';
+import { users as initialUsers, personnel as initialPersonnel, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs, defterEntries as initialDefterEntries, sharedExpenses as initialSharedExpenses, defterNotes as initialDefterNotes, workDays as initialWorkDays } from './data/mockData';
+import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, SharedExpense, DefterNote, WorkDay } from './types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
@@ -14,8 +13,9 @@ import AdminView from './components/AdminView';
 import CustomerView from './components/CustomerView';
 import KasaView from './components/LedgerView';
 import GlobalSearchView from './components/GlobalSearchView';
+import TimeSheetView from './components/TimeSheetView';
 
-type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa';
+type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa' | 'timesheet';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -30,12 +30,26 @@ export default function App() {
   const [customerJobs, setCustomerJobs] = useState<CustomerJob[]>(initialCustomerJobs);
   const [defterEntries, setDefterEntries] = useState<DefterEntry[]>(initialDefterEntries);
   const [defterNotes, setDefterNotes] = useState<DefterNote[]>(initialDefterNotes);
-  const [payments, setPayments] = useState<Payment[]>(initialPayments);
   const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>(initialSharedExpenses);
+  const [workDays, setWorkDays] = useState<WorkDay[]>(initialWorkDays);
   
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [navigateToItem, setNavigateToItem] = useState<{ view: View, id: string } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        const user: User = JSON.parse(savedUser);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error("Failed to parse user from localStorage", error);
+      localStorage.removeItem('currentUser');
+    }
+  }, []);
 
   useEffect(() => {
     if (navigateToItem) {
@@ -62,12 +76,14 @@ export default function App() {
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
+    localStorage.setItem('currentUser', JSON.stringify(user));
     setCurrentView('dashboard'); // Reset to dashboard on login
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     setIsAuthenticated(false);
+    localStorage.removeItem('currentUser');
   };
   
   const addPersonnelPayment = (newPayment: Omit<PersonnelPayment, 'id'>) => {
@@ -127,22 +143,67 @@ export default function App() {
   };
 
   const deleteCustomer = (customerId: string) => {
+    const jobsToDelete = customerJobs.filter(job => job.customerId === customerId);
+    const jobIdsToDelete = new Set(jobsToDelete.map(j => j.id));
+    setWorkDays(prev => prev.filter(wd => !jobIdsToDelete.has(wd.customerJobId)));
+
     setCustomers(prev => prev.filter(c => c.id !== customerId));
     setCustomerJobs(prev => prev.filter(job => job.customerId !== customerId));
   };
+
+  const generateWorkDaysForJob = (job: CustomerJob): WorkDay[] => {
+      const newWorkDays: WorkDay[] = [];
+      let workDayIdCounter = Date.now();
+      
+      const [startYear, startMonth, startDay] = job.date.split('-').map(Number);
+      
+      job.personnelPayments.forEach(pPayment => {
+          const days = pPayment.daysWorked || 0;
+          if (days <= 0) return;
+          const dailyWage = pPayment.payment > 0 && days > 0 ? Math.round(pPayment.payment / days) : 0;
+          for (let i = 0; i < days; i++) {
+              const workDate = new Date(startYear, startMonth - 1, startDay);
+              workDate.setDate(workDate.getDate() + i);
+
+              const year = workDate.getFullYear();
+              const month = (workDate.getMonth() + 1).toString().padStart(2, '0');
+              const day = workDate.getDate().toString().padStart(2, '0');
+              const dateString = `${year}-${month}-${day}`;
+
+              newWorkDays.push({
+                  id: `wd-${workDayIdCounter++}-${i}`,
+                  personnelId: pPayment.personnelId,
+                  customerJobId: job.id,
+                  date: dateString,
+                  wage: dailyWage,
+              });
+          }
+      });
+      return newWorkDays;
+  }
 
   // Customer Job CRUD
   const addCustomerJob = (newJobData: Omit<CustomerJob, 'id'>) => {
     const newJob: CustomerJob = { ...newJobData, id: `job-${Date.now()}` };
     setCustomerJobs(prev => [...prev, newJob]);
+    
+    const newWorkDays = generateWorkDaysForJob(newJob);
+    setWorkDays(prev => [...prev, ...newWorkDays]);
   };
 
   const updateCustomerJob = (updatedJob: CustomerJob) => {
     setCustomerJobs(prev => prev.map(job => job.id === updatedJob.id ? updatedJob : job));
+    
+    setWorkDays(prevWorkDays => {
+        const otherWorkDays = prevWorkDays.filter(wd => wd.customerJobId !== updatedJob.id);
+        const newWorkDays = generateWorkDaysForJob(updatedJob);
+        return [...otherWorkDays, ...newWorkDays];
+    });
   };
 
   const deleteCustomerJob = (jobId: string) => {
     setCustomerJobs(prev => prev.filter(job => job.id !== jobId));
+    setWorkDays(prev => prev.filter(wd => wd.customerJobId !== jobId));
   };
 
   // Defter Entry CRUD
@@ -160,12 +221,12 @@ export default function App() {
   };
   
   // Defter Note CRUD
-  const addDefterNote = (content: string) => {
+  const addDefterNote = (newNoteData: Omit<DefterNote, 'id' | 'createdAt' | 'completed'>) => {
     const newNote: DefterNote = {
+      ...newNoteData,
       id: `dn-${Date.now()}`,
-      content,
       createdAt: new Date().toISOString(),
-      completed: false
+      completed: false,
     };
     setDefterNotes(prev => [newNote, ...prev]);
   };
@@ -243,11 +304,9 @@ export default function App() {
                 <DashboardView
                   currentUser={currentUser}
                   personnel={personnel}
-                  personnelPayments={personnelPayments}
                   customerJobs={customerJobs}
                   defterEntries={defterEntries}
-                  selectedMonth={selectedMonth}
-                  payments={payments}
+                  workDays={workDays}
                 />
               )}
               {currentView === 'personnel' && (
@@ -267,8 +326,9 @@ export default function App() {
                   onNavigationComplete={handleNavigationComplete}
                 />
               )}
-               {currentView === 'customers' && currentUser.role === Role.ADMIN && (
+               {currentView === 'customers' && (
                  <CustomerView
+                    currentUser={currentUser}
                     customers={customers}
                     customerJobs={customerJobs}
                     personnel={personnel}
@@ -282,8 +342,21 @@ export default function App() {
                     onNavigationComplete={handleNavigationComplete}
                  />
               )}
-              {currentView === 'kasa' && currentUser.role === Role.ADMIN && (
+               {currentView === 'timesheet' && (
+                 <TimeSheetView
+                    personnel={personnel}
+                    customers={customers}
+                    customerJobs={customerJobs}
+                    workDays={workDays}
+                 />
+              )}
+              {currentView === 'kasa' && (
                  <KasaView
+                    currentUser={currentUser}
+                    customers={customers}
+                    customerJobs={customerJobs}
+                    personnel={personnel}
+                    personnelPayments={personnelPayments}
                     defterEntries={defterEntries}
                     sharedExpenses={sharedExpenses}
                     defterNotes={defterNotes}
@@ -296,9 +369,10 @@ export default function App() {
                     onAddSharedExpense={addSharedExpense}
                     onUpdateSharedExpense={updateSharedExpense}
                     onDeleteSharedExpense={deleteSharedExpense}
+                    onNavigate={handleNavigation}
                  />
               )}
-              {currentView === 'reports' && currentUser.role === Role.ADMIN && (
+              {currentView === 'reports' && (
                  <ReportView
                     users={users}
                     personnel={personnel}
@@ -308,7 +382,7 @@ export default function App() {
                     selectedMonth={selectedMonth}
                  />
               )}
-              {currentView === 'admin' && currentUser.role === Role.ADMIN && (
+              {currentView === 'admin' && currentUser.role === Role.SUPER_ADMIN && (
                  <AdminView
                     currentUser={currentUser}
                     users={users}

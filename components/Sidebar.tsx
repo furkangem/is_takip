@@ -1,11 +1,12 @@
 
 
+
 import React from 'react';
-import { DashboardIcon, UsersIcon, ChartBarIcon, CogIcon, DocumentTextIcon, BuildingOffice2Icon, BanknotesIcon } from './icons/Icons';
+import { DashboardIcon, UsersIcon, ChartBarIcon, CogIcon, DocumentTextIcon, BuildingOffice2Icon, BanknotesIcon, CalendarDaysIcon } from './icons/Icons';
 import { User, Role } from '../types';
 import Logo from './Logo';
 
-type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa';
+type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa' | 'timesheet';
 
 interface SidebarProps {
   currentView: View;
@@ -16,12 +17,13 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, currentUser, isOpen }) => {
   const navItems = [
-    { id: 'dashboard', label: 'Gösterge Paneli', icon: DashboardIcon, roles: [Role.ADMIN, Role.FOREMAN] },
-    { id: 'personnel', label: 'Personel Yönetimi', icon: UsersIcon, roles: [Role.ADMIN] },
-    { id: 'customers', label: 'Müşteriler', icon: BuildingOffice2Icon, roles: [Role.ADMIN] },
-    { id: 'kasa', label: 'Kasa', icon: BanknotesIcon, roles: [Role.ADMIN] },
-    { id: 'reports', label: 'Raporlar', icon: ChartBarIcon, roles: [Role.ADMIN] },
-    { id: 'admin', label: 'Admin Paneli', icon: CogIcon, roles: [Role.ADMIN] },
+    { id: 'dashboard', label: 'Gösterge Paneli', icon: DashboardIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
+    { id: 'personnel', label: 'Personel Yönetimi', icon: UsersIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
+    { id: 'customers', label: 'Müşteriler', icon: BuildingOffice2Icon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
+    { id: 'timesheet', label: 'Puantaj', icon: CalendarDaysIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
+    { id: 'kasa', label: 'Kasa', icon: BanknotesIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
+    { id: 'reports', label: 'Raporlar', icon: ChartBarIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
+    { id: 'admin', label: 'Admin Paneli', icon: CogIcon, roles: [Role.SUPER_ADMIN] },
   ];
 
   const visibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));

@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useState } from 'react';
 import { Personnel, User, Payment, Income, Expense, PersonnelPayment } from '../types';
 import { TrendingUpIcon, TrendingDownIcon, CashIcon, MagnifyingGlassIcon, ClipboardDocumentListIcon } from './icons/Icons';
@@ -95,8 +96,8 @@ const CashFlowView: React.FC<CashFlowViewProps> = ({ users, personnel, payments,
             });
         });
         
-        const income = allTransactions.reduce((sum, t) => sum + (t.amountIn || 0), 0);
-        const expense = allTransactions.reduce((sum, t) => sum + (t.amountOut || 0), 0);
+        const income = allTransactions.reduce((sum: number, t: Transaction) => sum + (t.amountIn || 0), 0);
+        const expense = allTransactions.reduce((sum: number, t: Transaction) => sum + (t.amountOut || 0), 0);
         
         return {
             transactions: allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),

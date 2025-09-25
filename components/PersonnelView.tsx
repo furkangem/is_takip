@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Personnel, User, Role, PersonnelPayment, CustomerJob, Customer } from '../types';
-import { UserGroupIcon, IdentificationIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon, XMarkIcon, BriefcaseIcon, BanknotesIcon, TrendingUpIcon, TrendingDownIcon } from './icons/Icons';
+import { UserGroupIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon, XMarkIcon, BriefcaseIcon, BanknotesIcon, TrendingUpIcon, TrendingDownIcon, ClipboardDocumentListIcon, CurrencyDollarIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
 import StatCard from './ui/StatCard';
 
@@ -229,7 +229,11 @@ const AddPaymentModal: React.FC<{
 };
 
 const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, personnel, customers, customerJobs, personnelPayments, onAddPersonnel, onUpdatePersonnel, onDeletePersonnel, onAddPersonnelPayment, onDeletePersonnelPayment, navigateToId, onNavigationComplete }) => {
-  const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(personnel.length > 0 ? personnel[0] : null);
+  const [selectedPersonnelId, setSelectedPersonnelId] = useState<string | null>(personnel.length > 0 ? personnel[0].id : null);
+  const selectedPersonnel = useMemo(() => 
+    personnel.find(p => p.id === selectedPersonnelId) || null
+  , [personnel, selectedPersonnelId]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [personnelToEdit, setPersonnelToEdit] = useState<Personnel | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -240,13 +244,35 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   const [filters, setFilters] = useState({ startDate: '', endDate: '' });
   const [jobDetailsModalOpen, setJobDetailsModalOpen] = useState(false);
   const [selectedJobForDetails, setSelectedJobForDetails] = useState<CustomerJob | null>(null);
+  const [isNoteEditing, setIsNoteEditing] = useState(false);
+  const [noteText, setNoteText] = useState('');
+
+  useEffect(() => {
+    if (selectedPersonnel) {
+        setNoteText(selectedPersonnel.note?.text || '');
+        setIsNoteEditing(false);
+    }
+  }, [selectedPersonnel]);
+
+  const handleNoteSave = () => {
+    if (selectedPersonnel) {
+        onUpdatePersonnel({
+            ...selectedPersonnel,
+            note: {
+                text: noteText,
+                updatedAt: new Date().toISOString(),
+            }
+        });
+        setIsNoteEditing(false);
+    }
+  };
 
 
   useEffect(() => {
     if (navigateToId) {
         const person = personnel.find(p => p.id === navigateToId);
         if (person) {
-            setSelectedPersonnel(person);
+            setSelectedPersonnelId(person.id);
             setSearchQuery('');
         }
         onNavigationComplete();
@@ -261,14 +287,14 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   }, [personnel, searchQuery]);
 
   useEffect(() => {
-    if (selectedPersonnel && !filteredPersonnel.find(p => p.id === selectedPersonnel.id)) {
-        setSelectedPersonnel(filteredPersonnel.length > 0 ? filteredPersonnel[0] : null);
-    } else if (!selectedPersonnel && filteredPersonnel.length > 0) {
-        setSelectedPersonnel(filteredPersonnel[0]);
-    } else if (filteredPersonnel.length === 0) {
-        setSelectedPersonnel(null);
+    const isSelectedInList = filteredPersonnel.some(p => p.id === selectedPersonnelId);
+
+    if (selectedPersonnelId && !isSelectedInList) {
+        setSelectedPersonnelId(filteredPersonnel.length > 0 ? filteredPersonnel[0].id : null);
+    } else if (!selectedPersonnelId && filteredPersonnel.length > 0) {
+        setSelectedPersonnelId(filteredPersonnel[0].id);
     }
-  }, [filteredPersonnel, selectedPersonnel]);
+  }, [filteredPersonnel, selectedPersonnelId]);
 
   const handleOpenAddModal = () => { setPersonnelToEdit(null); setIsModalOpen(true); };
   const handleOpenEditModal = (p: Personnel) => { setPersonnelToEdit(p); setIsModalOpen(true); };
@@ -292,17 +318,14 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   const handleSavePersonnel = (data: Personnel | Omit<Personnel, 'id'>) => {
     if ('id' in data) {
       onUpdatePersonnel(data);
-      if(selectedPersonnel?.id === data.id) {
-        setSelectedPersonnel(data);
-      }
     } else {
       onAddPersonnel(data);
     }
   };
 
   const handleSelectPersonnel = (p: Personnel) => {
-    if (selectedPersonnel?.id !== p.id) {
-      setSelectedPersonnel(p);
+    if (selectedPersonnelId !== p.id) {
+      setSelectedPersonnelId(p.id);
     }
   };
 
@@ -325,16 +348,16 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   const { totalPaymentDue, totalPaid, balance, jobs, payments } = useMemo(() => {
     if (!selectedPersonnel) return { totalPaymentDue: 0, totalPaid: 0, balance: 0, jobs: [], payments: [] };
     
-    // Overall totals (not filtered)
     const allPersonnelJobs = customerJobs.filter(job => job.personnelIds.includes(selectedPersonnel.id));
-    const due = allPersonnelJobs.reduce((sum, job) => {
+    // FIX: Add explicit type for accumulator `sum` to prevent arithmetic errors.
+    const due = allPersonnelJobs.reduce((sum: number, job: CustomerJob) => {
         const personnelEarning = job.personnelPayments.find(p => p.personnelId === selectedPersonnel.id);
         return sum + (personnelEarning?.payment || 0);
     }, 0);
     const allPersonnelPayments = personnelPayments.filter(p => p.personnelId === selectedPersonnel.id);
-    const paid = allPersonnelPayments.reduce((sum, p) => sum + p.amount, 0);
+    // FIX: Add explicit type for accumulator `sum` to prevent arithmetic errors.
+    const paid = allPersonnelPayments.reduce((sum: number, p: PersonnelPayment) => sum + p.amount, 0);
 
-    // Filtered lists
     const start = filters.startDate ? new Date(filters.startDate) : null;
     if(start) start.setHours(0,0,0,0);
     const end = filters.endDate ? new Date(filters.endDate) : null;
@@ -383,7 +406,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
 
 
   const formatDateTime = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const isEditable = currentUser.role === Role.ADMIN;
+  const isEditable = currentUser.role === Role.SUPER_ADMIN;
   const commonInputClass = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-900 focus:ring-blue-500 focus:border-blue-500";
 
   return (
@@ -424,21 +447,59 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
         {selectedPersonnel ? (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800 flex items-center"><IdentificationIcon className="h-7 w-7 mr-3 text-blue-500"/>{selectedPersonnel.name}</h2>
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-3xl font-bold text-gray-800 flex items-center">
+                        <ClipboardDocumentListIcon className="h-8 w-8 mr-3 text-blue-600"/>
+                        {selectedPersonnel.name}
+                    </h2>
                     <p className="text-gray-500 text-sm mt-1">Genel bakiye ve hakediş özeti</p>
                   </div>
-                   {isEditable && <div className="flex items-center gap-2">
-                        <button onClick={() => handleOpenEditModal(selectedPersonnel)} className="flex items-center text-sm font-medium text-gray-600 hover:text-blue-600 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-md transition-colors"><PencilIcon className="h-4 w-4 mr-2" />Düzenle</button>
-                        <button onClick={() => handleOpenDeleteModal(selectedPersonnel)} className="flex items-center text-sm font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors"><TrashIcon className="h-4 w-4 mr-2" />Sil</button>
+                   {isEditable && <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                        <button onClick={() => handleOpenEditModal(selectedPersonnel)} className="flex items-center text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 px-4 py-2 rounded-lg shadow-sm transition-colors"><PencilIcon className="h-4 w-4 mr-2" />Düzenle</button>
+                        <button onClick={() => handleOpenDeleteModal(selectedPersonnel)} className="flex items-center text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg shadow-sm transition-colors"><TrashIcon className="h-4 w-4 mr-2" />Sil</button>
                    </div>}
                 </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                 <div className="border-t mt-4 pt-4">
+                    {isEditable && isNoteEditing ? (
+                        <div>
+                            <label className="text-sm font-medium text-gray-700">Personel Notu</label>
+                            <textarea
+                                value={noteText}
+                                onChange={(e) => setNoteText(e.target.value)}
+                                className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                rows={3}
+                                autoFocus
+                            />
+                            <div className="flex gap-2 mt-2 justify-end">
+                                <button onClick={() => setIsNoteEditing(false)} className="px-3 py-1 bg-gray-200 text-gray-800 rounded-md text-sm">İptal</button>
+                                <button onClick={handleNoteSave} className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm">Kaydet</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div onClick={() => isEditable && setIsNoteEditing(true)} className={isEditable ? 'cursor-pointer' : ''}>
+                            <p className="text-sm font-medium text-gray-700">Personel Notu</p>
+                            {selectedPersonnel.note?.text ? (
+                                <div className="mt-1 text-sm text-gray-600">
+                                    <p className="whitespace-pre-wrap">{selectedPersonnel.note.text}</p>
+                                    <p className="text-xs text-gray-400 mt-2 text-right">
+                                        Son Güncelleme: {formatDateTime(selectedPersonnel.note.updatedAt)}
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="mt-1 text-sm italic text-gray-400">
+                                    {isEditable ? 'Not eklemek için tıklayın...' : 'Not bulunmuyor.'}
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <StatCard title="Toplam Hakediş" value={formatCurrency(totalPaymentDue)} icon={TrendingUpIcon} color="green" />
                 <StatCard title="Toplam Ödenen" value={formatCurrency(totalPaid)} icon={TrendingDownIcon} color="red" />
-                <StatCard title="Kalan Bakiye" value={formatCurrency(balance)} icon={BanknotesIcon} color={balance >= 0 ? 'blue' : 'red'} />
-              </div>
+                <StatCard title="Kalan Bakiye" value={formatCurrency(balance)} icon={CurrencyDollarIcon} color="blue" />
             </div>
             
              <div className="bg-white p-4 rounded-lg shadow-md space-y-4">

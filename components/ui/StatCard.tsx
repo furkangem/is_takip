@@ -8,21 +8,21 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color }) => {
-  const colorClasses = {
-    green: 'bg-green-500',
-    red: 'bg-red-500',
-    blue: 'bg-blue-500',
+  const iconColorClasses = {
+      green: 'from-green-400 to-green-600',
+      red: 'from-red-400 to-red-600',
+      blue: 'from-blue-400 to-blue-600',
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md flex items-center overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-      <div className={`p-3 rounded-full text-white ${colorClasses[color]} mr-4 shrink-0`}>
-        <Icon className="h-8 w-8" />
+    <div className="bg-white p-5 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.07)] flex items-center gap-5 transition-all duration-300 ease-out hover:shadow-[0_6px_20px_rgba(0,0,0,0.1)] hover:-translate-y-1">
+      <div className={`p-4 rounded-full text-white bg-gradient-to-br ${iconColorClasses[color]} shadow-lg shrink-0`}>
+        <Icon className="h-6 w-6" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-gray-500 font-medium truncate">{title}</p>
         <p 
-          className="text-base lg:text-lg font-bold text-gray-800 truncate" 
+          className="text-2xl font-bold text-gray-800 truncate" 
           title={value}
         >
           {value}
@@ -32,4 +32,4 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color }) 
   );
 };
 
-export default StatCard;
+export default React.memo(StatCard);

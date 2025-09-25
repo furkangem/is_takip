@@ -1,9 +1,9 @@
 
 
-
 export enum Role {
-  ADMIN = 'ADMIN',
-  // FIX: Add FOREMAN role to support foreman-specific views and logic.
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  VIEWER = 'VIEWER',
+  // FIX: Add missing FOREMAN role.
   FOREMAN = 'FOREMAN',
 }
 
@@ -16,13 +16,17 @@ export interface User {
 }
 
 export interface Personnel {
-  id: string;
+  id:string;
   name: string;
-  // FIX: Add optional foremanId to link personnel to a foreman.
+  // FIX: Add missing foremanId property.
   foremanId?: string;
+  note?: {
+    text: string;
+    updatedAt: string; // ISO String
+  }
 }
 
-// FIX: Add missing Payment interface for foreman payments, which was causing compilation errors.
+// FIX: Add missing Payment interface.
 export interface Payment {
   id: string;
   foremanId: string;
@@ -48,6 +52,7 @@ export interface Customer {
 
 export type IncomePaymentMethod = 'TRY' | 'USD' | 'EUR' | 'GOLD';
 export type GoldType = 'gram' | 'quarter' | 'full';
+export type PaymentMethod = 'cash' | 'transfer' | 'card';
 
 export interface Material {
     id: string;
@@ -60,6 +65,8 @@ export interface Material {
 export interface JobPersonnelPayment {
     personnelId: string;
     payment: number;
+    daysWorked: number;
+    paymentMethod?: PaymentMethod;
 }
 
 export interface CustomerJob {
@@ -74,10 +81,8 @@ export interface CustomerJob {
   personnelIds: string[];
   personnelPayments: JobPersonnelPayment[];
   materials: Material[];
-  otherExpenses: number;
 }
 
-// FIX: Add Income and Expense interfaces for extra financial transactions.
 export interface Income {
   id: string;
   description: string;
@@ -92,8 +97,6 @@ export interface Expense {
   date: string; // ISO Date String
 }
 
-export type PaymentMethod = 'cash' | 'transfer' | 'card';
-
 export interface DefterEntry {
   id: string;
   date: string; // YYYY-MM-DD - Entry creation date
@@ -106,10 +109,15 @@ export interface DefterEntry {
   notes?: string;
 }
 
+export type NoteCategory = 'todo' | 'reminder' | 'important';
+
 export interface DefterNote {
   id: string;
-  content: string;
+  title: string;
+  description?: string;
+  category: NoteCategory;
   createdAt: string; // ISO String
+  dueDate?: string; // YYYY-MM-DD
   completed: boolean;
 }
 
@@ -124,12 +132,12 @@ export interface SharedExpense {
   date: string; // ISO string with time
   status: 'paid' | 'unpaid';
 }
-// FIX: Add missing WorkDay interface. This was causing compilation errors in multiple components.
 export interface WorkDay {
   id: string;
   personnelId: string;
+  customerJobId: string;
   date: string; // YYYY-MM-DD
-  location: string;
-  jobDescription: string;
   wage: number;
+  location?: string;
+  jobDescription?: string;
 }

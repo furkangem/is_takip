@@ -23,7 +23,7 @@ const UserEditorModal: React.FC<{
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState<Role>(Role.ADMIN);
+    const [role, setRole] = useState<Role>(Role.VIEWER);
 
     useEffect(() => {
         if (isOpen) {
@@ -36,7 +36,7 @@ const UserEditorModal: React.FC<{
                 setName('');
                 setEmail('');
                 setPassword('');
-                setRole(Role.ADMIN);
+                setRole(Role.VIEWER);
             }
         }
     }, [isOpen, userToEdit]);
@@ -114,7 +114,8 @@ const UserEditorModal: React.FC<{
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             required
                         >
-                            <option value={Role.ADMIN}>Admin</option>
+                            <option value={Role.SUPER_ADMIN}>Süper Admin</option>
+                            <option value={Role.VIEWER}>Görüntüleyici</option>
                         </select>
                     </div>
                     <div className="mt-6 flex justify-end gap-3">
@@ -148,7 +149,8 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
     }, [users, searchQuery]);
 
     const getRoleName = (role: Role) => {
-        if (role === Role.ADMIN) return { name: 'Admin', color: 'bg-blue-100 text-blue-800' };
+        if (role === Role.SUPER_ADMIN) return { name: 'Süper Admin', color: 'bg-red-100 text-red-800' };
+        if (role === Role.VIEWER) return { name: 'Görüntüleyici', color: 'bg-indigo-100 text-indigo-800' };
         return { name: 'Bilinmeyen', color: 'bg-gray-100 text-gray-800' };
     };
 
@@ -242,7 +244,7 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
                                                     <button 
                                                         onClick={() => handleOpenEditModal(user)} 
                                                         disabled={isCurrentUser}
-                                                        className="p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-blue-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+                                                        className="p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-blue-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                                                         aria-label="Kullanıcıyı Düzenle"
                                                     >
                                                         <PencilIcon className="h-5 w-5" />
@@ -250,7 +252,7 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
                                                     <button 
                                                         onClick={() => handleOpenDeleteModal(user)} 
                                                         disabled={isCurrentUser}
-                                                        className="p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+                                                        className="p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                                                         aria-label="Kullanıcıyı Sil"
                                                     >
                                                         <TrashIcon className="h-5 w-5" />

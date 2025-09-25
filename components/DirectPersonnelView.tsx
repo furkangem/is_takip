@@ -52,7 +52,8 @@ const WorkDayEditor: React.FC<{
         if (existingWorkDay) {
             onUpdate({ ...existingWorkDay, location, jobDescription, wage: numericWage });
         } else {
-            onAdd({ personnelId: selectedPersonnel.id, date: selectedDate, location, jobDescription, wage: numericWage });
+            // FIX: Add missing customerJobId for workdays created without a specific job.
+            onAdd({ personnelId: selectedPersonnel.id, date: selectedDate, location, jobDescription, wage: numericWage, customerJobId: `direct-${Date.now()}` });
         }
     };
     
@@ -287,8 +288,8 @@ const DirectPersonnelView: React.FC<DirectPersonnelViewProps> = ({ currentUser, 
             return pp.personnelId === p.id && paymentDate.getMonth() === viewMonth && paymentDate.getFullYear() === viewYear;
         });
 
-        const totalDue = monthlyWorkDays.reduce((sum, wd) => sum + wd.wage, 0);
-        const totalPaid = monthlyPayments.reduce((sum, pp) => sum + pp.amount, 0);
+        const totalDue = monthlyWorkDays.reduce((sum: number, wd: WorkDay) => sum + wd.wage, 0);
+        const totalPaid = monthlyPayments.reduce((sum: number, pp: PersonnelPayment) => sum + pp.amount, 0);
         const balance = totalDue - totalPaid;
 
         let paymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';

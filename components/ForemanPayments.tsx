@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { User, Personnel, WorkDay, Payment, Role } from '../types';
 import { CreditCardIcon, XMarkIcon, ChevronDownIcon, ChevronUpIcon } from './icons/Icons';
@@ -53,14 +54,14 @@ const ForemanPayments: React.FC<ForemanPaymentsProps> = ({ users, personnel, wor
           const workDate = new Date(wd.date);
           return wd.personnelId === p.id && workDate.getMonth() === currentMonth && workDate.getFullYear() === currentYear;
         });
-        totalDue += monthlyWorkDays.reduce((sum, wd) => sum + wd.wage, 0);
+        totalDue += monthlyWorkDays.reduce((sum: number, wd: WorkDay) => sum + wd.wage, 0);
       });
 
       const monthlyPayments = payments
         .filter(p => p.foremanId === foreman.id && new Date(p.date).getMonth() === currentMonth && new Date(p.date).getFullYear() === currentYear)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
-      const totalPaid = monthlyPayments.reduce((sum, p) => sum + p.amount, 0);
+      const totalPaid = monthlyPayments.reduce((sum: number, p: Payment) => sum + p.amount, 0);
 
       const balance = totalDue - totalPaid;
 

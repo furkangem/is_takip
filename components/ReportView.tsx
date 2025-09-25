@@ -1,21 +1,19 @@
 import React, { useState, useMemo, FC } from 'react';
-import { Personnel, User, Customer, CustomerJob, PersonnelPayment } from '../types';
-import { CashIcon, UsersIcon, TrendingDownIcon, TrendingUpIcon, DocumentArrowDownIcon } from './icons/Icons';
+import { Personnel, User, Customer, CustomerJob, JobPersonnelPayment, Material } from '../types';
+import { CashIcon, UsersIcon, TrendingDownIcon, TrendingUpIcon, DocumentArrowDownIcon, BriefcaseIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-// Props (same as before, but selectedMonth won't be used)
 interface ReportViewProps {
   users: User[];
   personnel: Personnel[];
-  personnelPayments: PersonnelPayment[];
+  personnelPayments: any[];
   customers: Customer[];
   customerJobs: CustomerJob[];
-  selectedMonth: Date; // Keep for prop compatibility, but ignore
+  selectedMonth: Date;
 }
 
-// Helper to get start of month/year
 const getStartOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const getEndOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
 const getStartOfYear = (date: Date) => new Date(date.getFullYear(), 0, 1);
@@ -71,9 +69,9 @@ const ReportView: FC<ReportViewProps> = ({ personnel, customers, customerJobs })
     });
 
     jobsInRange.forEach(job => {
-      const personnelCost = job.personnelPayments.reduce((s, p) => s + p.payment, 0);
-      const materialCost = job.materials.reduce((s, m) => s + (m.quantity * m.unitPrice), 0);
-      const jobCost = personnelCost + materialCost + job.otherExpenses;
+      const personnelCost = job.personnelPayments.reduce((s: number, p: JobPersonnelPayment) => s + p.payment, 0);
+      const materialCost = job.materials.reduce((s: number, m: Material) => s + (m.quantity * m.unitPrice), 0);
+      const jobCost = personnelCost + materialCost;
       
       totalIncome += job.income;
       totalCost += jobCost;
@@ -123,9 +121,6 @@ const ReportView: FC<ReportViewProps> = ({ personnel, customers, customerJobs })
 
   const generatePdf = () => {
     const doc = new jsPDF();
-
-    // NOTE: Turkish characters may not render correctly without a custom font.
-    // The custom font was removed because the font file was corrupted and causing crashes.
 
     doc.setFontSize(18);
     doc.text('Genel Rapor', 14, 22);
@@ -228,14 +223,13 @@ const ReportView: FC<ReportViewProps> = ({ personnel, customers, customerJobs })
             {activeTab === 'overview' && (
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <StatCard title="Toplam Gelir" value={formatCurrency(reportData.totalIncome)} icon={TrendingUpIcon} color="green" />
-                        <StatCard title="Toplam Maliyet" value={formatCurrency(reportData.totalCost)} icon={TrendingDownIcon} color="red" />
-                        <StatCard title="Net Kâr" value={formatCurrency(reportData.netProfit)} icon={CashIcon} color={reportData.netProfit >= 0 ? 'blue' : 'red'} />
-                        <StatCard title="Yapılan İş Sayısı" value={String(reportData.jobCount)} icon={UsersIcon} color="blue" />
+                         <StatCard title="Toplam Gelir" value={formatCurrency(reportData.totalIncome)} icon={TrendingUpIcon} color="green" />
+                         <StatCard title="Toplam Maliyet" value={formatCurrency(reportData.totalCost)} icon={TrendingDownIcon} color="red" />
+                         <StatCard title="Net Kâr" value={formatCurrency(reportData.netProfit)} icon={CashIcon} color={reportData.netProfit >= 0 ? 'blue' : 'red'} />
+                         <StatCard title="Tamamlanan İşler" value={String(reportData.jobCount)} icon={BriefcaseIcon} color="blue" />
                     </div>
                 </div>
             )}
-            
             {activeTab === 'customers' && (
                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     <div className="overflow-x-auto">
@@ -243,71 +237,63 @@ const ReportView: FC<ReportViewProps> = ({ personnel, customers, customerJobs })
                             <thead className={commonTheadClass}>
                                 <tr>
                                     <th className={commonThClass}>Müşteri</th>
-                                    <th className={commonThClass} align="right">İş Sayısı</th>
-                                    <th className={commonThClass} align="right">Gelir</th>
-                                    <th className={commonThClass} align="right">Maliyet</th>
-                                    <th className={commonThClass} align="right">Net Kâr</th>
-                                    <th className={commonThClass} align="right">Kâr Marjı</th>
+                                    <th className={`${commonThClass} text-right`}>İş Sayısı</th>
+                                    <th className={`${commonThClass} text-right`}>Gelir</th>
+                                    <th className={`${commonThClass} text-right`}>Maliyet</th>
+                                    <th className={`${commonThClass} text-right`}>Net Kâr</th>
+                                    <th className={`${commonThClass} text-right`}>Kâr Marjı</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {reportData.customerData.map(c => (
-                                    <tr key={c.name} className="hover:bg-gray-50/50">
-                                        <td className={`${commonTdClass} font-medium text-gray-800`}>{c.name}</td>
-                                        <td className={commonTdClass} align="right">{c.jobCount}</td>
-                                        <td className={`${commonTdClass} text-green-600`} align="right">{formatCurrency(c.income)}</td>
-                                        <td className={`${commonTdClass} text-red-600`} align="right">{formatCurrency(c.cost)}</td>
-                                        <td className={`${commonTdClass} font-bold ${c.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`} align="right">{formatCurrency(c.netProfit)}</td>
-                                        <td className={commonTdClass} align="right">{c.profitMargin.toFixed(1)}%</td>
+                                {reportData.customerData.map((c, index) => (
+                                    <tr key={index} className="hover:bg-gray-50/50">
+                                        <td className={commonTdClass}>{c.name}</td>
+                                        <td className={`${commonTdClass} text-right`}>{c.jobCount}</td>
+                                        <td className={`${commonTdClass} text-right`}>{formatCurrency(c.income)}</td>
+                                        <td className={`${commonTdClass} text-right`}>{formatCurrency(c.cost)}</td>
+                                        <td className={`${commonTdClass} text-right ${c.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(c.netProfit)}</td>
+                                        <td className={`${commonTdClass} text-right ${c.profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{c.profitMargin.toFixed(2)}%</td>
                                     </tr>
                                 ))}
-                                {reportData.customerData.length === 0 && (
-                                    <tr><td colSpan={6} className="text-center p-6 text-gray-500">Seçilen tarih aralığında veri bulunamadı.</td></tr>
-                                )}
                             </tbody>
                         </table>
                     </div>
                 </div>
             )}
-
-            {activeTab === 'personnel' && (
-                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
+             {activeTab === 'personnel' && (
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className={commonTableClass}>
                             <thead className={commonTheadClass}>
                                 <tr>
                                     <th className={commonThClass}>Personel</th>
-                                    <th className={commonThClass} align="right">Çalıştığı İş Sayısı</th>
-                                    <th className={commonThClass} align="right">Toplam Hakediş</th>
+                                    <th className={`${commonThClass} text-right`}>İş Sayısı</th>
+                                    <th className={`${commonThClass} text-right`}>Toplam Hakediş</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {reportData.personnelData.map(p => (
-                                    <tr key={p.name} className="hover:bg-gray-50/50">
-                                        <td className={`${commonTdClass} font-medium text-gray-800`}>{p.name}</td>
-                                        <td className={commonTdClass} align="right">{p.jobCount}</td>
-                                        <td className={`${commonTdClass} font-bold text-blue-600`} align="right">{formatCurrency(p.earnings)}</td>
+                                {reportData.personnelData.map((p, index) => (
+                                    <tr key={index} className="hover:bg-gray-50/50">
+                                        <td className={commonTdClass}>{p.name}</td>
+                                        <td className={`${commonTdClass} text-right`}>{p.jobCount}</td>
+                                        <td className={`${commonTdClass} text-right`}>{formatCurrency(p.earnings)}</td>
                                     </tr>
                                 ))}
-                                {reportData.personnelData.length === 0 && (
-                                    <tr><td colSpan={3} className="text-center p-6 text-gray-500">Seçilen tarih aralığında veri bulunamadı.</td></tr>
-                                )}
                             </tbody>
                         </table>
                     </div>
                 </div>
             )}
-
             {activeTab === 'export' && (
-                <div className="bg-white p-10 rounded-lg shadow-md text-center">
-                    <DocumentArrowDownIcon className="h-16 w-16 text-blue-500 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-800">PDF Raporu Oluştur</h3>
-                    <p className="text-gray-500 mt-2 mb-6">Seçili tarih aralığı için özet raporu oluşturup indirin.</p>
+                <div className="bg-white rounded-lg shadow-md p-6 text-center">
+                    <h3 className="text-xl font-semibold mb-4 text-gray-700">Raporu Dışa Aktar</h3>
+                    <p className="text-gray-500 mb-6">Mevcut tarih aralığı için genel bir PDF raporu oluşturun.</p>
                     <button
                         onClick={generatePdf}
-                        className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+                        className="flex items-center justify-center mx-auto bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition-colors"
                     >
-                        Raporu İndir
+                        <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
+                        PDF Olarak İndir
                     </button>
                 </div>
             )}
