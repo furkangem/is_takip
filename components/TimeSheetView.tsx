@@ -1,6 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { CustomerJob, Personnel, WorkDay, Customer } from '../types';
-import { BriefcaseIcon, UsersIcon, MagnifyingGlassIcon, ChevronDownIcon, ChevronUpIcon, CalendarDaysIcon, TrendingUpIcon } from './icons/Icons';
+import { BriefcaseIcon, UsersIcon, MagnifyingGlassIcon, ChevronDownIcon, ChevronUpIcon, CalendarDaysIcon, TrendingUpIcon, DocumentArrowDownIcon } from './icons/Icons';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { NotoSansRegular } from '../utils/noto-sans-tr';
+
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -103,8 +107,11 @@ const JobDetailsPanel: React.FC<{ job: CustomerJob, workDays: WorkDay[], personn
                                 <div className="p-3 bg-white">
                                     <ul className="divide-y divide-gray-100 text-sm">
                                         {workDays.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(wd => (
-                                            <li key={wd.id} className="flex justify-between py-2 px-1">
-                                                <span className="text-gray-600">{formatDate(wd.date)}</span>
+                                            <li key={wd.id} className="flex justify-between items-center py-2 px-1">
+                                                <div>
+                                                    <span className="text-gray-600">{formatDate(wd.date)}</span>
+                                                    {wd.jobDescription && <p className="text-xs text-gray-500">{wd.jobDescription}</p>}
+                                                </div>
                                                 <span className="font-medium text-gray-800">{formatCurrency(wd.wage)}</span>
                                             </li>
                                         ))}
@@ -248,6 +255,79 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
         });
     }, [workDays, startDate, endDate]);
 
+    const generatePdf = () => {
+        // Fix: Explicitly type the `new Map()` to prevent `unknown` type errors later when accessing its values.
+        const personnelData = filteredWorkDays.reduce((acc, wd) => {
+            let entry = acc.get(wd.personnelId);
+            if (!entry) {
+                const person = personnel.find(p => p.id === wd.personnelId);
+                if (person) {
+                    entry = { name: person.name, days: 0, earnings: 0 };
+                    acc.set(wd.personnelId, entry);
+                }
+            }
+            if (entry) {
+                entry.days += 1;
+                entry.earnings += wd.wage;
+            }
+            return acc;
+        // FIX: Explicitly typed the `new Map()` to ensure correct type inference for `personnelData` values.
+        }, new Map<string, { name: string; days: number; earnings: number }>());
+
+        const puantajVerisi = Array.from(personnelData.values())
+            .map((data, index) => ({
+                id: index + 1,
+                ad: data.name,
+                gun: data.days,
+                toplam: data.earnings
+            }))
+            .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+
+        if (puantajVerisi.length === 0) {
+            alert("Rapor oluşturmak için seçilen tarih aralığında veri bulunamadı.");
+            return;
+        }
+
+        const doc = new jsPDF();
+
+        doc.addFileToVFS('NotoSans-Regular.ttf', NotoSansRegular);
+        doc.addFont('NotoSans-Regular.ttf', 'NotoSans-Regular', 'normal');
+        doc.setFont('NotoSans-Regular', 'normal');
+
+        doc.setFontSize(18);
+        doc.text("Aylık Puantaj Raporu", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        const dateRangeText = `Tarih Aralığı: ${formatDate(startDate)} - ${formatDate(endDate)}`;
+        doc.text(dateRangeText, 14, 29);
+
+        const head = [["ID", "Personel Adı", "Çalışma Günü", "Toplam Hakediş"]];
+        const body = puantajVerisi.map(p => [
+            p.id,
+            p.ad,
+            p.gun,
+            formatCurrency(p.toplam)
+        ]);
+
+        (doc as any).autoTable({
+            head: head,
+            body: body,
+            startY: 35,
+            styles: {
+                font: 'NotoSans-Regular',
+                fontStyle: 'normal'
+            },
+            headStyles: {
+                font: 'NotoSans-Regular',
+                fontStyle: 'normal',
+                fillColor: [41, 128, 185]
+            }
+        });
+
+        doc.save('puantaj-raporu.pdf');
+    };
+
+
     const filteredJobs = useMemo(() => customerJobs.filter(j => {
         const customer = customers.find(c => c.id === j.customerId);
         const lowerQuery = searchQuery.toLowerCase();
@@ -342,7 +422,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
                 <div className="p-2 border-b">
                     <div className="relative">
                         <MagnifyingGlassIcon className="absolute h-5 w-5 text-gray-400 left-3 top-1/2 -translate-y-1/2" />
-                        <input type="text" placeholder="Ara..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-sm" />
+                        <input type="text" placeholder="Ara..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-gray-900 text-sm" />
                     </div>
                 </div>
                 <div className="overflow-y-auto flex-1">
@@ -384,7 +464,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
                 </div>
             </div>
             <div className="w-full md:w-2/3 lg:w-3/4 space-y-4">
-                <div className="bg-white p-4 rounded-lg shadow-md grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                <div className="bg-white p-4 rounded-lg shadow-md grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Başlangıç Tarihi</label>
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={commonInputClass} />
@@ -392,6 +472,12 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={commonInputClass} />
+                    </div>
+                     <div>
+                        <button onClick={generatePdf} className="w-full flex items-center justify-center bg-green-600 text-white font-bold py-2 px-4 rounded-md shadow-sm hover:bg-green-700 transition-colors">
+                            <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
+                            <span>PDF Raporu İndir</span>
+                        </button>
                     </div>
                 </div>
                 {selectedItem ? (

@@ -1,10 +1,8 @@
-
-
 import React, { useMemo } from 'react';
 import { Personnel, Customer, CustomerJob, DefterEntry, SharedExpense } from '../types';
 import { UsersIcon, BuildingOffice2Icon, ClipboardDocumentListIcon, BanknotesIcon, MagnifyingGlassIcon } from './icons/Icons';
 
-type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa';
+type View = 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa';
 
 interface GlobalSearchViewProps {
   query: string;
@@ -17,7 +15,7 @@ interface GlobalSearchViewProps {
 }
 
 interface SearchResult {
-    type: 'personnel' | 'customer' | 'job' | 'defter' | 'shared_expense';
+    type: 'personnel' | 'customer' | 'job' | 'defter' | 'sharedExpense';
     id: string; // unique key for react list
     navigateToView: View;
     navigateToId: string;
@@ -96,20 +94,20 @@ const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ query, personnel, c
                 secondaryText: 'Defter Kaydı',
                 icon: BanknotesIcon,
             }));
-        
+
         // Shared Expenses
         sharedExpenses
-            .filter(se => se.description.toLowerCase().includes(lowerCaseQuery))
-            .forEach(se => results.push({
-                type: 'shared_expense',
-                id: `shared_expense-${se.id}`,
+            .filter(e => !e.deletedAt && e.description.toLowerCase().includes(lowerCaseQuery))
+            .forEach(e => results.push({
+                type: 'sharedExpense',
+                id: `sharedExpense-${e.id}`,
                 navigateToView: 'kasa',
-                navigateToId: se.id,
-                primaryText: se.description,
-                secondaryText: 'Ortak Kasa Harcaması',
+                navigateToId: e.id,
+                primaryText: e.description,
+                secondaryText: 'Ortak Kasa Gideri',
                 icon: BanknotesIcon,
             }));
-
+        
         return results;
     }, [query, personnel, customers, customerJobs, defterEntries, sharedExpenses]);
 

@@ -11,7 +11,6 @@ interface ReportViewProps {
   personnelPayments: any[];
   customers: Customer[];
   customerJobs: CustomerJob[];
-  selectedMonth: Date;
 }
 
 const getStartOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
@@ -247,10 +246,10 @@ const ReportView: FC<ReportViewProps> = ({ personnel, customers, customerJobs })
                             <tbody className="divide-y divide-gray-200">
                                 {reportData.customerData.map((c, index) => (
                                     <tr key={index} className="hover:bg-gray-50/50">
-                                        <td className={commonTdClass}>{c.name}</td>
-                                        <td className={`${commonTdClass} text-right`}>{c.jobCount}</td>
-                                        <td className={`${commonTdClass} text-right`}>{formatCurrency(c.income)}</td>
-                                        <td className={`${commonTdClass} text-right`}>{formatCurrency(c.cost)}</td>
+                                        <td className={`${commonTdClass} font-medium text-gray-900`}>{c.name}</td>
+                                        <td className={`${commonTdClass} text-right text-gray-600`}>{c.jobCount}</td>
+                                        <td className={`${commonTdClass} text-right text-gray-600`}>{formatCurrency(c.income)}</td>
+                                        <td className={`${commonTdClass} text-right text-gray-600`}>{formatCurrency(c.cost)}</td>
                                         <td className={`${commonTdClass} text-right ${c.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(c.netProfit)}</td>
                                         <td className={`${commonTdClass} text-right ${c.profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{c.profitMargin.toFixed(2)}%</td>
                                     </tr>
@@ -274,9 +273,9 @@ const ReportView: FC<ReportViewProps> = ({ personnel, customers, customerJobs })
                             <tbody className="divide-y divide-gray-200">
                                 {reportData.personnelData.map((p, index) => (
                                     <tr key={index} className="hover:bg-gray-50/50">
-                                        <td className={commonTdClass}>{p.name}</td>
-                                        <td className={`${commonTdClass} text-right`}>{p.jobCount}</td>
-                                        <td className={`${commonTdClass} text-right`}>{formatCurrency(p.earnings)}</td>
+                                        <td className={`${commonTdClass} font-medium text-gray-900`}>{p.name}</td>
+                                        <td className={`${commonTdClass} text-right text-gray-600`}>{p.jobCount}</td>
+                                        <td className={`${commonTdClass} text-right text-gray-600`}>{formatCurrency(p.earnings)}</td>
                                     </tr>
                                 ))}
                             </tbody>

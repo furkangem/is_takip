@@ -1,28 +1,15 @@
 
-
-import React, { useState, useMemo, useEffect } from 'react';
-import { Personnel, User, Role, PersonnelPayment, CustomerJob, Customer } from '../types';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+// FIX: Import Payer and PaymentMethod types.
+import { Personnel, User, Role, PersonnelPayment, CustomerJob, Customer, Payer, PaymentMethod } from '../types';
 import { UserGroupIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon, XMarkIcon, BriefcaseIcon, BanknotesIcon, TrendingUpIcon, TrendingDownIcon, ClipboardDocumentListIcon, CurrencyDollarIcon } from './icons/Icons';
-import ConfirmationModal from './ui/ConfirmationModal';
 import StatCard from './ui/StatCard';
 
-interface PersonnelViewProps {
-  currentUser: User;
-  users: User[];
-  personnel: Personnel[];
-  customers: Customer[];
-  customerJobs: CustomerJob[];
-  personnelPayments: PersonnelPayment[];
-  onAddPersonnel: (personnel: Omit<Personnel, 'id'>) => void;
-  onUpdatePersonnel: (personnel: Personnel) => void;
-  onDeletePersonnel: (personnelId: string) => void;
-  onAddPersonnelPayment: (payment: Omit<PersonnelPayment, 'id'>) => void;
-  onDeletePersonnelPayment: (paymentId: string) => void;
-  navigateToId: string | null;
-  onNavigationComplete: () => void;
-}
+const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
+const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+
 
 const JobPaymentDetailsModal: React.FC<{
     isOpen: boolean;
@@ -157,17 +144,25 @@ const PersonnelEditorModal: React.FC<{
 const AddPaymentModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onSave: (paymentData: {amount: number, jobId?: string}) => void;
+    // FIX: Update onSave to include payer and paymentMethod.
+    onSave: (paymentData: {amount: number, jobId?: string, payer: Payer, paymentMethod: PaymentMethod}) => void;
     personnel: Personnel;
     personnelJobs: CustomerJob[];
 }> = ({ isOpen, onClose, onSave, personnel, personnelJobs }) => {
     const [amount, setAmount] = useState('');
     const [jobId, setJobId] = useState<string>('');
+    // FIX: Add state for payer and paymentMethod.
+    const [payer, setPayer] = useState<Payer>('Kasa');
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+
 
     useEffect(() => {
         if (!isOpen) {
             setAmount('');
             setJobId('');
+            // FIX: Reset payer and paymentMethod on close.
+            setPayer('Kasa');
+            setPaymentMethod('cash');
         }
     }, [isOpen]);
 
@@ -180,7 +175,8 @@ const AddPaymentModal: React.FC<{
             alert('Lütfen geçerli bir ödeme tutarı girin.');
             return;
         }
-        onSave({amount: numericAmount, jobId: jobId || undefined});
+        // FIX: Pass payer and paymentMethod to onSave.
+        onSave({amount: numericAmount, jobId: jobId || undefined, payer, paymentMethod});
         onClose();
     };
 
@@ -218,6 +214,35 @@ const AddPaymentModal: React.FC<{
                             ))}
                         </select>
                     </div>
+                    {/* FIX: Add inputs for payer and paymentMethod. */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="payer" className="block text-sm font-medium text-gray-700">Ödeyen</label>
+                            <select
+                                id="payer"
+                                value={payer}
+                                onChange={(e) => setPayer(e.target.value as Payer)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="Kasa">Kasa</option>
+                                <option value="Ömer">Ömer</option>
+                                <option value="Barış">Barış</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700">Ödeme Yöntemi</label>
+                            <select
+                                id="paymentMethod"
+                                value={paymentMethod}
+                                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="cash">Nakit</option>
+                                <option value="transfer">Havale</option>
+                                <option value="card">Kart</option>
+                            </select>
+                        </div>
+                    </div>
                     <div className="mt-6 flex justify-end gap-3">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">İptal</button>
                         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Kaydet</button>
@@ -227,6 +252,22 @@ const AddPaymentModal: React.FC<{
         </div>
     );
 };
+
+interface PersonnelViewProps {
+  currentUser: User;
+  users: User[];
+  personnel: Personnel[];
+  customers: Customer[];
+  customerJobs: CustomerJob[];
+  personnelPayments: PersonnelPayment[];
+  onAddPersonnel: (personnel: Omit<Personnel, 'id'>) => void;
+  onUpdatePersonnel: (personnel: Personnel) => void;
+  onDeletePersonnel: (personnelId: string) => void;
+  onAddPersonnelPayment: (payment: Omit<PersonnelPayment, 'id'>) => void;
+  onDeletePersonnelPayment: (paymentId: string) => void;
+  navigateToId: string | null;
+  onNavigationComplete: () => void;
+}
 
 const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, personnel, customers, customerJobs, personnelPayments, onAddPersonnel, onUpdatePersonnel, onDeletePersonnel, onAddPersonnelPayment, onDeletePersonnelPayment, navigateToId, onNavigationComplete }) => {
   const [selectedPersonnelId, setSelectedPersonnelId] = useState<string | null>(personnel.length > 0 ? personnel[0].id : null);
@@ -329,13 +370,17 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     }
   };
 
-  const handleAddPayment = (paymentData: {amount: number, jobId?: string}) => {
+  // FIX: Update function signature to accept payer and paymentMethod.
+  const handleAddPayment = (paymentData: {amount: number, jobId?: string, payer: Payer, paymentMethod: PaymentMethod}) => {
     if(selectedPersonnel) {
+        // FIX: Add payer and paymentMethod to the new payment object.
         onAddPersonnelPayment({
             personnelId: selectedPersonnel.id,
             amount: paymentData.amount,
             customerJobId: paymentData.jobId,
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            payer: paymentData.payer,
+            paymentMethod: paymentData.paymentMethod,
         });
     }
   };
@@ -363,12 +408,21 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     const end = filters.endDate ? new Date(filters.endDate) : null;
     if(end) end.setHours(23,59,59,999);
 
-    const filteredJobs = allPersonnelJobs.filter(j => {
+    const dateFilteredJobs = allPersonnelJobs.filter(j => {
         const jobDate = new Date(j.date);
         if(start && jobDate < start) return false;
         if(end && jobDate > end) return false;
         return true;
+    });
+
+    const jobsWithNonZeroBalance = dateFilteredJobs.filter(job => {
+        const earning = job.personnelPayments.find(p => p.personnelId === selectedPersonnel.id)?.payment || 0;
+        const paymentsForThisJob = allPersonnelPayments.filter(p => p.customerJobId === job.id);
+        const totalPaidForThisJob = paymentsForThisJob.reduce((sum, p) => sum + p.amount, 0);
+        const jobBalance = earning - totalPaidForThisJob;
+        return jobBalance !== 0;
     }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
 
     const filteredPayments = allPersonnelPayments.filter(p => {
         const paymentDate = new Date(p.date);
@@ -381,7 +435,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
         totalPaymentDue: due,
         totalPaid: paid,
         balance: due - paid,
-        jobs: filteredJobs,
+        jobs: jobsWithNonZeroBalance,
         payments: filteredPayments,
     };
   }, [selectedPersonnel, customerJobs, personnelPayments, filters]);
@@ -414,13 +468,13 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     <div className="flex flex-col md:flex-row h-full gap-6">
       <div className="w-full md:w-1/3 lg:w-1/4 bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
         <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
-          <h3 className="text-lg font-semibold flex items-center"><UserGroupIcon className="h-6 w-6 mr-2 text-blue-500" />Personel Listesi</h3>
+          <h3 className="text-lg font-semibold flex items-center text-gray-800"><UserGroupIcon className="h-6 w-6 mr-2 text-blue-500" />Personel Listesi</h3>
           {isEditable && <button onClick={handleOpenAddModal} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800" aria-label="Yeni Personel Ekle"><PlusIcon className="h-5 w-5 mr-1" /> Ekle</button>}
         </div>
         <div className="p-2 border-b">
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><MagnifyingGlassIcon className="h-5 w-5 text-gray-400" /></div>
-                <input type="text" placeholder="Personel ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-sm focus:ring-blue-500 focus:border-blue-500"/>
+                <input type="text" placeholder="Personel ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"/>
             </div>
         </div>
         <div className="overflow-y-auto flex-1 max-h-80 md:max-h-none">
@@ -543,15 +597,30 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
                                 <ul className="divide-y divide-gray-200">{jobs.map(job => {
                                     const earning = job.personnelPayments.find(p=>p.personnelId === selectedPersonnel.id)?.payment || 0;
                                     const customer = customers.find(c => c.id === job.customerId);
+                                    const paymentsForThisJob = personnelPayments.filter(p => p.personnelId === selectedPersonnel.id && p.customerJobId === job.id);
+                                    const totalPaidForThisJob = paymentsForThisJob.reduce((sum, p) => sum + p.amount, 0);
+                                    const jobBalance = earning - totalPaidForThisJob;
+                                    const balanceColor = jobBalance > 0 ? 'text-blue-600' : (jobBalance < 0 ? 'text-red-600' : 'text-green-700');
+
                                     return (
                                         <li key={job.id}>
                                             <button onClick={() => handleOpenJobDetails(job)} className="p-3 w-full text-left hover:bg-gray-100 rounded-md transition-colors">
-                                                <div className="flex justify-between items-center">
-                                                    <div>
-                                                        <p className="font-medium text-gray-800">{job.location}</p>
-                                                        <p className="text-xs text-gray-500">{customer?.name} - {job.description}</p>
+                                                <div className="flex justify-between items-start gap-4">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <p className="font-medium text-gray-800">{job.location}</p>
+                                                            <p className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">{formatDate(job.date)}</p>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1">{customer?.name} - {job.description}</p>
                                                     </div>
-                                                    <p className="font-semibold text-blue-600">{formatCurrency(earning)}</p>
+                                                    <div className="text-right flex-shrink-0 min-w-[100px]">
+                                                        <p className={`font-bold text-lg ${balanceColor}`} title="Kalan Bakiye">
+                                                            {formatCurrency(jobBalance)}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500" title="Toplam Hakediş">
+                                                            Hakediş: {formatCurrency(earning)}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </button>
                                         </li>
@@ -560,7 +629,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
                             ) : ( 
                                 <div className="p-4 text-center text-sm text-gray-500 h-full flex items-center justify-center">
                                     <BriefcaseIcon className="h-8 w-8 text-gray-300 mb-2"/>
-                                    <span>Filtrelenmiş iş kaydı bulunmuyor.</span>
+                                    <span>{filters.startDate || filters.endDate ? "Filtrelenmiş iş kaydı bulunmuyor." : "Bu personel için hakedişli iş kaydı bulunmuyor."}</span>
                                 </div>
                              )}
                         </div>
@@ -575,17 +644,19 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
         )}
       </div>
     </div>
-    <PersonnelEditorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSavePersonnel} personnelToEdit={personnelToEdit} />
-    <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleConfirmDelete} title="Personeli Sil" message={`'${personnelToDelete?.name}' adlı personeli silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}/>
-    {selectedPersonnel && isEditable && <AddPaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} onSave={handleAddPayment} personnel={selectedPersonnel} personnelJobs={jobs}/>}
-    <ConfirmationModal isOpen={!!paymentToDelete} onClose={() => setPaymentToDelete(null)} onConfirm={handleConfirmDeletePayment} title="Ödemeyi Sil" message={`${paymentToDelete ? formatDateTime(paymentToDelete.date) : ''} tarihli ${paymentToDelete ? formatCurrency(paymentToDelete.amount) : ''} tutarındaki ödemeyi silmek istediğinizden emin misiniz?`}/>
-    <JobPaymentDetailsModal 
-        isOpen={jobDetailsModalOpen}
-        onClose={() => setJobDetailsModalOpen(false)}
-        job={selectedJobForDetails}
-        personnel={personnel}
-        customer={customers.find(c => c.id === selectedJobForDetails?.customerId)}
-    />
+    <Suspense fallback={null}>
+        {isModalOpen && <PersonnelEditorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSavePersonnel} personnelToEdit={personnelToEdit} />}
+        {isDeleteModalOpen && <ConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleConfirmDelete} title="Personeli Sil" message={`'${personnelToDelete?.name}' adlı personeli silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}/>}
+        {selectedPersonnel && isEditable && isPaymentModalOpen && <AddPaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} onSave={handleAddPayment} personnel={selectedPersonnel} personnelJobs={jobs}/>}
+        {paymentToDelete && <ConfirmationModal isOpen={!!paymentToDelete} onClose={() => setPaymentToDelete(null)} onConfirm={handleConfirmDeletePayment} title="Ödemeyi Sil" message={`${paymentToDelete ? formatDateTime(paymentToDelete.date) : ''} tarihli ${paymentToDelete ? formatCurrency(paymentToDelete.amount) : ''} tutarındaki ödemeyi silmek istediğinizden emin misiniz?`}/>}
+        {jobDetailsModalOpen && <JobPaymentDetailsModal 
+            isOpen={jobDetailsModalOpen}
+            onClose={() => setJobDetailsModalOpen(false)}
+            job={selectedJobForDetails}
+            personnel={personnel}
+            customer={customers.find(c => c.id === selectedJobForDetails?.customerId)}
+        />}
+    </Suspense>
     </>
   );
 };

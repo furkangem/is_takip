@@ -1,10 +1,9 @@
-
-
-import React, { useState, useMemo } from 'react';
-import { SharedExpense, Payer, PaymentMethod } from '../types';
-import { PlusIcon, XMarkIcon, TrashIcon, PencilIcon, BanknotesIcon, CashIcon, CreditCardIcon, ArrowsRightLeftIcon } from './icons/Icons';
-import ConfirmationModal from './ui/ConfirmationModal';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
+import { Payer, PaymentMethod, SharedExpense } from '../types';
+import { PlusIcon, XMarkIcon, TrashIcon, PencilIcon, BanknotesIcon, CashIcon, CreditCardIcon, ArrowsRightLeftIcon, ArrowUturnLeftIcon, ChevronDownIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
+
+const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
 const formatDateTime = (dateString?: string) => dateString ? new Date(dateString).toLocaleString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -135,35 +134,42 @@ interface OrtakKasaViewProps {
     expenses: SharedExpense[];
     onAdd: (expense: Omit<SharedExpense, 'id'>) => void;
     onUpdate: (expense: SharedExpense) => void;
-    onDelete: (expenseId: string) => void;
+    onDelete: (expenseId: string) => void; // soft delete
+    onRestore: (expenseId: string) => void;
+    onPermanentlyDelete: (expenseId: string) => void;
     isReadOnly?: boolean;
 }
 
-const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate, onDelete, isReadOnly }) => {
+const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate, onDelete, onRestore, onPermanentlyDelete, isReadOnly }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [expenseToEdit, setExpenseToEdit] = useState<SharedExpense | null>(null);
     const [expenseToDelete, setExpenseToDelete] = useState<SharedExpense | null>(null);
+    const [expenseToPermanentlyDelete, setExpenseToPermanentlyDelete] = useState<SharedExpense | null>(null);
+    const [showDeleted, setShowDeleted] = useState(false);
 
     const handleSaveExpense = (data: SharedExpense | Omit<SharedExpense, 'id'>) => { 'id' in data ? onUpdate(data) : onAdd(data) };
     const handleToggleStatus = (expense: SharedExpense) => onUpdate({ ...expense, status: expense.status === 'unpaid' ? 'paid' : 'unpaid' });
     
-    const { omerBalance, barisBalance, kasaBalance } = useMemo(() => {
+    const { activeExpenses, deletedExpenses, omerPaid, barisPaid, kasaBalance } = useMemo(() => {
+        const active = expenses.filter(e => !e.deletedAt);
+        const deleted = expenses.filter(e => e.deletedAt);
+
         let omer = 0;
         let baris = 0;
         let kasa = 0;
-        expenses.forEach(exp => {
+        active.forEach(exp => {
             if (exp.status === 'paid') {
                 if (exp.payer === 'Ömer') omer += exp.amount;
                 else if (exp.payer === 'Barış') baris += exp.amount;
                 else if (exp.payer === 'Kasa') kasa += exp.amount;
             }
         });
-        const total = omer + baris + kasa;
-        const perPersonShare = total / 2;
         
         return {
-            omerBalance: omer - perPersonShare,
-            barisBalance: baris - perPersonShare,
+            activeExpenses: active.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+            deletedExpenses: deleted.sort((a,b) => new Date(b.deletedAt!).getTime() - new Date(a.deletedAt!).getTime()),
+            omerPaid: omer,
+            barisPaid: baris,
             kasaBalance: kasa
         }
     }, [expenses]);
@@ -171,8 +177,8 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard title="Ömer Bakiye" value={formatCurrency(omerBalance)} icon={BanknotesIcon} color={omerBalance >= 0 ? 'green' : 'red'} />
-                <StatCard title="Barış Bakiye" value={formatCurrency(barisBalance)} icon={BanknotesIcon} color={barisBalance >= 0 ? 'green' : 'red'} />
+                <StatCard title="Ömer'den Ödenen" value={formatCurrency(omerPaid)} icon={BanknotesIcon} color="blue" />
+                <StatCard title="Barış'tan Ödenen" value={formatCurrency(barisPaid)} icon={BanknotesIcon} color="blue" />
                 <StatCard title="Kasadan Ödenen" value={formatCurrency(kasaBalance)} icon={CashIcon} color="blue" />
             </div>
             <div className="bg-white rounded-lg shadow-md">
@@ -194,7 +200,7 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {expenses.length > 0 ? expenses.map(exp => { 
+                            {activeExpenses.length > 0 ? activeExpenses.map(exp => { 
                                 const PaymentIcon = paymentMethodIcons[exp.paymentMethod]; 
                                 return (
                                     <tr key={exp.id} className="group hover:bg-gray-50">
@@ -206,8 +212,8 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
                                         <td className="p-3 text-gray-500 hidden sm:table-cell whitespace-nowrap">{formatDateTime(exp.date)}</td>
                                         <td className="p-3 text-right">
                                             {!isReadOnly && <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => {setExpenseToEdit(exp); setIsModalOpen(true);}} className="p-1 text-gray-400 hover:text-blue-600"><PencilIcon className="h-4 w-4"/></button>
-                                                <button onClick={() => setExpenseToDelete(exp)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="h-4 w-4"/></button>
+                                                <button onClick={() => {setExpenseToEdit(exp); setIsModalOpen(true);}} className="p-1 text-gray-400 hover:text-blue-600" title="Düzenle"><PencilIcon className="h-4 w-4"/></button>
+                                                <button onClick={() => setExpenseToDelete(exp)} className="p-1 text-gray-400 hover:text-red-600" title="Arşivle"><TrashIcon className="h-4 w-4"/></button>
                                             </div>}
                                         </td>
                                     </tr>
@@ -221,8 +227,52 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
                     </table>
                 </div>
             </div>
-            <SharedExpenseEditorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveExpense} expenseToEdit={expenseToEdit} />
-            <ConfirmationModal isOpen={!!expenseToDelete} onClose={() => setExpenseToDelete(null)} onConfirm={() => { if(expenseToDelete) onDelete(expenseToDelete.id); setExpenseToDelete(null); }} title="Gideri Sil" message={`'${expenseToDelete?.description}' giderini silmek istediğinizden emin misiniz?`}/>
+            
+             {deletedExpenses.length > 0 && (
+                <div className="bg-gray-100 rounded-lg">
+                    <button onClick={() => setShowDeleted(!showDeleted)} className="w-full p-3 text-left font-semibold text-gray-700 flex justify-between items-center hover:bg-gray-200 rounded-t-lg">
+                        <span>Silinmiş Harcamalar ({deletedExpenses.length})</span>
+                        <ChevronDownIcon className={`h-5 w-5 transition-transform ${showDeleted ? 'rotate-180' : ''}`} />
+                    </button>
+                    {showDeleted && (
+                        <div className="p-2">
+                             <ul className="divide-y divide-gray-200">
+                                {deletedExpenses.map(exp => (
+                                    <li key={exp.id} className="p-2 flex justify-between items-center group">
+                                        <div>
+                                            <p className="font-medium text-gray-600 line-through">{exp.description}</p>
+                                            <p className="text-xs text-gray-500">Silinme T.: {formatDateTime(exp.deletedAt)}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-red-500 line-through">{formatCurrency(exp.amount)}</span>
+                                            {!isReadOnly && (
+                                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => onRestore(exp.id)} className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-full" title="Geri Yükle"><ArrowUturnLeftIcon className="h-4 w-4"/></button>
+                                                    <button onClick={() => setExpenseToPermanentlyDelete(exp)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-full" title="Kalıcı Olarak Sil"><TrashIcon className="h-4 w-4"/></button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            <Suspense fallback={null}>
+                {isModalOpen && <SharedExpenseEditorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveExpense} expenseToEdit={expenseToEdit} />}
+                {expenseToDelete && <ConfirmationModal isOpen={!!expenseToDelete} onClose={() => setExpenseToDelete(null)} onConfirm={() => { if(expenseToDelete) onDelete(expenseToDelete.id); setExpenseToDelete(null); }} title="Harcamayı Arşivle" message={`'${expenseToDelete?.description}' harcamasını arşive taşımak istediğinizden emin misiniz? Bu harcama daha sonra geri yüklenebilir.`}/>}
+                {expenseToPermanentlyDelete && (
+                     <ConfirmationModal 
+                        isOpen={!!expenseToPermanentlyDelete} 
+                        onClose={() => setExpenseToPermanentlyDelete(null)} 
+                        onConfirm={() => { if(expenseToPermanentlyDelete) onPermanentlyDelete(expenseToPermanentlyDelete.id); setExpenseToPermanentlyDelete(null); }} 
+                        title="Harcamayı Kalıcı Olarak Sil" 
+                        message={`'${expenseToPermanentlyDelete?.description}' harcamasını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+                     />
+                )}
+            </Suspense>
         </div>
     );
 }

@@ -1,7 +1,8 @@
 
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Income, Expense, User, Personnel, Payment, PersonnelPayment, Role } from '../types';
+// FIX: Import Payer and PaymentMethod types.
+import { Income, Expense, User, Personnel, Payment, PersonnelPayment, Role, Payer, PaymentMethod } from '../types';
 import { PlusIcon, ArrowUpCircleIcon, ArrowDownCircleIcon, XMarkIcon, TrashIcon, CurrencyDollarIcon, MagnifyingGlassIcon, BanknotesIcon, UserGroupIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
 
@@ -35,6 +36,9 @@ const AddTransactionModal: React.FC<{
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [payeeId, setPayeeId] = useState('');
+    // FIX: Add state for payer and paymentMethod.
+    const [payer, setPayer] = useState<Payer>('Kasa');
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
 
     const foremen = useMemo(() => users.filter(u => u.role === Role.FOREMAN), [users]);
     const allPersonnel = useMemo(() => personnel, [personnel]);
@@ -45,6 +49,9 @@ const AddTransactionModal: React.FC<{
             setDescription('');
             setAmount('');
             setPayeeId('');
+            // FIX: Reset payer and paymentMethod on close.
+            setPayer('Kasa');
+            setPaymentMethod('cash');
         }
     }, [isOpen])
 
@@ -75,7 +82,8 @@ const AddTransactionModal: React.FC<{
                 break;
             case 'personnelPayment':
                 if (!payeeId) { alert('Lütfen bir personel seçin.'); return; }
-                onAddPersonnelPayment({ personnelId: payeeId, amount: numericAmount, date });
+                // FIX: Add payer and paymentMethod to the new payment object.
+                onAddPersonnelPayment({ personnelId: payeeId, amount: numericAmount, date, payer, paymentMethod });
                 break;
         }
         onClose();
@@ -142,6 +150,29 @@ const AddTransactionModal: React.FC<{
                                     placeholder={type === 'income' ? 'Örn: Hurda Malzeme Satışı' : 'Örn: Malzeme Alımı'}
                                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 />
+                            </div>
+                        )}
+                        {/* FIX: Add inputs for payer and paymentMethod when type is personnelPayment. */}
+                        {type === 'personnelPayment' && (
+                             <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="payer" className="block text-sm font-medium text-gray-700">Ödeyen</label>
+                                    <select id="payer" value={payer} onChange={e => setPayer(e.target.value as Payer)} required
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="Kasa">Kasa</option>
+                                        <option value="Ömer">Ömer</option>
+                                        <option value="Barış">Barış</option>
+                                    </select>
+                                </div>
+                                 <div>
+                                    <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700">Ödeme Yöntemi</label>
+                                    <select id="paymentMethod" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as PaymentMethod)} required
+                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="cash">Nakit</option>
+                                        <option value="transfer">Havale</option>
+                                        <option value="card">Kart</option>
+                                    </select>
+                                </div>
                             </div>
                         )}
                         <div>
@@ -234,7 +265,7 @@ const FinanceView: React.FC<FinanceViewProps> = (props) => {
                             placeholder="Açıklamaya göre ara..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full sm:w-64 pl-10 pr-4 py-2 border rounded-md bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full sm:w-64 pl-10 pr-4 py-2 border rounded-md bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
                 </div>

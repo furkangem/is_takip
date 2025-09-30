@@ -6,7 +6,7 @@ import { DashboardIcon, UsersIcon, ChartBarIcon, CogIcon, DocumentTextIcon, Buil
 import { User, Role } from '../types';
 import Logo from './Logo';
 
-type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa' | 'timesheet';
+type View = 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa' | 'timesheet';
 
 interface SidebarProps {
   currentView: View;
@@ -17,7 +17,6 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, currentUser, isOpen }) => {
   const navItems = [
-    { id: 'dashboard', label: 'Gösterge Paneli', icon: DashboardIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
     { id: 'personnel', label: 'Personel Yönetimi', icon: UsersIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
     { id: 'customers', label: 'Müşteriler', icon: BuildingOffice2Icon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
     { id: 'timesheet', label: 'Puantaj', icon: CalendarDaysIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
@@ -26,7 +25,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, currentU
     { id: 'admin', label: 'Admin Paneli', icon: CogIcon, roles: [Role.SUPER_ADMIN] },
   ];
 
-  const visibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));
+  const visibleNavItems = navItems.filter(item => {
+    if (currentUser.email === 'baris') {
+      return item.id === 'timesheet';
+    }
+    return item.roles.includes(currentUser.role);
+  });
 
   return (
     <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-slate-800 text-white flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>

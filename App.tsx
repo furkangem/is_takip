@@ -1,27 +1,26 @@
 
-
-import React, { useState, useEffect } from 'react';
-import { users as initialUsers, personnel as initialPersonnel, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs, defterEntries as initialDefterEntries, sharedExpenses as initialSharedExpenses, defterNotes as initialDefterNotes, workDays as initialWorkDays } from './data/mockData';
-import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, SharedExpense, DefterNote, WorkDay } from './types';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { users as initialUsers, personnel as initialPersonnel, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs, defterEntries as initialDefterEntries, defterNotes as initialDefterNotes, workDays as initialWorkDays, sharedExpenses as initialSharedExpenses } from './data/mockData';
+import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, DefterNote, WorkDay, SharedExpense } from './types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
-import DashboardView from './components/DashboardView';
-import PersonnelView from './components/PersonnelView';
 import LoginView from './components/LoginView';
-import ReportView from './components/ReportView';
-import AdminView from './components/AdminView';
-import CustomerView from './components/CustomerView';
-import KasaView from './components/LedgerView';
-import GlobalSearchView from './components/GlobalSearchView';
-import TimeSheetView from './components/TimeSheetView';
+import LoadingSpinner from './components/ui/LoadingSpinner';
 
-type View = 'dashboard' | 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa' | 'timesheet';
+const PersonnelView = lazy(() => import('./components/PersonnelView'));
+const ReportView = lazy(() => import('./components/ReportView'));
+const AdminView = lazy(() => import('./components/AdminView'));
+const CustomerView = lazy(() => import('./components/CustomerView'));
+const KasaView = lazy(() => import('./components/LedgerView'));
+const GlobalSearchView = lazy(() => import('./components/GlobalSearchView'));
+const TimeSheetView = lazy(() => import('./components/TimeSheetView'));
+
+type View = 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa' | 'timesheet';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<View>('dashboard');
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [currentView, setCurrentView] = useState<View>('customers');
   
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [personnel, setPersonnel] = useState<Personnel[]>(initialPersonnel);
@@ -30,8 +29,8 @@ export default function App() {
   const [customerJobs, setCustomerJobs] = useState<CustomerJob[]>(initialCustomerJobs);
   const [defterEntries, setDefterEntries] = useState<DefterEntry[]>(initialDefterEntries);
   const [defterNotes, setDefterNotes] = useState<DefterNote[]>(initialDefterNotes);
-  const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>(initialSharedExpenses);
   const [workDays, setWorkDays] = useState<WorkDay[]>(initialWorkDays);
+  const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>(initialSharedExpenses);
   
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [navigateToItem, setNavigateToItem] = useState<{ view: View, id: string } | null>(null);
@@ -77,7 +76,11 @@ export default function App() {
     setCurrentUser(user);
     setIsAuthenticated(true);
     localStorage.setItem('currentUser', JSON.stringify(user));
-    setCurrentView('dashboard'); // Reset to dashboard on login
+    if (user.email === 'baris') {
+      setCurrentView('timesheet');
+    } else {
+      setCurrentView('customers'); // Reset to customers on login
+    }
   };
 
   const handleLogout = () => {
@@ -90,9 +93,42 @@ export default function App() {
     setPersonnelPayments(prev => [...prev, { ...newPayment, id: `ppay-${Date.now()}` }]);
   };
 
+  const updatePersonnelPayment = (updatedPayment: PersonnelPayment) => {
+    setPersonnelPayments(prev => prev.map(p => p.id === updatedPayment.id ? updatedPayment : p));
+  };
+
   const deletePersonnelPayment = (paymentId: string) => {
     setPersonnelPayments(prev => prev.filter(p => p.id !== paymentId));
   };
+
+  // Shared Expense CRUD
+  const addSharedExpense = (newExpenseData: Omit<SharedExpense, 'id'>) => {
+    const newExpense: SharedExpense = { ...newExpenseData, id: `se-${Date.now()}` };
+    setSharedExpenses(prev => [...prev, newExpense]);
+  };
+
+  const updateSharedExpense = (updatedExpense: SharedExpense) => {
+    setSharedExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
+  };
+
+  const deleteSharedExpense = (expenseId: string) => {
+    setSharedExpenses(prev => prev.map(e => e.id === expenseId ? { ...e, deletedAt: new Date().toISOString() } : e));
+  };
+  
+  const restoreSharedExpense = (expenseId: string) => {
+    setSharedExpenses(prev => prev.map(e => {
+        if (e.id === expenseId) {
+            const { deletedAt, ...rest } = e;
+            return rest;
+        }
+        return e;
+    }));
+  };
+
+  const permanentlyDeleteSharedExpense = (expenseId: string) => {
+    setSharedExpenses(prev => prev.filter(e => e.id !== expenseId));
+  };
+
 
   const addPersonnel = (newPersonnelData: Omit<Personnel, 'id'>) => {
     const newPersonnel: Personnel = {
@@ -239,21 +275,6 @@ export default function App() {
     setDefterNotes(prev => prev.filter(n => n.id !== noteId));
   };
 
-  // Shared Expense CRUD
-  const addSharedExpense = (newExpenseData: Omit<SharedExpense, 'id'>) => {
-      const newExpense: SharedExpense = { ...newExpenseData, id: `se-${Date.now()}` };
-      setSharedExpenses(prev => [...prev, newExpense]);
-  }
-
-  const updateSharedExpense = (updatedExpense: SharedExpense) => {
-      setSharedExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
-  }
-  
-  const deleteSharedExpense = (expenseId: string) => {
-      setSharedExpenses(prev => prev.filter(e => e.id !== expenseId));
-  }
-
-
   if (!isAuthenticated || !currentUser) {
     return <LoginView users={users} onLogin={handleLogin} />;
   }
@@ -281,119 +302,111 @@ export default function App() {
         <Header
           currentUser={currentUser}
           onLogout={handleLogout}
-          selectedMonth={selectedMonth}
-          setSelectedMonth={setSelectedMonth}
           globalSearchQuery={globalSearchQuery}
           setGlobalSearchQuery={setGlobalSearchQuery}
           onMenuClick={() => setIsSidebarOpen(true)}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-8 min-w-0">
-          {globalSearchQuery ? (
-             <GlobalSearchView
-                query={globalSearchQuery}
-                personnel={personnel}
-                customers={customers}
-                customerJobs={customerJobs}
-                defterEntries={defterEntries}
-                sharedExpenses={sharedExpenses}
-                onNavigate={handleNavigation}
-             />
-          ) : (
-            <>
-              {currentView === 'dashboard' && (
-                <DashboardView
-                  currentUser={currentUser}
-                  personnel={personnel}
-                  customerJobs={customerJobs}
-                  defterEntries={defterEntries}
-                  workDays={workDays}
-                />
-              )}
-              {currentView === 'personnel' && (
-                <PersonnelView
-                  currentUser={currentUser}
-                  users={users}
+          <Suspense fallback={<LoadingSpinner />}>
+            {globalSearchQuery ? (
+              <GlobalSearchView
+                  query={globalSearchQuery}
                   personnel={personnel}
                   customers={customers}
                   customerJobs={customerJobs}
-                  personnelPayments={personnelPayments}
-                  onAddPersonnel={addPersonnel}
-                  onUpdatePersonnel={updatePersonnel}
-                  onDeletePersonnel={deletePersonnel}
-                  onAddPersonnelPayment={addPersonnelPayment}
-                  onDeletePersonnelPayment={deletePersonnelPayment}
-                  navigateToId={navigateToItem?.view === 'personnel' ? navigateToItem.id : null}
-                  onNavigationComplete={handleNavigationComplete}
-                />
-              )}
-               {currentView === 'customers' && (
-                 <CustomerView
+                  defterEntries={defterEntries}
+                  sharedExpenses={sharedExpenses}
+                  onNavigate={handleNavigation}
+              />
+            ) : (
+              <>
+                {currentView === 'personnel' && (
+                  <PersonnelView
                     currentUser={currentUser}
-                    customers={customers}
-                    customerJobs={customerJobs}
-                    personnel={personnel}
-                    onAddCustomer={addCustomer}
-                    onUpdateCustomer={updateCustomer}
-                    onDeleteCustomer={deleteCustomer}
-                    onAddCustomerJob={addCustomerJob}
-                    onUpdateCustomerJob={updateCustomerJob}
-                    onDeleteCustomerJob={deleteCustomerJob}
-                    navigateToId={navigateToItem?.view === 'customers' ? navigateToItem.id : null}
-                    onNavigationComplete={handleNavigationComplete}
-                 />
-              )}
-               {currentView === 'timesheet' && (
-                 <TimeSheetView
+                    users={users}
                     personnel={personnel}
                     customers={customers}
                     customerJobs={customerJobs}
-                    workDays={workDays}
-                 />
-              )}
-              {currentView === 'kasa' && (
-                 <KasaView
-                    currentUser={currentUser}
-                    customers={customers}
-                    customerJobs={customerJobs}
-                    personnel={personnel}
                     personnelPayments={personnelPayments}
-                    defterEntries={defterEntries}
-                    sharedExpenses={sharedExpenses}
-                    defterNotes={defterNotes}
-                    onAddDefterEntry={addDefterEntry}
-                    onUpdateDefterEntry={updateDefterEntry}
-                    onDeleteDefterEntry={deleteDefterEntry}
-                    onAddDefterNote={addDefterNote}
-                    onUpdateDefterNote={updateDefterNote}
-                    onDeleteDefterNote={deleteDefterNote}
-                    onAddSharedExpense={addSharedExpense}
-                    onUpdateSharedExpense={updateSharedExpense}
-                    onDeleteSharedExpense={deleteSharedExpense}
-                    onNavigate={handleNavigation}
-                 />
-              )}
-              {currentView === 'reports' && (
-                 <ReportView
+                    onAddPersonnel={addPersonnel}
+                    onUpdatePersonnel={updatePersonnel}
+                    onDeletePersonnel={deletePersonnel}
+                    onAddPersonnelPayment={addPersonnelPayment}
+                    onDeletePersonnelPayment={deletePersonnelPayment}
+                    navigateToId={navigateToItem?.view === 'personnel' ? navigateToItem.id : null}
+                    onNavigationComplete={handleNavigationComplete}
+                  />
+                )}
+                {currentView === 'customers' && (
+                  <CustomerView
+                      currentUser={currentUser}
+                      customers={customers}
+                      customerJobs={customerJobs}
+                      personnel={personnel}
+                      onAddCustomer={addCustomer}
+                      onUpdateCustomer={updateCustomer}
+                      onDeleteCustomer={deleteCustomer}
+                      onAddCustomerJob={addCustomerJob}
+                      onUpdateCustomerJob={updateCustomerJob}
+                      onDeleteCustomerJob={deleteCustomerJob}
+                      navigateToId={navigateToItem?.view === 'customers' ? navigateToItem.id : null}
+                      onNavigationComplete={handleNavigationComplete}
+                  />
+                )}
+                {currentView === 'timesheet' && (
+                  <TimeSheetView
+                      personnel={personnel}
+                      customers={customers}
+                      customerJobs={customerJobs}
+                      workDays={workDays}
+                  />
+                )}
+                {currentView === 'kasa' && (
+                  <KasaView
+                      currentUser={currentUser}
+                      customers={customers}
+                      customerJobs={customerJobs}
+                      personnel={personnel}
+                      personnelPayments={personnelPayments}
+                      defterEntries={defterEntries}
+                      defterNotes={defterNotes}
+                      sharedExpenses={sharedExpenses}
+                      onAddDefterEntry={addDefterEntry}
+                      onUpdateDefterEntry={updateDefterEntry}
+                      onDeleteDefterEntry={deleteDefterEntry}
+                      onAddDefterNote={addDefterNote}
+                      onUpdateDefterNote={updateDefterNote}
+                      onDeleteDefterNote={deleteDefterNote}
+                      onAddSharedExpense={addSharedExpense}
+                      onUpdateSharedExpense={updateSharedExpense}
+                      onDeleteSharedExpense={deleteSharedExpense}
+                      // FIX: Pass missing props to KasaView component.
+                      onRestoreSharedExpense={restoreSharedExpense}
+                      onPermanentlyDeleteSharedExpense={permanentlyDeleteSharedExpense}
+                  />
+                )}
+                {currentView === 'reports' && (
+                  <ReportView 
                     users={users}
                     personnel={personnel}
                     personnelPayments={personnelPayments}
                     customers={customers}
                     customerJobs={customerJobs}
-                    selectedMonth={selectedMonth}
-                 />
-              )}
-              {currentView === 'admin' && currentUser.role === Role.SUPER_ADMIN && (
-                 <AdminView
+                  />
+                )}
+                {currentView === 'admin' && (
+                  <AdminView
                     currentUser={currentUser}
                     users={users}
                     personnel={personnel}
                     onAddUser={addUser}
                     onUpdateUser={updateUser}
                     onDeleteUser={deleteUser}
-                 />
-              )}
-            </>
-          )}
+                  />
+                )}
+              </>
+            )}
+          </Suspense>
         </main>
       </div>
     </div>

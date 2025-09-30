@@ -1,9 +1,10 @@
 
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { DefterEntry, DefterNote, NoteCategory } from '../types';
 import { PlusIcon, XMarkIcon, TrashIcon, PencilIcon, DocumentCheckIcon, TrendingUpIcon, TrendingDownIcon, ChevronDownIcon, CalendarIcon, DocumentTextIcon, TagIcon, ClockIcon } from './icons/Icons';
-import ConfirmationModal from './ui/ConfirmationModal';
+
+const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
 const formatDate = (dateString?: string) => dateString ? new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
@@ -407,10 +408,12 @@ const DefterView: React.FC<DefterViewProps> = (props) => {
                 </div>
             </div>
 
-            <DefterEntryEditorModal isOpen={isEntryModalOpen} onClose={() => setIsEntryModalOpen(false)} onSave={handleSaveEntry} entryToEdit={entryToEdit} />
-            <ConfirmationModal isOpen={!!entryToDelete} onClose={() => setEntryToDelete(null)} onConfirm={() => { if(entryToDelete) onDeleteEntry(entryToDelete.id); setEntryToDelete(null); }} title="Kaydı Sil" message={`'${entryToDelete?.description}' kaydını silmek istediğinizden emin misiniz?`}/>
-            <NoteEditorModal isOpen={isNoteModalOpen} onClose={() => setIsNoteModalOpen(false)} onSave={handleSaveNote} noteToEdit={noteToEdit} />
-            <ConfirmationModal isOpen={!!noteToDelete} onClose={() => setNoteToDelete(null)} onConfirm={() => { if(noteToDelete) onDeleteNote(noteToDelete.id); setNoteToDelete(null); }} title="Notu Sil" message={`'${noteToDelete?.title}' başlıklı notu silmek istediğinizden emin misiniz?`}/>
+            <Suspense fallback={null}>
+                {isEntryModalOpen && <DefterEntryEditorModal isOpen={isEntryModalOpen} onClose={() => setIsEntryModalOpen(false)} onSave={handleSaveEntry} entryToEdit={entryToEdit} />}
+                {entryToDelete && <ConfirmationModal isOpen={!!entryToDelete} onClose={() => setEntryToDelete(null)} onConfirm={() => { if(entryToDelete) onDeleteEntry(entryToDelete.id); setEntryToDelete(null); }} title="Kaydı Sil" message={`'${entryToDelete?.description}' kaydını silmek istediğinizden emin misiniz?`}/>}
+                {isNoteModalOpen && <NoteEditorModal isOpen={isNoteModalOpen} onClose={() => setIsNoteModalOpen(false)} onSave={handleSaveNote} noteToEdit={noteToEdit} />}
+                {noteToDelete && <ConfirmationModal isOpen={!!noteToDelete} onClose={() => setNoteToDelete(null)} onConfirm={() => { if(noteToDelete) onDeleteNote(noteToDelete.id); setNoteToDelete(null); }} title="Notu Sil" message={`'${noteToDelete?.title}' başlıklı notu silmek istediğinizden emin misiniz?`}/>}
+            </Suspense>
         </>
     );
 }

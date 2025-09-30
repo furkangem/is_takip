@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Personnel, WorkDay, User, PersonnelPayment } from '../types';
+// FIX: Import Payer and PaymentMethod types.
+import { Personnel, WorkDay, User, PersonnelPayment, Payer, PaymentMethod } from '../types';
 import Calendar from './Calendar';
 import { UserIcon, IdentificationIcon, CashIcon, CalendarIcon, MapPinIcon, DocumentTextIcon, XMarkIcon, PlusIcon, PencilIcon, TrashIcon, CreditCardIcon, MagnifyingGlassIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
@@ -217,13 +218,22 @@ const PersonnelEditorModal: React.FC<{
 const AddPaymentModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onSave: (amount: number) => void;
+    // FIX: Update onSave to include payer and paymentMethod.
+    onSave: (amount: number, payer: Payer, paymentMethod: PaymentMethod) => void;
     personnel: Personnel;
 }> = ({ isOpen, onClose, onSave, personnel }) => {
     const [amount, setAmount] = useState('');
+    // FIX: Add state for payer and paymentMethod.
+    const [payer, setPayer] = useState<Payer>('Kasa');
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
 
     useEffect(() => {
-        if (!isOpen) setAmount('');
+        if (!isOpen) {
+            setAmount('');
+            // FIX: Reset payer and paymentMethod on close.
+            setPayer('Kasa');
+            setPaymentMethod('cash');
+        }
     }, [isOpen]);
 
     if (!isOpen) return null;
@@ -235,7 +245,8 @@ const AddPaymentModal: React.FC<{
             alert('Lütfen geçerli bir ödeme tutarı girin.');
             return;
         }
-        onSave(numericAmount);
+        // FIX: Pass payer and paymentMethod to onSave.
+        onSave(numericAmount, payer, paymentMethod);
         onClose();
     };
 
@@ -258,6 +269,25 @@ const AddPaymentModal: React.FC<{
                             required autoFocus
                             placeholder="Örn: 5000"
                         />
+                    </div>
+                    {/* FIX: Add inputs for payer and paymentMethod. */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="payer" className="block text-sm font-medium text-gray-700">Ödeyen</label>
+                            <select id="payer" value={payer} onChange={(e) => setPayer(e.target.value as Payer)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="Kasa">Kasa</option>
+                                <option value="Ömer">Ömer</option>
+                                <option value="Barış">Barış</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700">Ödeme Yöntemi</label>
+                            <select id="paymentMethod" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="cash">Nakit</option>
+                                <option value="transfer">Havale</option>
+                                <option value="card">Kart</option>
+                            </select>
+                        </div>
                     </div>
                     <div className="mt-6 flex justify-end gap-3">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">İptal</button>
@@ -359,12 +389,16 @@ const DirectPersonnelView: React.FC<DirectPersonnelViewProps> = ({ currentUser, 
     if (selectedPersonnel?.id !== p.id) setSelectedPersonnel(p);
   };
   
-  const handleAddPayment = (amount: number) => {
+  // FIX: Update function signature to accept payer and paymentMethod.
+  const handleAddPayment = (amount: number, payer: Payer, paymentMethod: PaymentMethod) => {
     if(selectedPersonnel) {
+        // FIX: Add payer and paymentMethod to the new payment object.
         onAddPersonnelPayment({
             personnelId: selectedPersonnel.id,
             amount,
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            payer,
+            paymentMethod
         });
     }
   };
@@ -418,7 +452,7 @@ const DirectPersonnelView: React.FC<DirectPersonnelViewProps> = ({ currentUser, 
                     placeholder="Personel ara..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
                 />
             </div>
         </div>
@@ -501,7 +535,7 @@ const DirectPersonnelView: React.FC<DirectPersonnelViewProps> = ({ currentUser, 
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow-md">
-             <UserIcon className="h-16 w-16 text-gray-300 mb-4"/><p className="text-gray-500 text-lg font-medium">Personel Seçilmedi</p><p className="text-gray-400">Detayları görmek için bir personel seçin veya yeni personel ekleyin.</p>
+             <UserIcon className="h-16 w-16 text-gray-300 mb-4"/><p className="text-gray-500 text-lg font-medium">Personel Seçilmedi</p><p className="text-gray-400">Detayları görmek için bir personel seçin veya yeni bir personel ekleyin.</p>
           </div>
         )}
       </div>

@@ -1,9 +1,7 @@
 
-
 export enum Role {
   SUPER_ADMIN = 'SUPER_ADMIN',
   VIEWER = 'VIEWER',
-  // FIX: Add missing FOREMAN role.
   FOREMAN = 'FOREMAN',
 }
 
@@ -18,7 +16,6 @@ export interface User {
 export interface Personnel {
   id:string;
   name: string;
-  // FIX: Add missing foremanId property.
   foremanId?: string;
   note?: {
     text: string;
@@ -26,7 +23,6 @@ export interface Personnel {
   }
 }
 
-// FIX: Add missing Payment interface.
 export interface Payment {
   id: string;
   foremanId: string;
@@ -34,12 +30,28 @@ export interface Payment {
   date: string; // ISO Date String
 }
 
+export type Payer = 'Ömer' | 'Barış' | 'Kasa';
+export type PaymentMethod = 'cash' | 'transfer' | 'card';
+
 export interface PersonnelPayment {
   id: string;
   personnelId: string;
   amount: number;
   date: string; // ISO Date String
   customerJobId?: string;
+  payer: Payer;
+  paymentMethod: PaymentMethod;
+}
+
+export interface SharedExpense {
+    id: string;
+    description: string;
+    amount: number;
+    date: string; // ISO Date String
+    paymentMethod: PaymentMethod;
+    payer: Payer;
+    status: 'paid' | 'unpaid';
+    deletedAt?: string; // ISO String for soft delete
 }
 
 export interface Customer {
@@ -52,7 +64,6 @@ export interface Customer {
 
 export type IncomePaymentMethod = 'TRY' | 'USD' | 'EUR' | 'GOLD';
 export type GoldType = 'gram' | 'quarter' | 'full';
-export type PaymentMethod = 'cash' | 'transfer' | 'card';
 
 export interface Material {
     id: string;
@@ -121,17 +132,6 @@ export interface DefterNote {
   completed: boolean;
 }
 
-export type Payer = 'Ömer' | 'Barış' | 'Kasa';
-
-export interface SharedExpense {
-  id: string;
-  description: string;
-  amount: number;
-  paymentMethod: PaymentMethod;
-  payer: Payer;
-  date: string; // ISO string with time
-  status: 'paid' | 'unpaid';
-}
 export interface WorkDay {
   id: string;
   personnelId: string;

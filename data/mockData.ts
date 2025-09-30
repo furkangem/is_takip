@@ -1,7 +1,7 @@
-import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, Income, Expense, DefterEntry, SharedExpense, DefterNote, WorkDay } from '../types';
+import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, Income, Expense, DefterEntry, DefterNote, WorkDay, Payer, PaymentMethod, SharedExpense } from '../types';
 
 export const users: User[] = [
-  { id: 'user-1', name: 'Ömer Geçer', email: 'omer', password: 'omer', role: Role.SUPER_ADMIN },
+  { id: 'user-1', name: 'Ömer Geçer', email: 'omer', password: 'omer1', role: Role.SUPER_ADMIN },
   { id: 'user-2', name: 'Barış Akman', email: 'baris', password: 'baris', role: Role.VIEWER },
 ];
 
@@ -34,13 +34,22 @@ const getDateInCurrentMonth = (day: number) => {
 }
 
 export const personnelPayments: PersonnelPayment[] = [
-    { id: 'ppay-1', personnelId: 'p-13', amount: 5000, date: new Date(today.getTime() - 1 * 60 * 60 * 1000).toISOString(), customerJobId: 'job-6' },
-    { id: 'ppay-2', personnelId: 'p-13', amount: 7500, date: new Date(new Date().setDate(today.getDate() - 2)).toISOString(), customerJobId: 'job-6' },
-    { id: 'ppay-3', personnelId: 'p-14', amount: 11000, date: today.toISOString(), customerJobId: 'job-7' },
-    { id: 'ppay-4', personnelId: 'p-1', amount: 10000, date: new Date(new Date().setDate(today.getDate() - 5)).toISOString(), customerJobId: 'job-1' },
-    { id: 'ppay-5', personnelId: 'p-7', amount: 8000, date: new Date(new Date().setDate(today.getDate() - 3)).toISOString(), customerJobId: 'job-1' },
-    { id: 'ppay-6', personnelId: 'p-2', amount: 25000, date: new Date(new Date().setDate(today.getDate() - 2)).toISOString(), customerJobId: 'job-9' },
+    { id: 'ppay-1', personnelId: 'p-13', amount: 5000, date: new Date(today.getTime() - 1 * 60 * 60 * 1000).toISOString(), customerJobId: 'job-6', payer: 'Kasa', paymentMethod: 'cash' },
+    { id: 'ppay-2', personnelId: 'p-13', amount: 7500, date: new Date(new Date().setDate(today.getDate() - 2)).toISOString(), customerJobId: 'job-6', payer: 'Ömer', paymentMethod: 'transfer' },
+    { id: 'ppay-3', personnelId: 'p-14', amount: 11000, date: today.toISOString(), customerJobId: 'job-7', payer: 'Barış', paymentMethod: 'card' },
+    { id: 'ppay-4', personnelId: 'p-1', amount: 10000, date: new Date(new Date().setDate(today.getDate() - 5)).toISOString(), customerJobId: 'job-1', payer: 'Kasa', paymentMethod: 'transfer' },
+    { id: 'ppay-5', personnelId: 'p-7', amount: 8000, date: new Date(new Date().setDate(today.getDate() - 3)).toISOString(), customerJobId: 'job-1', payer: 'Ömer', paymentMethod: 'cash' },
+    { id: 'ppay-6', personnelId: 'p-2', amount: 25000, date: new Date(new Date().setDate(today.getDate() - 2)).toISOString(), customerJobId: 'job-9', payer: 'Kasa', paymentMethod: 'cash' },
 ];
+
+export const sharedExpenses: SharedExpense[] = [
+    { id: 'se-1', description: 'Öğle Yemeği', amount: 850, date: new Date().toISOString(), paymentMethod: 'cash', payer: 'Ömer', status: 'paid' },
+    { id: 'se-2', description: 'Nalburiye Malzemesi', amount: 1200, date: new Date(new Date().setDate(today.getDate() - 1)).toISOString(), paymentMethod: 'card', payer: 'Kasa', status: 'paid' },
+    { id: 'se-3', description: 'Ulaşım Gideri', amount: 300, date: new Date(new Date().setDate(today.getDate() - 2)).toISOString(), paymentMethod: 'cash', payer: 'Barış', status: 'paid' },
+    { id: 'se-4', description: 'Ofis Temizlik Malzemeleri', amount: 450, date: new Date(new Date().setDate(today.getDate() - 4)).toISOString(), paymentMethod: 'transfer', payer: 'Kasa', status: 'paid' },
+    { id: 'se-5', description: 'Tedarikçi Avansı', amount: 5000, date: new Date(new Date().setDate(today.getDate() - 5)).toISOString(), paymentMethod: 'transfer', payer: 'Ömer', status: 'unpaid' },
+];
+
 
 export const customers: Customer[] = [
   {
@@ -280,12 +289,4 @@ export const defterNotes: DefterNote[] = [
     { id: 'dn-2', title: 'Yeni proje için müşteriyle görüş', description: 'Yıldız Konutları projesinin detayları için müşteri temsilcisiyle bir toplantı ayarla.', category: 'important', createdAt: new Date().toISOString(), dueDate: new Date(new Date().setDate(today.getDate() + 1)).toISOString().split('T')[0], completed: false },
     { id: 'dn-3', title: 'Vergi ödemesini yap', description: 'KDV beyannamesi ve ödemesi yapılacak.', category: 'todo', createdAt: new Date(new Date().setDate(today.getDate() - 1)).toISOString(), completed: true },
     { id: 'dn-4', title: 'Ekipman bakımı', description: 'Şantiyedeki ekskavatörün periyodik bakımını yaptır.', category: 'reminder', createdAt: new Date(new Date().setDate(today.getDate() - 5)).toISOString(), completed: false },
-];
-
-export const sharedExpenses: SharedExpense[] = [
-    { id: 'se-1', description: 'Şantiye için çivi alımı', amount: 150, paymentMethod: 'cash', payer: 'Ömer', date: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(), status: 'paid' },
-    { id: 'se-2', description: 'Yemek Gideri', amount: 850, paymentMethod: 'card', payer: 'Barış', date: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(), status: 'paid' },
-    { id: 'se-3', description: 'Usta için avans', amount: 2000, paymentMethod: 'transfer', payer: 'Kasa', date: new Date().toISOString(), status: 'paid' },
-    { id: 'se-4', description: 'Proje çizim ücreti', amount: 5000, paymentMethod: 'transfer', payer: 'Barış', date: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(), status: 'unpaid' },
-    { id: 'se-5', description: 'Nakliye ücreti', amount: 1200, paymentMethod: 'cash', payer: 'Kasa', date: getDateInCurrentMonth(3), status: 'paid' },
 ];

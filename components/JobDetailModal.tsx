@@ -39,6 +39,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, onEdit
 
     // FIX: Added explicit types to `reduce` callbacks to ensure correct type inference for cost calculation.
     const totalPersonnelCost = useMemo(() => job.personnelPayments.reduce((sum: number, p: JobPersonnelPayment) => sum + p.payment, 0), [job.personnelPayments]);
+    // Fix: Corrected a typo where 's' was used instead of 'sum' for the accumulator.
     const totalMaterialCost = useMemo(() => job.materials.reduce((sum: number, m: Material) => sum + (m.quantity * m.unitPrice), 0), [job.materials]);
     const totalCost = totalPersonnelCost + totalMaterialCost;
     const netProfit = job.income - totalCost;
@@ -70,11 +71,48 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, onEdit
                                 </div>
                             </div>
                             <div className="bg-white p-4 rounded-lg border">
-                                 <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">Maliyet Dökümü</h4>
-                                 <dl className="space-y-2 text-sm">
-                                    <div className="flex justify-between"><dt className="text-gray-500">Personel Maliyeti:</dt><dd className="font-medium text-red-600">{formatCurrency(totalPersonnelCost)}</dd></div>
-                                    <div className="flex justify-between"><dt className="text-gray-500">Malzeme Maliyeti:</dt><dd className="font-medium text-red-600">{formatCurrency(totalMaterialCost)}</dd></div>
-                                 </dl>
+                                <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">Maliyet Dökümü</h4>
+                                <div className="space-y-3">
+                                    <div>
+                                        <h5 className="text-sm font-semibold text-gray-600 flex justify-between items-center">
+                                            <span>Personel Maliyetleri</span>
+                                            <span className="font-bold text-red-600">{formatCurrency(totalPersonnelCost)}</span>
+                                        </h5>
+                                        {totalPersonnelCost > 0 ? (
+                                            <ul className="text-sm space-y-1 mt-1 max-h-24 overflow-y-auto pr-2">
+                                                {job.personnelPayments.map(p => {
+                                                    if (p.payment === 0) return null;
+                                                    const personName = personnel.find(per => per.id === p.personnelId)?.name || 'Bilinmeyen';
+                                                    return (
+                                                        <li key={`cost-${p.personnelId}`} className="flex justify-between py-0.5">
+                                                            <span className="text-gray-700">{personName}</span>
+                                                            <span className="font-medium text-gray-800">{formatCurrency(p.payment)}</span>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        ) : <p className="text-xs text-center text-gray-400 py-2">Personel maliyeti yok.</p>}
+                                    </div>
+                                    {job.materials.length > 0 && (
+                                        <div className="border-t pt-3 mt-3">
+                                            <h5 className="text-sm font-semibold text-gray-600 flex justify-between items-center">
+                                                <span>Malzeme Maliyetleri</span>
+                                                <span className="font-bold text-red-600">{formatCurrency(totalMaterialCost)}</span>
+                                            </h5>
+                                            <ul className="text-sm space-y-1 mt-1 max-h-24 overflow-y-auto pr-2">
+                                                {job.materials.map(m => {
+                                                    const cost = m.quantity * m.unitPrice;
+                                                    return (
+                                                        <li key={`cost-${m.id}`} className="flex justify-between py-0.5">
+                                                            <span className="text-gray-700">{m.name}</span>
+                                                            <span className="font-medium text-gray-800">{formatCurrency(cost)}</span>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         

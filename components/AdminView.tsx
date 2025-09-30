@@ -1,9 +1,10 @@
 
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { User, Role, Personnel } from '../types';
 import { XMarkIcon, PlusIcon, UserGroupIcon, IdentificationIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon } from './icons/Icons';
-import ConfirmationModal from './ui/ConfirmationModal';
+
+const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
 
 interface AdminViewProps {
     currentUser: User;
@@ -205,7 +206,7 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
                             placeholder="İsim veya e-posta ile ara..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full max-w-sm pl-10 pr-4 py-2 border rounded-md bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full max-w-sm pl-10 pr-4 py-2 border rounded-md bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
                 </div>
@@ -288,19 +289,25 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
                     </div>
                 </div>
             </div>
-            <UserEditorModal
-                isOpen={isUserModalOpen}
-                onClose={() => setIsUserModalOpen(false)}
-                onSave={handleSaveUser}
-                userToEdit={userToEdit}
-            />
-            <ConfirmationModal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                onConfirm={handleConfirmDelete}
-                title="Kullanıcıyı Sil"
-                message={`'${userToDelete?.name}' adlı kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
-            />
+            <Suspense fallback={null}>
+                {isUserModalOpen && (
+                    <UserEditorModal
+                        isOpen={isUserModalOpen}
+                        onClose={() => setIsUserModalOpen(false)}
+                        onSave={handleSaveUser}
+                        userToEdit={userToEdit}
+                    />
+                )}
+                {isDeleteModalOpen && (
+                    <ConfirmationModal
+                        isOpen={isDeleteModalOpen}
+                        onClose={() => setIsDeleteModalOpen(false)}
+                        onConfirm={handleConfirmDelete}
+                        title="Kullanıcıyı Sil"
+                        message={`'${userToDelete?.name}' adlı kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+                    />
+                )}
+            </Suspense>
         </>
     );
 };

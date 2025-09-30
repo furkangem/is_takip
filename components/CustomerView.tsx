@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Customer, CustomerJob, Personnel, Material, JobPersonnelPayment, IncomePaymentMethod, GoldType, PaymentMethod, User, Role } from '../types';
 import { BuildingOffice2Icon, IdentificationIcon, PhoneIcon, MapPinIcon, DocumentTextIcon, XMarkIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CashIcon, TrendingUpIcon, TrendingDownIcon, ChevronUpIcon, ChevronDownIcon, UsersIcon } from './icons/Icons';
-import ConfirmationModal from './ui/ConfirmationModal';
 import StatCard from './ui/StatCard';
-import JobDetailModal from './JobDetailModal';
+
+const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
+const JobDetailModal = lazy(() => import('./JobDetailModal'));
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
 const paymentMethodNames: Record<PaymentMethod, string> = { cash: "Nakit", card: "Kart", transfer: "Havale" };
@@ -195,12 +196,10 @@ const JobEditorModal: React.FC<{
     }, [isOpen, jobToEdit, initialLocation]);
     
     const totalPersonnelPayment = useMemo(() => {
-        // FIX: Added explicit type for the accumulator `sum` and item `pData` to prevent arithmetic errors.
         return Array.from(personnelPayments.values()).reduce((sum: number, pData: EditablePersonnelPayment) => sum + (parseFloat(pData.payment) || 0), 0);
     }, [personnelPayments]);
 
     const totalMaterialCost = useMemo(() => {
-        // FIX: Added explicit type for the accumulator `sum` and item `mat` to prevent arithmetic errors.
         return materials.reduce((sum: number, mat: EditableMaterial) => sum + ((parseFloat(mat.quantity) || 0) * (parseFloat(mat.unitPrice) || 0)), 0);
     }, [materials]);
 
@@ -284,8 +283,9 @@ const JobEditorModal: React.FC<{
             })),
         };
         
-        // FIX: The `jobToEdit` prop can be null, which would cause an error when spread.
-        // Added a check to handle the edit and create cases separately.
+        // FIX: Use an if/else block to handle create and update cases separately,
+        // preventing the "Spread types may only be created from object types" error
+        // when `jobToEdit` is null.
         if (jobToEdit) {
             onSave({ ...jobToEdit, ...jobData });
         } else {
@@ -395,7 +395,7 @@ const JobEditorModal: React.FC<{
                         <div className="flex gap-2 items-end">
                             <div className="flex-grow">
                                 <label htmlFor="income" className="flex items-center text-sm font-medium text-green-700"><TrendingUpIcon className="h-4 w-4 mr-1"/> Müşteri Fiyatı (Gelir)</label>
-                                <input type="number" name="income" value={formData.income} onChange={handleChange} className="block w-full px-3 py-2 border border-green-300 rounded-md shadow-sm bg-green-50" />
+                                <input type="number" name="income" value={formData.income} onChange={handleChange} className="block w-full px-3 py-2 border border-green-300 rounded-md shadow-sm bg-green-50 text-green-900 font-bold" />
                             </div>
                             <div className="w-28">
                                 <label htmlFor="incomePaymentMethod" className="block text-sm font-medium text-gray-700">Birim</label>
@@ -454,6 +454,7 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
 
     const [isJobDetailModalOpen, setIsJobDetailModalOpen] = useState(false);
     const [jobToView, setJobToView] = useState<CustomerJob | null>(null);
+    const [isIncomeHistoryExpanded, setIsIncomeHistoryExpanded] = useState(true);
     
     const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
     const isEditable = currentUser.role === Role.SUPER_ADMIN;
@@ -597,13 +598,13 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
             <div className="flex flex-col md:flex-row h-full gap-6">
                 <div className="w-full md:w-1/3 lg:w-1/4 bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
                     <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
-                        <h3 className="text-lg font-semibold flex items-center"><BuildingOffice2Icon className="h-6 w-6 mr-2 text-blue-500" />Müşteriler</h3>
+                        <h3 className="text-lg font-semibold flex items-center text-gray-800"><BuildingOffice2Icon className="h-6 w-6 mr-2 text-blue-500" />Müşteriler</h3>
                         {isEditable && <button onClick={() => { setCustomerToEdit(null); setIsCustomerModalOpen(true); }} className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"><PlusIcon className="h-5 w-5 mr-1" /> Ekle</button>}
                     </div>
                     <div className="p-2 border-b">
                         <div className="relative">
                             <MagnifyingGlassIcon className="absolute h-5 w-5 text-gray-400 left-3 top-1/2 -translate-y-1/2" />
-                            <input type="text" placeholder="Müşteri ara..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-sm focus:ring-blue-500 focus:border-blue-500" />
+                            <input type="text" placeholder="Müşteri ara..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500" />
                         </div>
                     </div>
                     <div className="overflow-y-auto flex-1">
@@ -645,37 +646,53 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                 </div>
                             </div>
                             
-                            <div className="bg-white p-6 rounded-lg shadow-md">
-                                <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                                    <CashIcon className="h-6 w-6 mr-3 text-green-500" />
-                                    Müşteri Hakedişleri ve Gelen Ödemeler
-                                </h3>
-                                <div className="overflow-x-auto max-h-72">
-                                    <table className="w-full text-left text-sm min-w-[500px]">
-                                        <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider sticky top-0">
-                                            <tr>
-                                                <th className="p-3 font-semibold">Tarih</th>
-                                                <th className="p-3 font-semibold">İş Açıklaması</th>
-                                                <th className="p-3 font-semibold text-right">Tutar</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {selectedCustomerJobs.length > 0 ? selectedCustomerJobs.map(job => (
-                                                <tr key={job.id} className="hover:bg-gray-50/50">
-                                                    <td className="p-3 text-gray-600 whitespace-nowrap">{formatDate(job.date)}</td>
-                                                    <td className="p-3 text-gray-800 font-medium">
-                                                        <span className="font-bold text-gray-600">{job.location}:</span> {job.description}
-                                                    </td>
-                                                    <td className="p-3 text-green-600 font-bold text-right whitespace-nowrap">{formatCurrency(job.income)}</td>
-                                                </tr>
-                                            )) : (
-                                                <tr>
-                                                    <td colSpan={3} className="p-4 text-center text-gray-500">Bu müşteri için gelir kaydı bulunmuyor.</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                            <div className="bg-white rounded-lg shadow-md">
+                                <div 
+                                    className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 rounded-t-lg"
+                                    onClick={() => setIsIncomeHistoryExpanded(!isIncomeHistoryExpanded)}
+                                    role="button"
+                                    aria-expanded={isIncomeHistoryExpanded}
+                                >
+                                    <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+                                        <CashIcon className="h-6 w-6 mr-3 text-green-500" />
+                                        Müşteri Hakedişleri ve Gelen Ödemeler
+                                    </h3>
+                                    {isIncomeHistoryExpanded ? (
+                                        <ChevronUpIcon className="h-6 w-6 text-gray-500" />
+                                    ) : (
+                                        <ChevronDownIcon className="h-6 w-6 text-gray-500" />
+                                    )}
                                 </div>
+                                {isIncomeHistoryExpanded && (
+                                    <div className="px-6 pb-6">
+                                        <div className="overflow-x-auto max-h-72 border-t pt-4">
+                                            <table className="w-full text-left text-sm min-w-[500px]">
+                                                <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider sticky top-0">
+                                                    <tr>
+                                                        <th className="p-3 font-semibold">Tarih</th>
+                                                        <th className="p-3 font-semibold">İş Açıklaması</th>
+                                                        <th className="p-3 font-semibold text-right">Tutar</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-200">
+                                                    {selectedCustomerJobs.length > 0 ? selectedCustomerJobs.map(job => (
+                                                        <tr key={job.id} className="hover:bg-gray-50/50">
+                                                            <td className="p-3 text-gray-600 whitespace-nowrap">{formatDate(job.date)}</td>
+                                                            <td className="p-3 text-gray-800 font-medium">
+                                                                <span className="font-bold text-gray-600">{job.location}:</span> {job.description}
+                                                            </td>
+                                                            <td className="p-3 text-green-600 font-bold text-right whitespace-nowrap">{formatCurrency(job.income)}</td>
+                                                        </tr>
+                                                    )) : (
+                                                        <tr>
+                                                            <td colSpan={3} className="p-4 text-center text-gray-500">Bu müşteri için gelir kaydı bulunmuyor.</td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="bg-white p-4 rounded-lg shadow-md">
@@ -728,13 +745,15 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                 </div>
             </div>
 
-            <CustomerEditorModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} customerToEdit={customerToEdit} />
-            <ConfirmationModal isOpen={isDeleteCustomerModalOpen} onClose={() => setIsDeleteCustomerModalOpen(false)} onConfirm={handleConfirmDeleteCustomer} title="Müşteriyi Sil" message={`'${customerToDelete?.name}' adlı müşteriyi silmek istediğinizden emin misiniz? Bu müşteriye ait tüm iş kayıtları da silinecektir.`} />
-            
-            {selectedCustomer && <JobEditorModal isOpen={isJobModalOpen} onClose={() => setIsJobModalOpen(false)} onSave={handleSaveJob} jobToEdit={jobToEdit} customerId={selectedCustomer.id} personnel={personnel} initialLocation={initialLocationForModal} />}
-            <ConfirmationModal isOpen={isDeleteJobModalOpen} onClose={() => setIsDeleteJobModalOpen(false)} onConfirm={handleConfirmDeleteJob} title="İşi Sil" message={`'${jobToDelete?.description}' adlı işi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`} />
+            <Suspense fallback={null}>
+                {isCustomerModalOpen && <CustomerEditorModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSave={handleSaveCustomer} customerToEdit={customerToEdit} />}
+                {isDeleteCustomerModalOpen && <ConfirmationModal isOpen={isDeleteCustomerModalOpen} onClose={() => setIsDeleteCustomerModalOpen(false)} onConfirm={handleConfirmDeleteCustomer} title="Müşteriyi Sil" message={`'${customerToDelete?.name}' adlı müşteriyi silmek istediğinizden emin misiniz? Bu müşteriye ait tüm iş kayıtları da silinecektir.`} />}
+                
+                {selectedCustomer && isJobModalOpen && <JobEditorModal isOpen={isJobModalOpen} onClose={() => setIsJobModalOpen(false)} onSave={handleSaveJob} jobToEdit={jobToEdit} customerId={selectedCustomer.id} personnel={personnel} initialLocation={initialLocationForModal} />}
+                {isDeleteJobModalOpen && <ConfirmationModal isOpen={isDeleteJobModalOpen} onClose={() => setIsDeleteJobModalOpen(false)} onConfirm={handleConfirmDeleteJob} title="İşi Sil" message={`'${jobToDelete?.description}' adlı işi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`} />}
 
-            <JobDetailModal isOpen={isJobDetailModalOpen} onClose={() => setIsJobDetailModalOpen(false)} onEdit={handleOpenEditFromDetail} onDelete={handleDeleteFromDetail} job={jobToView} personnel={personnel} isEditable={isEditable} />
+                {isJobDetailModalOpen && <JobDetailModal isOpen={isJobDetailModalOpen} onClose={() => setIsJobDetailModalOpen(false)} onEdit={handleOpenEditFromDetail} onDelete={handleDeleteFromDetail} job={jobToView} personnel={personnel} isEditable={isEditable} />}
+            </Suspense>
         </>
     );
 };
