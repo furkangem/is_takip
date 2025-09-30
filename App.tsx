@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { users as initialUsers, personnel as initialPersonnel, personnelPayments as initialPersonnelPayments, customers as initialCustomers, customerJobs as initialCustomerJobs, defterEntries as initialDefterEntries, defterNotes as initialDefterNotes, workDays as initialWorkDays, sharedExpenses as initialSharedExpenses } from './data/mockData';
 import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, DefterNote, WorkDay, SharedExpense } from './types';
@@ -61,10 +62,8 @@ export default function App() {
     // For kasa, there is no item to select, just switch view
     if (view === 'kasa') {
         setCurrentView('kasa');
-        setNavigateToItem(null);
-    } else {
-        setNavigateToItem({ view, id });
     }
+    setNavigateToItem({ view, id });
   };
   
   const handleNavigationComplete = () => {
@@ -244,7 +243,7 @@ export default function App() {
 
   // Defter Entry CRUD
   const addDefterEntry = (newEntryData: Omit<DefterEntry, 'id'>) => {
-    const newEntry: DefterEntry = { ...newEntryData, id: `de-${Date.now()}` };
+    const newEntry: DefterEntry = { ...newEntryData, id: `le-${Date.now()}` };
     setDefterEntries(prev => [...prev, newEntry]);
   };
 
@@ -380,9 +379,11 @@ export default function App() {
                       onAddSharedExpense={addSharedExpense}
                       onUpdateSharedExpense={updateSharedExpense}
                       onDeleteSharedExpense={deleteSharedExpense}
-                      // FIX: Pass missing props to KasaView component.
                       onRestoreSharedExpense={restoreSharedExpense}
                       onPermanentlyDeleteSharedExpense={permanentlyDeleteSharedExpense}
+                      onNavigate={handleNavigation}
+                      navigateToItem={navigateToItem?.view === 'kasa' ? navigateToItem : null}
+                      onNavigationComplete={handleNavigationComplete}
                   />
                 )}
                 {currentView === 'reports' && (

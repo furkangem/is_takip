@@ -2,12 +2,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Import Payer and PaymentMethod types.
-import { Income, Expense, User, Personnel, Payment, PersonnelPayment, Role, Payer, PaymentMethod } from '../types';
+import { Income, Expense, User, Personnel, PersonnelPayment, Role, Payer, PaymentMethod } from '../types';
 import { PlusIcon, ArrowUpCircleIcon, ArrowDownCircleIcon, XMarkIcon, TrashIcon, CurrencyDollarIcon, MagnifyingGlassIcon, BanknotesIcon, UserGroupIcon } from './icons/Icons';
 import ConfirmationModal from './ui/ConfirmationModal';
 
 interface FinanceViewProps {
-    users: User[];
     personnel: Personnel[];
     incomes: Income[];
     expenses: Expense[];
@@ -16,22 +15,19 @@ interface FinanceViewProps {
     onDeleteIncome: (incomeId: string) => void;
     onDeleteExpense: (expenseId: string) => void;
     selectedMonth: Date;
-    onAddPayment: (payment: Omit<Payment, 'id'>) => void;
     onAddPersonnelPayment: (payment: Omit<PersonnelPayment, 'id'>) => void;
 }
 
-type TransactionType = 'income' | 'expense' | 'foremanPayment' | 'personnelPayment';
+type TransactionType = 'income' | 'expense' | 'personnelPayment';
 
 const AddTransactionModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
     onAddIncome: (income: Omit<Income, 'id'>) => void;
     onAddExpense: (expense: Omit<Expense, 'id'>) => void;
-    onAddPayment: (payment: Omit<Payment, 'id'>) => void;
     onAddPersonnelPayment: (payment: Omit<PersonnelPayment, 'id'>) => void;
-    users: User[];
     personnel: Personnel[];
-}> = ({ isOpen, onClose, onAddIncome, onAddExpense, onAddPayment, onAddPersonnelPayment, users, personnel }) => {
+}> = ({ isOpen, onClose, onAddIncome, onAddExpense, onAddPersonnelPayment, personnel }) => {
     const [type, setType] = useState<TransactionType>('expense');
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
@@ -40,7 +36,6 @@ const AddTransactionModal: React.FC<{
     const [payer, setPayer] = useState<Payer>('Kasa');
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
 
-    const foremen = useMemo(() => users.filter(u => u.role === Role.FOREMAN), [users]);
     const allPersonnel = useMemo(() => personnel, [personnel]);
     
     useEffect(() => {
@@ -76,10 +71,6 @@ const AddTransactionModal: React.FC<{
                 if (!description.trim()) { alert('Lütfen bir açıklama girin.'); return; }
                 onAddExpense({ description, amount: numericAmount, date });
                 break;
-            case 'foremanPayment':
-                if (!payeeId) { alert('Lütfen bir ustabaşı seçin.'); return; }
-                onAddPayment({ foremanId: payeeId, amount: numericAmount, date });
-                break;
             case 'personnelPayment':
                 if (!payeeId) { alert('Lütfen bir personel seçin.'); return; }
                 // FIX: Add payer and paymentMethod to the new payment object.
@@ -92,11 +83,10 @@ const AddTransactionModal: React.FC<{
     const typeConfig = {
         income: { title: 'Gelir', color: 'green', icon: ArrowUpCircleIcon },
         expense: { title: 'Gider', color: 'red', icon: ArrowDownCircleIcon },
-        foremanPayment: { title: 'Ustabaşı Ödemesi', color: 'blue', icon: BanknotesIcon },
         personnelPayment: { title: 'Personel Ödemesi', color: 'purple', icon: UserGroupIcon },
     };
     
-    const isPayment = type === 'foremanPayment' || type === 'personnelPayment';
+    const isPayment = type === 'personnelPayment';
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog">
@@ -110,7 +100,7 @@ const AddTransactionModal: React.FC<{
                 <form onSubmit={handleSubmit} className="p-6">
                     <div className="mb-6">
                         <span className="block text-sm font-medium text-gray-700 mb-2">İşlem Tipi</span>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                              {(Object.keys(typeConfig) as TransactionType[]).map((key) => {
                                 const config = typeConfig[key];
                                 const isSelected = type === key;
@@ -135,9 +125,9 @@ const AddTransactionModal: React.FC<{
                                 <select id="payee" value={payeeId} onChange={e => setPayeeId(e.target.value)} required
                                     className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                     <option value="" disabled>
-                                        {type === 'foremanPayment' ? 'Ustabaşı Seçin...' : 'Personel Seçin...'}
+                                        Personel Seçin...
                                     </option>
-                                    {(type === 'foremanPayment' ? foremen : allPersonnel).map(p => (
+                                    {allPersonnel.map(p => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>

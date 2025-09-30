@@ -1,4 +1,6 @@
-import React, { useState, useMemo, lazy, Suspense } from 'react';
+
+
+import React, { useState, useMemo, lazy, Suspense, useEffect } from 'react';
 import { Payer, PaymentMethod, SharedExpense } from '../types';
 import { PlusIcon, XMarkIcon, TrashIcon, PencilIcon, BanknotesIcon, CashIcon, CreditCardIcon, ArrowsRightLeftIcon, ArrowUturnLeftIcon, ChevronDownIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
@@ -138,14 +140,33 @@ interface OrtakKasaViewProps {
     onRestore: (expenseId: string) => void;
     onPermanentlyDelete: (expenseId: string) => void;
     isReadOnly?: boolean;
+    navigateToId: string | null;
+    onNavigationComplete: () => void;
 }
 
-const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate, onDelete, onRestore, onPermanentlyDelete, isReadOnly }) => {
+const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate, onDelete, onRestore, onPermanentlyDelete, isReadOnly, navigateToId, onNavigationComplete }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [expenseToEdit, setExpenseToEdit] = useState<SharedExpense | null>(null);
     const [expenseToDelete, setExpenseToDelete] = useState<SharedExpense | null>(null);
     const [expenseToPermanentlyDelete, setExpenseToPermanentlyDelete] = useState<SharedExpense | null>(null);
     const [showDeleted, setShowDeleted] = useState(false);
+
+    useEffect(() => {
+        if (navigateToId) {
+            const element = document.getElementById(`shared-expense-${navigateToId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                element.classList.add('bg-blue-100', 'ring-2', 'ring-blue-500');
+                const timer = setTimeout(() => {
+                    element.classList.remove('bg-blue-100', 'ring-2', 'ring-blue-500');
+                }, 2500);
+                onNavigationComplete();
+                return () => clearTimeout(timer);
+            } else {
+                onNavigationComplete();
+            }
+        }
+    }, [navigateToId, onNavigationComplete]);
 
     const handleSaveExpense = (data: SharedExpense | Omit<SharedExpense, 'id'>) => { 'id' in data ? onUpdate(data) : onAdd(data) };
     const handleToggleStatus = (expense: SharedExpense) => onUpdate({ ...expense, status: expense.status === 'unpaid' ? 'paid' : 'unpaid' });
@@ -203,7 +224,7 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
                             {activeExpenses.length > 0 ? activeExpenses.map(exp => { 
                                 const PaymentIcon = paymentMethodIcons[exp.paymentMethod]; 
                                 return (
-                                    <tr key={exp.id} className="group hover:bg-gray-50">
+                                    <tr key={exp.id} id={`shared-expense-${exp.id}`} className="group hover:bg-gray-50 transition-all duration-300">
                                         <td className="p-3"><button onClick={() => !isReadOnly && handleToggleStatus(exp)} disabled={isReadOnly} className={`px-2 py-0.5 text-xs font-semibold rounded-full ${exp.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} ${isReadOnly ? 'cursor-not-allowed' : ''}`}>{exp.status === 'paid' ? 'Ödendi' : 'Ödenmedi'}</button></td>
                                         <td className="p-3 font-medium text-gray-800">{exp.description}</td>
                                         <td className="p-3 font-bold text-red-600 whitespace-nowrap">{formatCurrency(exp.amount)}</td>

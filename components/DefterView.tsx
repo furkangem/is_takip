@@ -247,10 +247,29 @@ interface DefterViewProps {
     onUpdateNote: (note: DefterNote) => void;
     onDeleteNote: (noteId: string) => void;
     isReadOnly?: boolean;
+    navigateToId: string | null;
+    onNavigationComplete: () => void;
 }
 
 const DefterView: React.FC<DefterViewProps> = (props) => {
-    const { entries, notes, onAddEntry, onUpdateEntry, onDeleteEntry, onAddNote, onUpdateNote, onDeleteNote, isReadOnly } = props;
+    const { entries, notes, onAddEntry, onUpdateEntry, onDeleteEntry, onAddNote, onUpdateNote, onDeleteNote, isReadOnly, navigateToId, onNavigationComplete } = props;
+
+    useEffect(() => {
+        if (navigateToId) {
+            const element = document.getElementById(`defter-item-${navigateToId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                element.classList.add('bg-blue-100', 'ring-2', 'ring-blue-500');
+                const timer = setTimeout(() => {
+                    element.classList.remove('bg-blue-100', 'ring-2', 'ring-blue-500');
+                }, 2500);
+                onNavigationComplete();
+                return () => clearTimeout(timer);
+            } else {
+                onNavigationComplete();
+            }
+        }
+    }, [navigateToId, onNavigationComplete]);
 
     const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
     const [entryToEdit, setEntryToEdit] = useState<DefterEntry | null>(null);
@@ -290,7 +309,7 @@ const DefterView: React.FC<DefterViewProps> = (props) => {
     const totalUnpaidExpense = useMemo(() => expenseEntries.unpaid.reduce((sum: number, e: DefterEntry) => sum + e.amount, 0), [expenseEntries.unpaid]);
 
     const EntryListItem: React.FC<{entry: DefterEntry}> = ({entry}) => (
-        <li className="p-3 group">
+        <li id={`defter-item-${entry.id}`} className="p-3 group transition-all duration-300">
            <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                      <button onClick={() => !isReadOnly && handleToggleEntryStatus(entry)} className="flex-shrink-0" disabled={isReadOnly} title={entry.status === 'paid' ? 'Ödenmedi İşaretle' : 'Ödendi İşaretle'}>
@@ -328,7 +347,7 @@ const DefterView: React.FC<DefterViewProps> = (props) => {
         const categoryNames: Record<NoteCategory, string> = { todo: 'Yapılacak', reminder: 'Hatırlatma', important: 'Önemli' };
         const isOverdue = !note.completed && note.dueDate && new Date(note.dueDate) < new Date();
         return (
-            <div className={`p-3 group space-y-2 rounded-lg ${note.completed ? 'bg-gray-50' : 'bg-white'}`}>
+            <div id={`defter-item-${note.id}`} className={`p-3 group space-y-2 rounded-lg transition-all duration-300 ${note.completed ? 'bg-gray-50' : 'bg-white'}`}>
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                         <input type="checkbox" checked={note.completed} onChange={() => !isReadOnly && handleToggleNoteStatus(note)} disabled={isReadOnly} className="mt-1 form-checkbox h-5 w-5 rounded text-blue-600 disabled:cursor-not-allowed"/>

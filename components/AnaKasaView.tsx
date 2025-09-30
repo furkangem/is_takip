@@ -1,6 +1,7 @@
 
+
 import React, { useState, useMemo } from 'react';
-import { Customer, CustomerJob, Personnel, SharedExpense } from '../types';
+import { Customer, CustomerJob, Personnel, PersonnelPayment, SharedExpense } from '../types';
 import { TrendingUpIcon, TrendingDownIcon, CashIcon, MagnifyingGlassIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 import JobDetailModal from './JobDetailModal';
@@ -12,24 +13,27 @@ interface AnaKasaViewProps {
   customerJobs: CustomerJob[];
   personnel: Personnel[];
   sharedExpenses: SharedExpense[];
+  personnelPayments: PersonnelPayment[];
+  onNavigate: (view: View, id: string) => void;
 }
 
 interface KasaTransaction {
   id: string; 
   date: string;
   description: string;
-  type: 'İş Kaydı' | 'Ortak Gider';
+  type: 'İş Kaydı' | 'Ortak Gider' | 'Personel Ödemesi';
   amountIn: number | null;
   amountOut: number | null;
   isJob: boolean;
   jobId?: string;
+  originId?: string;
 }
 
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
 
 const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
-    const { customers, customerJobs, personnel, sharedExpenses } = props;
+    const { customers, customerJobs, personnel, sharedExpenses, personnelPayments, onNavigate } = props;
     const [searchQuery, setSearchQuery] = useState('');
     const [jobToView, setJobToView] = useState<CustomerJob | null>(null);
     const [selectedType, setSelectedType] = useState<string>('all');
@@ -82,14 +86,38 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
                     amountIn: null,
                     amountOut: expense.amount,
                     isJob: false,
+                    originId: expense.id,
                 });
             });
         
+        // 3. Process Personnel Payments from Kasa
+        personnelPayments
+            .filter(p => p.payer === 'Kasa')
+            .forEach(payment => {
+                const person = personnel.find(p => p.id === payment.personnelId);
+                const job = payment.customerJobId ? customerJobs.find(j => j.id === payment.customerJobId) : undefined;
+                let description = `Personel Ödemesi: ${person?.name || 'Bilinmeyen'}`;
+                if (job) {
+                    description += ` (${job.location})`;
+                }
+
+                transactions.push({
+                    id: `ppay-${payment.id}`,
+                    date: payment.date,
+                    description: description,
+                    type: 'Personel Ödemesi',
+                    amountIn: null,
+                    amountOut: payment.amount,
+                    isJob: false, // It's a payment, not a job summary
+                    originId: payment.personnelId, // Navigate to the person
+                });
+            });
+
         const sortedTransactions = transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const types = Array.from(new Set(sortedTransactions.map(t => t.type))).sort();
 
         return { allTransactions: sortedTransactions, transactionTypes: types };
-    }, [customerJobs, customers, sharedExpenses]);
+    }, [customerJobs, customers, sharedExpenses, personnelPayments, personnel]);
     
     const transactionsInDateRange = useMemo(() => {
         const start = startDate ? new Date(startDate) : null;
@@ -191,7 +219,14 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
                         <tbody className="divide-y divide-gray-200">
                              {filteredTransactions.length > 0 ? filteredTransactions.map(t => {
                                 return (
-                                    <tr key={t.id} className="hover:bg-gray-50/50">
+                                    <tr 
+                                        key={t.id} 
+                                        className={`hover:bg-gray-50/50 ${t.type === 'Ortak Gider' || t.type === 'Personel Ödemesi' ? 'cursor-pointer' : ''}`}
+                                        onClick={() => {
+                                            if (t.originId && t.type === 'Ortak Gider') onNavigate('kasa', t.originId);
+                                            if (t.originId && t.type === 'Personel Ödemesi') onNavigate('personnel', t.originId);
+                                        }}
+                                    >
                                         <td className="p-3 text-gray-600 whitespace-nowrap">{new Date(t.date).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric'})}</td>
                                         <td className="p-3 font-medium text-gray-800 max-w-xs truncate" title={t.description}>{t.description}</td>
                                         <td className="p-3"><span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md">{t.type}</span></td>
@@ -199,7 +234,7 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
                                         <td className="p-3 font-bold text-red-600 text-right">{t.amountOut ? formatCurrency(t.amountOut) : '-'}</td>
                                         <td className="p-3 text-center">
                                             {t.isJob && (
-                                                <button onClick={() => handleDetailsClick(t)} className="text-blue-600 hover:text-blue-800 font-medium text-xs bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md">
+                                                <button onClick={(e) => { e.stopPropagation(); handleDetailsClick(t); }} className="text-blue-600 hover:text-blue-800 font-medium text-xs bg-blue-100 hover:bg-blue-200 px-3 py-1.5 rounded-md">
                                                     Detaylar
                                                 </button>
                                             )}

@@ -283,9 +283,7 @@ const JobEditorModal: React.FC<{
             })),
         };
         
-        // FIX: Use an if/else block to handle create and update cases separately,
-        // preventing the "Spread types may only be created from object types" error
-        // when `jobToEdit` is null.
+        // Fix: Handle create and update cases separately to prevent spreading a null object.
         if (jobToEdit) {
             onSave({ ...jobToEdit, ...jobData });
         } else {

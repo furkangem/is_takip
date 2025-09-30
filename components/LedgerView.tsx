@@ -1,5 +1,6 @@
 
-import React, { useState, lazy, Suspense } from 'react';
+
+import React, { useState, lazy, Suspense, useEffect } from 'react';
 import { DefterEntry, DefterNote, User, Customer, CustomerJob, Personnel, PersonnelPayment, SharedExpense } from '../types';
 import LoadingSpinner from './ui/LoadingSpinner';
 
@@ -29,10 +30,26 @@ interface KasaViewProps {
   customerJobs: CustomerJob[];
   personnel: Personnel[];
   personnelPayments: PersonnelPayment[];
+  onNavigate: (view: View, id: string) => void;
+  navigateToItem: { view: View, id: string } | null;
+  onNavigationComplete: () => void;
 }
 
 const KasaView: React.FC<KasaViewProps> = (props) => {
     const [activeTab, setActiveTab] = useState<'ana_kasa' | 'ortak_kasa' | 'defter'>('ana_kasa');
+
+    useEffect(() => {
+        if (props.navigateToItem && props.navigateToItem.view === 'kasa') {
+            const { id } = props.navigateToItem;
+            if (id.startsWith('se-')) { // Shared Expense
+                setActiveTab('ortak_kasa');
+            } else if (id.startsWith('le-') || id.startsWith('dn-')) { // Defter Entry or Note
+                setActiveTab('defter');
+            }
+            // No need to switch for ana_kasa as it's the source of navigation, not destination.
+        }
+    }, [props.navigateToItem]);
+
 
     const tabStyle = "px-4 py-2 text-sm font-semibold rounded-md transition-colors";
     const activeTabStyle = "bg-blue-600 text-white";
@@ -58,6 +75,8 @@ const KasaView: React.FC<KasaViewProps> = (props) => {
                         customerJobs={props.customerJobs}
                         personnel={props.personnel}
                         sharedExpenses={props.sharedExpenses}
+                        personnelPayments={props.personnelPayments}
+                        onNavigate={props.onNavigate}
                     />
                 )}
                 {activeTab === 'ortak_kasa' && (
@@ -69,6 +88,8 @@ const KasaView: React.FC<KasaViewProps> = (props) => {
                         onRestore={props.onRestoreSharedExpense}
                         onPermanentlyDelete={props.onPermanentlyDeleteSharedExpense}
                         isReadOnly={isReadOnly}
+                        navigateToId={props.navigateToItem?.id.startsWith('se-') ? props.navigateToItem.id : null}
+                        onNavigationComplete={props.onNavigationComplete}
                     />
                 )}
                 {activeTab === 'defter' && (
@@ -82,6 +103,8 @@ const KasaView: React.FC<KasaViewProps> = (props) => {
                         onUpdateNote={props.onUpdateDefterNote}
                         onDeleteNote={props.onDeleteDefterNote}
                         isReadOnly={isReadOnly}
+                        navigateToId={(props.navigateToItem?.id.startsWith('le-') || props.navigateToItem?.id.startsWith('dn-')) ? props.navigateToItem.id : null}
+                        onNavigationComplete={props.onNavigationComplete}
                     />
                 )}
             </Suspense>

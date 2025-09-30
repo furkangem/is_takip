@@ -2,7 +2,6 @@
 export enum Role {
   SUPER_ADMIN = 'SUPER_ADMIN',
   VIEWER = 'VIEWER',
-  FOREMAN = 'FOREMAN',
 }
 
 export interface User {
@@ -16,18 +15,10 @@ export interface User {
 export interface Personnel {
   id:string;
   name: string;
-  foremanId?: string;
   note?: {
     text: string;
     updatedAt: string; // ISO String
   }
-}
-
-export interface Payment {
-  id: string;
-  foremanId: string;
-  amount: number;
-  date: string; // ISO Date String
 }
 
 export type Payer = 'Ömer' | 'Barış' | 'Kasa';

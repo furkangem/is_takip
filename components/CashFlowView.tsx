@@ -1,14 +1,12 @@
 
 
 import React, { useMemo, useState } from 'react';
-import { Personnel, User, Payment, Income, Expense, PersonnelPayment } from '../types';
+import { Personnel, User, Income, Expense, PersonnelPayment } from '../types';
 import { TrendingUpIcon, TrendingDownIcon, CashIcon, MagnifyingGlassIcon, ClipboardDocumentListIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 
 interface CashFlowViewProps {
-  users: User[];
   personnel: Personnel[];
-  payments: Payment[];
   personnelPayments: PersonnelPayment[];
   extraIncomes: Income[];
   extraExpenses: Expense[];
@@ -18,13 +16,13 @@ interface CashFlowViewProps {
 interface Transaction {
     id: string;
     date: string;
-    type: 'Gelir' | 'Gider' | 'Ustabaşı Ödemesi' | 'Personel Ödemesi';
+    type: 'Gelir' | 'Gider' | 'Personel Ödemesi';
     description: string;
     amountIn: number | null;
     amountOut: number | null;
 }
 
-const CashFlowView: React.FC<CashFlowViewProps> = ({ users, personnel, payments, personnelPayments, extraIncomes, extraExpenses, selectedMonth }) => {
+const CashFlowView: React.FC<CashFlowViewProps> = ({ personnel, personnelPayments, extraIncomes, extraExpenses, selectedMonth }) => {
     const [searchQuery, setSearchQuery] = useState('');
     
     const formatCurrency = (value: number) => {
@@ -70,19 +68,6 @@ const CashFlowView: React.FC<CashFlowViewProps> = ({ users, personnel, payments,
             });
         });
         
-        // Add foreman payments
-        payments.filter(p => isCurrentMonth(p.date)).forEach(p => {
-             const foreman = users.find(u => u.id === p.foremanId);
-             allTransactions.push({
-                id: `pay-${p.id}`,
-                date: p.date,
-                type: 'Ustabaşı Ödemesi',
-                description: `Ödeme: ${foreman?.name || 'Bilinmeyen Ustabaşı'}`,
-                amountIn: null,
-                amountOut: p.amount,
-            });
-        });
-        
         // Add personnel payments
         personnelPayments.filter(p => isCurrentMonth(p.date)).forEach(p => {
              const pers = personnel.find(per => per.id === p.personnelId);
@@ -106,7 +91,7 @@ const CashFlowView: React.FC<CashFlowViewProps> = ({ users, personnel, payments,
             netFlow: income - expense,
         };
 
-    }, [users, personnel, payments, personnelPayments, extraIncomes, extraExpenses, selectedMonth]);
+    }, [personnel, personnelPayments, extraIncomes, extraExpenses, selectedMonth]);
 
     const filteredTransactions = useMemo(() => {
         if (!searchQuery) return transactions;
@@ -118,7 +103,6 @@ const CashFlowView: React.FC<CashFlowViewProps> = ({ users, personnel, payments,
     const typeStyles = {
         'Gelir': 'bg-green-100 text-green-800',
         'Gider': 'bg-red-100 text-red-800',
-        'Ustabaşı Ödemesi': 'bg-blue-100 text-blue-800',
         'Personel Ödemesi': 'bg-purple-100 text-purple-800',
     };
 

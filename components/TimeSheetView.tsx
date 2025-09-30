@@ -256,7 +256,6 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
     }, [workDays, startDate, endDate]);
 
     const generatePdf = () => {
-        // Fix: Explicitly type the `new Map()` to prevent `unknown` type errors later when accessing its values.
         const personnelData = filteredWorkDays.reduce((acc, wd) => {
             let entry = acc.get(wd.personnelId);
             if (!entry) {
@@ -271,7 +270,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
                 entry.earnings += wd.wage;
             }
             return acc;
-        // FIX: Explicitly typed the `new Map()` to ensure correct type inference for `personnelData` values.
+        // FIX: Explicitly typed the new Map() to resolve 'unknown' type on 'data' in the subsequent .map() call.
         }, new Map<string, { name: string; days: number; earnings: number }>());
 
         const puantajVerisi = Array.from(personnelData.values())
