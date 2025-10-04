@@ -251,7 +251,7 @@ export default function App() {
   
   const handleLogin = async (loginRequest: { kullaniciAdi: string, sifre: string }) => {
     try {
-      const user = await apiRequest('/Kullanicilar/login', 'POST', loginRequest);
+      const user = await apiRequest('/api/Kullanicilar/login', 'POST', loginRequest);
       setCurrentUser(user);
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(user));
