@@ -23,9 +23,9 @@ interface KasaViewProps {
   onDeleteDefterNote: (noteId: string) => void;
   onAddSharedExpense: (expense: Omit<SharedExpense, 'id'>) => void;
   onUpdateSharedExpense: (expense: SharedExpense) => void;
-  onDeleteSharedExpense: (expenseId: string) => void; // This is now soft-delete
-  onRestoreSharedExpense: (expenseId: string) => void;
-  onPermanentlyDeleteSharedExpense: (expenseId: string) => void;
+  onDeleteSharedExpense: (expenseId: number) => void; // This is now soft-delete
+  onRestoreSharedExpense: (expenseId: number) => void;
+  onPermanentlyDeleteSharedExpense: (expenseId: number) => void;
   customers: Customer[];
   customerJobs: CustomerJob[];
   personnel: Personnel[];

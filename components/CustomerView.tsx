@@ -130,7 +130,7 @@ const JobEditorModal: React.FC<{
     onClose: () => void;
     onSave: (job: Omit<CustomerJob, 'id'> | CustomerJob) => void;
     jobToEdit: CustomerJob | null;
-    customerId: string;
+    customerId: number;
     personnel: Personnel[];
     initialLocation?: string;
 }> = ({ isOpen, onClose, onSave, jobToEdit, customerId, personnel, initialLocation }) => {
@@ -143,8 +143,8 @@ const JobEditorModal: React.FC<{
         incomeGoldType: 'gram' as GoldType,
     });
 
-    const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<string[]>([]);
-    const [personnelPayments, setPersonnelPayments] = useState<Map<string, EditablePersonnelPayment>>(new Map());
+    const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<number[]>([]);
+    const [personnelPayments, setPersonnelPayments] = useState<Map<number, EditablePersonnelPayment>>(new Map());
     const [materials, setMaterials] = useState<EditableMaterial[]>([]);
     
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -170,7 +170,7 @@ const JobEditorModal: React.FC<{
                 });
                 setSelectedPersonnelIds(jobToEdit.personnelIds || []);
                 setMaterials((jobToEdit.materials || []).map(m => ({ name: m.name, unit: m.unit, quantity: String(m.quantity), unitPrice: String(m.unitPrice) })));
-                const paymentsMap = new Map<string, EditablePersonnelPayment>();
+                const paymentsMap = new Map<number, EditablePersonnelPayment>();
                 jobToEdit.personnelPayments.forEach(p => paymentsMap.set(p.personnelId, {
                     payment: String(p.payment),
                     paymentMethod: p.paymentMethod || 'cash',
@@ -210,7 +210,7 @@ const JobEditorModal: React.FC<{
         setFormData(prev => ({ ...prev, [name]: value }));
     };
     
-    const handlePersonnelSelect = (personnelId: string) => {
+    const handlePersonnelSelect = (personnelId: number) => {
         const newIds = new Set(selectedPersonnelIds);
         if (newIds.has(personnelId)) {
             newIds.delete(personnelId);
@@ -220,15 +220,20 @@ const JobEditorModal: React.FC<{
         setSelectedPersonnelIds(Array.from(newIds));
     };
     
-    const handlePaymentChange = (personnelId: string, field: keyof EditablePersonnelPayment, value: string | PaymentMethod) => {
-        setPersonnelPayments(prev => {
-            const newMap = new Map(prev);
-            const currentData = newMap.get(personnelId) || { payment: '', paymentMethod: 'cash', daysWorked: '' };
+    const handlePaymentChange = (personnelId: number, field: keyof EditablePersonnelPayment, value: string | PaymentMethod) => {
+        setPersonnelPayments((prev: Map<number, EditablePersonnelPayment>) => {
+            const newMap: Map<number, EditablePersonnelPayment> = new Map(prev);
+            const currentData: EditablePersonnelPayment = newMap.get(personnelId) || { payment: '', paymentMethod: 'cash', daysWorked: '' };
             let processedValue = value;
             if (field === 'payment' || field === 'daysWorked') {
                 processedValue = handleNumericInputChange(value as string);
             }
-            newMap.set(personnelId, { ...currentData, [field]: processedValue });
+            const updated: EditablePersonnelPayment = {
+                payment: field === 'payment' ? (processedValue as string) : currentData.payment,
+                paymentMethod: field === 'paymentMethod' ? (processedValue as PaymentMethod) : currentData.paymentMethod,
+                daysWorked: field === 'daysWorked' ? (processedValue as string) : currentData.daysWorked,
+            };
+            newMap.set(personnelId, updated);
             return newMap;
         });
     };
@@ -257,6 +262,10 @@ const JobEditorModal: React.FC<{
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        console.log('=== CUSTOMER VIEW HANDLE SUBMIT DEBUG ===');
+        console.log('Tüm malzemeler (filtrelemeden önce):', materials);
+        
         const jobData: Omit<CustomerJob, 'id'> = {
             customerId,
             date: formData.date,
@@ -274,14 +283,28 @@ const JobEditorModal: React.FC<{
                     paymentMethod: pData.paymentMethod,
                     daysWorked: parseInt(pData.daysWorked) || 0,
                 })),
-            materials: materials.map(m => ({ 
-                id: `mat-${Date.now()}${Math.random()}`,
-                name: m.name,
-                unit: m.unit,
-                quantity: parseFloat(m.quantity) || 0,
-                unitPrice: parseFloat(m.unitPrice) || 0
-            })),
+            materials: materials
+                .filter(m => {
+                    const isValid = m.name && m.name.trim() !== '';
+                    console.log(`Malzeme "${m.name}" geçerli mi?`, isValid);
+                    return isValid;
+                })
+                .map(m => {
+                    const mapped = { 
+                        id: `mat-${Date.now()}${Math.random()}`,
+                        name: m.name.trim(), // Boşlukları temizle
+                        unit: m.unit,
+                        quantity: parseFloat(m.quantity) || 0,
+                        unitPrice: parseFloat(m.unitPrice) || 0
+                    };
+                    console.log('Map edilen malzeme:', mapped);
+                    return mapped;
+                }),
         };
+        
+        console.log('Hazırlanan jobData:', jobData);
+        console.log('jobData.materials:', jobData.materials);
+        console.log('=== CUSTOMER VIEW DEBUG BİTTİ ===');
         
         // Fix: Handle create and update cases separately to prevent spreading a null object.
         if (jobToEdit) {
@@ -312,7 +335,7 @@ const JobEditorModal: React.FC<{
                             </div>
                             <div>
                                 <label htmlFor="date" className="block text-sm font-medium text-gray-700">Tarih</label>
-                                <input type="date" name="date" value={formData.date} onChange={handleChange} required className={commonInputClass} />
+                                <input type="date" name="date" value={(formData.date || '').split('T')[0]} onChange={handleChange} required className={commonInputClass} />
                             </div>
                         </div>
                         <div>
@@ -468,6 +491,17 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
         }
     }, [navigateToId, customers, onNavigationComplete]);
 
+  // Müşteri güncellendiğinde (array içindeki referans değişir) detay panelinin de
+  // güncel veriyi göstermesi için seçili müşteriyi yeni referansla senkronize et.
+  useEffect(() => {
+      if (selectedCustomer) {
+          const updated = customers.find(c => c.id === selectedCustomer.id);
+          if (updated && updated !== selectedCustomer) {
+              setSelectedCustomer(updated);
+          }
+      }
+  }, [customers]);
+
     const filteredCustomers = useMemo(() => {
         if (!searchQuery) return customers;
         return customers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -486,8 +520,8 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
         const jobs = customerJobs.filter(j => j.customerId === selectedCustomer.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         const income = jobs.reduce((sum: number, job: CustomerJob) => sum + job.income, 0);
         const cost = jobs.reduce((sum: number, job: CustomerJob) => {
-            const personnelCost = job.personnelPayments.reduce((s: number, p: JobPersonnelPayment) => s + p.payment, 0);
-            const materialCost = job.materials.reduce((s: number, m: Material) => s + (m.quantity * m.unitPrice), 0);
+            const personnelCost = (job.personnelPayments || []).reduce((s: number, p: JobPersonnelPayment) => s + (p?.payment || 0), 0);
+            const materialCost = (job.materials || []).reduce((s: number, m: Material) => s + ((m?.quantity || 0) * (m?.unitPrice || 0)), 0);
             return sum + personnelCost + materialCost;
         }, 0);
         return {
@@ -565,7 +599,7 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
         }, 50);
     };
 
-    const getPersonnelNames = (personnelIds: string[]) => {
+    const getPersonnelNames = (personnelIds: number[]) => {
         if (!personnelIds || personnelIds.length === 0) return '-';
         const names = personnelIds.map(id => personnel.find(p => p.id === id)?.name || 'Bilinmeyen');
         if (names.length > 2) {
@@ -574,7 +608,7 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
         return names.join(', ');
     }
 
-    const getAllPersonnelNames = (personnelIds: string[]) => {
+    const getAllPersonnelNames = (personnelIds: number[]) => {
         if (!personnelIds || personnelIds.length === 0) return 'Personel atanmamış';
         return personnelIds.map(id => personnel.find(p => p.id === id)?.name || 'Bilinmeyen').join(', ');
     };
@@ -694,9 +728,9 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                             </div>
 
                             <div className="bg-white p-4 rounded-lg shadow-md">
-                                <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center">
                                     <h3 className="text-lg font-semibold text-gray-800">İş Lokasyonları</h3>
-                                    {isEditable && <button onClick={() => { setJobToEdit(null); setInitialLocationForModal(undefined); setIsJobModalOpen(true); }} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md"><PlusIcon className="h-4 w-4 mr-1"/>Yeni Konumda İş Ekle</button>}
+                        {isEditable && <button onClick={() => { setJobToEdit(null); setInitialLocationForModal(undefined); setIsJobModalOpen(true); }} className="flex items-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md"><PlusIcon className="h-4 w-4 mr-1"/>Yeni Konumda İş Ekle</button>}
                                 </div>
                             </div>
 
@@ -718,8 +752,8 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                                     <th className="p-3 font-semibold text-gray-600 text-right">Gelir</th><th className="p-3 font-semibold text-gray-600 text-right">Maliyet</th>
                                                     <th className="p-3 font-semibold text-gray-600 text-right">Kar</th></tr></thead>
                                                 <tbody className="divide-y divide-gray-200">{jobs.map(job => {
-                                                    const personnelCost = job.personnelPayments.reduce((s: number, p: JobPersonnelPayment) => s + p.payment, 0);
-                                                    const materialCost = job.materials.reduce((s: number, m: Material) => s + (m.quantity * m.unitPrice), 0);
+                                                    const personnelCost = (job.personnelPayments || []).reduce((s: number, p: JobPersonnelPayment) => s + (p?.payment || 0), 0);
+                                                    const materialCost = (job.materials || []).reduce((s: number, m: Material) => s + ((m?.quantity || 0) * (m?.unitPrice || 0)), 0);
                                                     const cost = personnelCost + materialCost;
                                                     const profit = job.income - cost;
                                                     return (<tr key={job.id} className="hover:bg-gray-50 group cursor-pointer" onClick={() => { setJobToView(job); setIsJobDetailModalOpen(true); }}>

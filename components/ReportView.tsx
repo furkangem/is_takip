@@ -23,10 +23,25 @@ const ReportView: FC<ReportViewProps> = ({ personnel, customers, customerJobs })
   const [activeTab, setActiveTab] = useState('overview');
   
   const today = new Date();
-  const [startDate, setStartDate] = useState(getStartOfMonth(today).toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(getEndOfMonth(today).toISOString().split('T')[0]);
+  const defaultStartDate = new Date('2023-01-01');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
-  const setDateRange = (period: 'this_month' | 'last_month' | 'this_year') => {
+  // Varsayılan tarihleri ayarla
+  React.useEffect(() => {
+    if (!startDate || !endDate) {
+      setStartDate(defaultStartDate.toISOString().split('T')[0]);
+      setEndDate(getEndOfMonth(today).toISOString().split('T')[0]);
+    }
+  }, []);
+
+  const setDateRange = (period: 'this_month' | 'last_month' | 'this_year' | 'default') => {
+    if (period === 'default') {
+      setStartDate(defaultStartDate.toISOString().split('T')[0]);
+      setEndDate(getEndOfMonth(today).toISOString().split('T')[0]);
+      return;
+    }
+    
     const now = new Date();
     let start, end;
     switch (period) {
@@ -201,7 +216,8 @@ const ReportView: FC<ReportViewProps> = ({ personnel, customers, customerJobs })
                     <label className="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={commonInputClass} />
                 </div>
-                <div className="col-span-1 lg:col-span-3 flex gap-2 items-center pt-5">
+                <div className="col-span-1 lg:col-span-4 flex gap-2 items-center pt-5">
+                    <button onClick={() => setDateRange('default')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 w-full">Varsayılan</button>
                     <button onClick={() => setDateRange('this_month')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 w-full">Bu Ay</button>
                     <button onClick={() => setDateRange('last_month')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 w-full">Geçen Ay</button>
                     <button onClick={() => setDateRange('this_year')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 w-full">Bu Yıl</button>

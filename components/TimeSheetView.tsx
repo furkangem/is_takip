@@ -7,7 +7,7 @@ import { NotoSansRegular } from '../utils/noto-sans-tr';
 
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
-const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' });
 
 const formatIncome = (job: CustomerJob): string => {
     if (job.incomePaymentMethod === 'GOLD') {
@@ -232,9 +232,18 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
 
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const defaultStartDate = new Date('2023-01-01');
     
-    const [startDate, setStartDate] = useState(formatDateForInput(firstDayOfMonth));
-    const [endDate, setEndDate] = useState(formatDateForInput(today));
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+
+    // Varsayılan tarihleri ayarla
+    useEffect(() => {
+        if (!startDate || !endDate) {
+            setStartDate(formatDateForInput(defaultStartDate));
+            setEndDate(formatDateForInput(today));
+        }
+    }, []);
 
     useEffect(() => {
         setSelectedId(null);
@@ -242,10 +251,15 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
     }, [viewMode]);
 
     const filteredWorkDays = useMemo(() => {
-        const start = startDate ? new Date(startDate) : null;
-        const end = endDate ? new Date(endDate) : null;
-        if (start) start.setHours(0,0,0,0);
-        if (end) end.setHours(23,59,59,999);
+        // Tarih filtreleme - sadece tarihler ayarlanmışsa filtrele
+        if (!startDate || !endDate) {
+            return workDays;
+        }
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        start.setHours(0,0,0,0);
+        end.setHours(23,59,59,999);
         
         return workDays.filter(wd => {
             const workDate = new Date(wd.date);
@@ -274,7 +288,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
         }, new Map<string, { name: string; days: number; earnings: number }>());
 
         const puantajVerisi = Array.from(personnelData.values())
-            .map((data, index) => ({
+            .map((data: { name: string; days: number; earnings: number }, index) => ({
                 id: index + 1,
                 ad: data.name,
                 gun: data.days,
@@ -463,7 +477,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
                 </div>
             </div>
             <div className="w-full md:w-2/3 lg:w-3/4 space-y-4">
-                <div className="bg-white p-4 rounded-lg shadow-md grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="bg-white p-4 rounded-lg shadow-md grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Başlangıç Tarihi</label>
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={commonInputClass} />
@@ -471,6 +485,17 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={commonInputClass} />
+                    </div>
+                    <div>
+                        <button 
+                            onClick={() => {
+                                setStartDate(formatDateForInput(defaultStartDate));
+                                setEndDate(formatDateForInput(today));
+                            }}
+                            className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+                        >
+                            Varsayılan
+                        </button>
                     </div>
                      <div>
                         <button onClick={generatePdf} className="w-full flex items-center justify-center bg-green-600 text-white font-bold py-2 px-4 rounded-md shadow-sm hover:bg-green-700 transition-colors">

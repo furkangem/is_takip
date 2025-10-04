@@ -8,7 +8,7 @@ import StatCard from './ui/StatCard';
 const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
-const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' });
 
 
 const JobPaymentDetailsModal: React.FC<{
@@ -87,14 +87,23 @@ const PersonnelEditorModal: React.FC<{
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) {
-            alert('Lütfen tüm alanları doğru bir şekilde doldurun.');
+        
+        // Güçlü validation
+        if (!name || name.trim() === '') {
+            alert('Personel adı boş bırakılamaz!');
+            return;
+        }
+        
+        if (name.trim().length < 2) {
+            alert('Personel adı en az 2 karakter olmalıdır!');
             return;
         }
 
         const personnelData = {
-            name,
+            name: name.trim(), // Boşlukları temizle
         };
+        
+        console.log('Form\'dan gönderilen veri:', personnelData); // Debug için
         
         if (personnelToEdit) {
             onSave({ ...personnelToEdit, ...personnelData });
@@ -145,7 +154,7 @@ const AddPaymentModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
     // FIX: Update onSave to include payer and paymentMethod.
-    onSave: (paymentData: {amount: number, jobId?: string, payer: Payer, paymentMethod: PaymentMethod}) => void;
+    onSave: (paymentData: {amount: number, jobId?: number, payer: Payer, paymentMethod: PaymentMethod}) => void;
     personnel: Personnel;
     personnelJobs: CustomerJob[];
 }> = ({ isOpen, onClose, onSave, personnel, personnelJobs }) => {
@@ -176,7 +185,7 @@ const AddPaymentModal: React.FC<{
             return;
         }
         // FIX: Pass payer and paymentMethod to onSave.
-        onSave({amount: numericAmount, jobId: jobId || undefined, payer, paymentMethod});
+        onSave({amount: numericAmount, jobId: jobId ? Number(jobId) : undefined, payer, paymentMethod});
         onClose();
     };
 
@@ -262,15 +271,15 @@ interface PersonnelViewProps {
   personnelPayments: PersonnelPayment[];
   onAddPersonnel: (personnel: Omit<Personnel, 'id'>) => void;
   onUpdatePersonnel: (personnel: Personnel) => void;
-  onDeletePersonnel: (personnelId: string) => void;
+  onDeletePersonnel: (personnelId: number) => void;
   onAddPersonnelPayment: (payment: Omit<PersonnelPayment, 'id'>) => void;
-  onDeletePersonnelPayment: (paymentId: string) => void;
-  navigateToId: string | null;
+  onDeletePersonnelPayment: (paymentId: number) => void;
+  navigateToId: number | null;
   onNavigationComplete: () => void;
 }
 
 const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, personnel, customers, customerJobs, personnelPayments, onAddPersonnel, onUpdatePersonnel, onDeletePersonnel, onAddPersonnelPayment, onDeletePersonnelPayment, navigateToId, onNavigationComplete }) => {
-  const [selectedPersonnelId, setSelectedPersonnelId] = useState<string | null>(personnel.length > 0 ? personnel[0].id : null);
+  const [selectedPersonnelId, setSelectedPersonnelId] = useState<number | null>(personnel.length > 0 ? personnel[0].id : null);
   const selectedPersonnel = useMemo(() => 
     personnel.find(p => p.id === selectedPersonnelId) || null
   , [personnel, selectedPersonnelId]);
@@ -283,6 +292,18 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<PersonnelPayment | null>(null);
   const [filters, setFilters] = useState({ startDate: '', endDate: '' });
+
+  // Varsayılan tarihleri ayarla
+  React.useEffect(() => {
+    if (!filters.startDate || !filters.endDate) {
+      const defaultStart = new Date('2023-01-01');
+      const today = new Date();
+      setFilters({ 
+        startDate: defaultStart.toISOString().split('T')[0], 
+        endDate: today.toISOString().split('T')[0] 
+      });
+    }
+  }, []);
   const [jobDetailsModalOpen, setJobDetailsModalOpen] = useState(false);
   const [selectedJobForDetails, setSelectedJobForDetails] = useState<CustomerJob | null>(null);
   const [isNoteEditing, setIsNoteEditing] = useState(false);
@@ -310,7 +331,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
 
 
   useEffect(() => {
-    if (navigateToId) {
+    if (navigateToId != null) {
         const person = personnel.find(p => p.id === navigateToId);
         if (person) {
             setSelectedPersonnelId(person.id);
@@ -370,8 +391,8 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     }
   };
 
-  // FIX: Update function signature to accept payer and paymentMethod.
-  const handleAddPayment = (paymentData: {amount: number, jobId?: string, payer: Payer, paymentMethod: PaymentMethod}) => {
+  // FIX: Update function signature to accept payer and paymentMethod and correct jobId type.
+  const handleAddPayment = (paymentData: {amount: number, jobId?: number, payer: Payer, paymentMethod: PaymentMethod}) => {
     if(selectedPersonnel) {
         // FIX: Add payer and paymentMethod to the new payment object.
         onAddPersonnelPayment({
@@ -440,9 +461,18 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     };
   }, [selectedPersonnel, customerJobs, personnelPayments, filters]);
 
-  const setDateRange = (period: 'this_month' | 'last_month' | 'all') => {
+  const setDateRange = (period: 'this_month' | 'last_month' | 'all' | 'default') => {
     if (period === 'all') {
         setFilters({ startDate: '', endDate: '' });
+        return;
+    }
+    if (period === 'default') {
+        const defaultStart = new Date('2023-01-01');
+        const today = new Date();
+        setFilters({ 
+            startDate: defaultStart.toISOString().split('T')[0], 
+            endDate: today.toISOString().split('T')[0] 
+        });
         return;
     }
     const now = new Date();
@@ -459,7 +489,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   };
 
 
-  const formatDateTime = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const formatDateTime = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' });
   const isEditable = currentUser.role === Role.SUPER_ADMIN;
   const commonInputClass = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-900 focus:ring-blue-500 focus:border-blue-500";
 
@@ -482,7 +512,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
                 <ul>{filteredPersonnel.map(p => {
                     return (
                         <li key={p.id}><button onClick={() => handleSelectPersonnel(p)} className={`w-full text-left p-4 transition-colors duration-150 ${selectedPersonnel?.id === p.id ? 'bg-blue-100 border-l-4 border-blue-500' : 'hover:bg-gray-100'}`}>
-                            <p className="font-semibold text-gray-800">{p.name}</p>
+                            <p className="font-semibold text-gray-800">{p.name || 'İsimsiz'}</p>
                         </button></li>
                     );
                 })}</ul>
@@ -505,7 +535,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
                   <div className="flex-1 min-w-0">
                     <h2 className="text-3xl font-bold text-gray-800 flex items-center">
                         <ClipboardDocumentListIcon className="h-8 w-8 mr-3 text-blue-600"/>
-                        {selectedPersonnel.name}
+                        {selectedPersonnel.name || 'İsimsiz'}
                     </h2>
                     <p className="text-gray-500 text-sm mt-1">Genel bakiye ve hakediş özeti</p>
                   </div>
@@ -559,9 +589,10 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
              <div className="bg-white p-4 rounded-lg shadow-md space-y-4">
                 <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                     <h3 className="text-lg font-semibold text-gray-800">Finansal Döküm</h3>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 items-end">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 items-end">
                         <input type="date" value={filters.startDate} onChange={e => setFilters(p => ({...p, startDate: e.target.value}))} className={commonInputClass} />
                         <input type="date" value={filters.endDate} onChange={e => setFilters(p => ({...p, endDate: e.target.value}))} className={commonInputClass} />
+                        <button onClick={() => setDateRange('default')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Varsayılan</button>
                         <button onClick={() => setDateRange('this_month')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Bu Ay</button>
                         <button onClick={() => setDateRange('all')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Tümü</button>
                     </div>

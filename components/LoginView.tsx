@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import Logo from './Logo';
 
+// Props arayüzü, App.tsx'den gelen onLogin fonksiyonunun tipini belirtir.
 interface LoginViewProps {
-  users: User[];
-  onLogin: (user: User) => void;
+  onLogin: (loginRequest: { kullaniciAdi: string, sifre: string }) => Promise<true | string>;
 }
 
-const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
+const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
+  // State'ler form alanlarını, hata mesajını ve yüklenme durumunu yönetir.
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const rememberedEmail = localStorage.getItem('rememberedEmail');
@@ -21,21 +23,26 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Form gönderildiğinde çalışacak asenkron fonksiyon
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true); // Yüklenmeyi başlat
 
-    const user = users.find(u => u.email === email && u.password === password);
+    try {
+      // App.tsx'den gelen ve API'ye istek atan onLogin fonksiyonunu çağır
+      const result = await onLogin({ kullaniciAdi: email, sifre: password });
 
-    if (user) {
-      if (rememberMe) {
-        localStorage.setItem('rememberedEmail', email);
-      } else {
-        localStorage.removeItem('rememberedEmail');
+      if (result !== true) {
+        // Eğer sonuç 'true' değilse, bu bir hata mesajıdır ve ekranda gösterilir.
+        setError(result || 'Bilinmeyen bir hata oluştu.');
       }
-      onLogin(user);
-    } else {
-      setError('Geçersiz kullanıcı adı veya şifre.');
+      // Başarılıysa App.tsx zaten yönlendirmeyi yapacak.
+
+    } catch (err: any) {
+        setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+        setIsLoading(false); // İşlem bitince (başarılı veya hatalı) yüklenmeyi durdur
     }
   };
 
@@ -101,15 +108,16 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
             <div>
               <button
                 type="submit"
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                disabled={isLoading} // Yüklenirken butonu devre dışı bırak
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:bg-blue-300"
               >
-                Giriş Yap
+                {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
               </button>
             </div>
           </form>
            <div className="text-center text-xs text-gray-500 border-t pt-4">
               <p className="font-semibold">Test Bilgileri:</p>
-              <p>Süper Admin: omer / omer</p>
+              <p>Süper Admin: omer / omer1</p>
               <p>Görüntüleyici: baris / baris</p>
           </div>
         </div>

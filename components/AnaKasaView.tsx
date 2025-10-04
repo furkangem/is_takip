@@ -47,9 +47,18 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
 
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const defaultStartDate = new Date('2023-01-01');
 
-    const [startDate, setStartDate] = useState(formatDateForInput(firstDayOfMonth));
-    const [endDate, setEndDate] = useState(formatDateForInput(today));
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+
+    // Varsayılan tarihleri ayarla
+    React.useEffect(() => {
+        if (!startDate || !endDate) {
+            setStartDate(formatDateForInput(defaultStartDate));
+            setEndDate(formatDateForInput(today));
+        }
+    }, []);
 
     const { allTransactions, transactionTypes } = useMemo(() => {
         const transactions: KasaTransaction[] = [];
@@ -120,10 +129,15 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
     }, [customerJobs, customers, sharedExpenses, personnelPayments, personnel]);
     
     const transactionsInDateRange = useMemo(() => {
-        const start = startDate ? new Date(startDate) : null;
-        const end = endDate ? new Date(endDate) : null;
-        if (start) start.setHours(0,0,0,0);
-        if (end) end.setHours(23,59,59,999);
+        // Tarih filtreleme - sadece tarihler ayarlanmışsa filtrele
+        if (!startDate || !endDate) {
+            return allTransactions;
+        }
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        start.setHours(0,0,0,0);
+        end.setHours(23,59,59,999);
         
         return allTransactions.filter(t => {
             const transactionDate = new Date(t.date);
@@ -175,7 +189,7 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
             </div>
             
             <div className="bg-white p-4 rounded-lg shadow-md">
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Başlangıç Tarihi</label>
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={commonInputClass} />
@@ -183,6 +197,17 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={commonInputClass} />
+                    </div>
+                    <div>
+                        <button
+                            onClick={() => {
+                                setStartDate(formatDateForInput(defaultStartDate));
+                                setEndDate(formatDateForInput(today));
+                            }}
+                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+                        >
+                            Varsayılan
+                        </button>
                     </div>
                     <div>
                          <label className="block text-sm font-medium text-gray-700 mb-1">Açıklamada Ara</label>

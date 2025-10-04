@@ -8,7 +8,25 @@ import StatCard from './ui/StatCard';
 const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
-const formatDateTime = (dateString?: string) => dateString ? new Date(dateString).toLocaleString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+const formatDateTime = (dateString?: string) => {
+    if (!dateString) return '-';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '-';
+        
+        // new Date() gelen UTC tarihini otomatik olarak tarayıcının yerel saatine çevirir.
+        // Bu yüzden ekstra bir şey yapmaya gerek yok.
+        return date.toLocaleString('tr-TR', { 
+            day: '2-digit', 
+            month: 'long', 
+            year: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+    } catch {
+        return '-';
+    }
+};
 const paymentMethodIcons: Record<PaymentMethod, React.ElementType> = { cash: CashIcon, card: CreditCardIcon, transfer: ArrowsRightLeftIcon };
 const paymentMethodNames: Record<PaymentMethod, string> = { cash: "Nakit", card: "Kart", transfer: "Havale" };
 
@@ -66,7 +84,7 @@ const SharedExpenseEditorModal: React.FC<{
         const expenseData = {
             ...formData,
             amount: numericAmount,
-            date: new Date().toISOString(),
+            date: new Date().toISOString(), // Personel ile aynı format
         };
         
         if (expenseToEdit) {
@@ -150,6 +168,24 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
     const [expenseToDelete, setExpenseToDelete] = useState<SharedExpense | null>(null);
     const [expenseToPermanentlyDelete, setExpenseToPermanentlyDelete] = useState<SharedExpense | null>(null);
     const [showDeleted, setShowDeleted] = useState(false);
+    
+    // Tarih filtreleri - varsayılan olarak 1 Ocak 2023'ten bugüne
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    
+    // Ödeme yöntemi ve ödeyen filtreleri
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all');
+    const [selectedPayer, setSelectedPayer] = useState<string>('all');
+
+    // Varsayılan tarihleri ayarla
+    useEffect(() => {
+        if (!startDate || !endDate) {
+            const defaultStart = new Date('2023-01-01');
+            const today = new Date();
+            setStartDate(defaultStart.toISOString().split('T')[0]);
+            setEndDate(today.toISOString().split('T')[0]);
+        }
+    }, []);
 
     useEffect(() => {
         if (navigateToId) {
@@ -172,9 +208,34 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
     const handleToggleStatus = (expense: SharedExpense) => onUpdate({ ...expense, status: expense.status === 'unpaid' ? 'paid' : 'unpaid' });
     
     const { activeExpenses, deletedExpenses, omerPaid, barisPaid, kasaBalance } = useMemo(() => {
-        const active = expenses.filter(e => !e.deletedAt);
-        const deleted = expenses.filter(e => e.deletedAt);
+        // Tarih filtreleme - sadece tarihler ayarlanmışsa filtrele
+        let filteredExpenses = expenses;
+        
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999); // Günün sonuna kadar dahil et
+            
+            filteredExpenses = expenses.filter(exp => {
+                const expDate = new Date(exp.date);
+                return expDate >= start && expDate <= end;
+            });
+        }
+        
+        // Ödeme yöntemi filtresi
+        if (selectedPaymentMethod !== 'all') {
+            filteredExpenses = filteredExpenses.filter(exp => exp.paymentMethod === selectedPaymentMethod);
+        }
+        
+        // Ödeyen filtresi
+        if (selectedPayer !== 'all') {
+            filteredExpenses = filteredExpenses.filter(exp => exp.payer === selectedPayer);
+        }
+        
+        const active = filteredExpenses.filter(e => !e.deletedAt);
+        const deleted = filteredExpenses.filter(e => e.deletedAt);
 
+        // Sadece aktif (silinmemiş) ve ödenmiş harcamaları say
         let omer = 0;
         let baris = 0;
         let kasa = 0;
@@ -193,10 +254,75 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
             barisPaid: baris,
             kasaBalance: kasa
         }
-    }, [expenses]);
+    }, [expenses, startDate, endDate, selectedPaymentMethod, selectedPayer]);
     
     return (
         <div className="space-y-6">
+            {/* Filtreler */}
+            <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Başlangıç Tarihi</label>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Bitiş Tarihi</label>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ödeme Yöntemi</label>
+                        <select
+                            value={selectedPaymentMethod}
+                            onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="all">Tüm Yöntemler</option>
+                            <option value="cash">Nakit</option>
+                            <option value="card">Kart</option>
+                            <option value="transfer">Havale</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ödeyen</label>
+                        <select
+                            value={selectedPayer}
+                            onChange={(e) => setSelectedPayer(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="all">Tüm Ödeyenler</option>
+                            <option value="Ömer">Ömer</option>
+                            <option value="Barış">Barış</option>
+                            <option value="Kasa">Kasa</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button
+                            onClick={() => {
+                                const defaultStart = new Date('2023-01-01');
+                                const today = new Date();
+                                setStartDate(defaultStart.toISOString().split('T')[0]);
+                                setEndDate(today.toISOString().split('T')[0]);
+                                setSelectedPaymentMethod('all');
+                                setSelectedPayer('all');
+                            }}
+                            className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+                        >
+                            Filtreleri Sıfırla
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard title="Ömer'den Ödenen" value={formatCurrency(omerPaid)} icon={BanknotesIcon} color="blue" />
                 <StatCard title="Barış'tan Ödenen" value={formatCurrency(barisPaid)} icon={BanknotesIcon} color="blue" />
@@ -222,14 +348,14 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                             {activeExpenses.length > 0 ? activeExpenses.map(exp => { 
-                                const PaymentIcon = paymentMethodIcons[exp.paymentMethod]; 
+                                const PaymentIcon = paymentMethodIcons[exp.paymentMethod] || CashIcon; 
                                 return (
                                     <tr key={exp.id} id={`shared-expense-${exp.id}`} className="group hover:bg-gray-50 transition-all duration-300">
                                         <td className="p-3"><button onClick={() => !isReadOnly && handleToggleStatus(exp)} disabled={isReadOnly} className={`px-2 py-0.5 text-xs font-semibold rounded-full ${exp.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} ${isReadOnly ? 'cursor-not-allowed' : ''}`}>{exp.status === 'paid' ? 'Ödendi' : 'Ödenmedi'}</button></td>
                                         <td className="p-3 font-medium text-gray-800">{exp.description}</td>
                                         <td className="p-3 font-bold text-red-600 whitespace-nowrap">{formatCurrency(exp.amount)}</td>
                                         <td className="p-3 hidden md:table-cell text-gray-600">{exp.payer}</td>
-                                        <td className="p-3 hidden md:table-cell"><span className="flex items-center gap-1.5 text-gray-600"><PaymentIcon className="h-4 w-4"/> {paymentMethodNames[exp.paymentMethod]}</span></td>
+                                        <td className="p-3 hidden md:table-cell"><span className="flex items-center gap-1.5 text-gray-600"><PaymentIcon className="h-4 w-4"/> {paymentMethodNames[exp.paymentMethod] || 'Nakit'}</span></td>
                                         <td className="p-3 text-gray-500 hidden sm:table-cell whitespace-nowrap">{formatDateTime(exp.date)}</td>
                                         <td className="p-3 text-right">
                                             {!isReadOnly && <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
@@ -257,25 +383,52 @@ const OrtakKasaView: React.FC<OrtakKasaViewProps> = ({ expenses, onAdd, onUpdate
                     </button>
                     {showDeleted && (
                         <div className="p-2">
-                             <ul className="divide-y divide-gray-200">
-                                {deletedExpenses.map(exp => (
-                                    <li key={exp.id} className="p-2 flex justify-between items-center group">
-                                        <div>
-                                            <p className="font-medium text-gray-600 line-through">{exp.description}</p>
-                                            <p className="text-xs text-gray-500">Silinme T.: {formatDateTime(exp.deletedAt)}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-red-500 line-through">{formatCurrency(exp.amount)}</span>
-                                            {!isReadOnly && (
-                                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => onRestore(exp.id)} className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-full" title="Geri Yükle"><ArrowUturnLeftIcon className="h-4 w-4"/></button>
-                                                    <button onClick={() => setExpenseToPermanentlyDelete(exp)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-full" title="Kalıcı Olarak Sil"><TrashIcon className="h-4 w-4"/></button>
+                             <div className="space-y-2">
+                                {deletedExpenses.map(exp => {
+                                    const PaymentIcon = paymentMethodIcons[exp.paymentMethod] || CashIcon;
+                                    return (
+                                        <div key={exp.id} className="bg-white rounded-lg border border-gray-200 p-3 group hover:shadow-sm transition-shadow">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <p className="font-medium text-gray-600 line-through truncate">{exp.description}</p>
+                                                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${exp.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                            {exp.status === 'paid' ? 'Ödendi' : 'Ödenmedi'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="font-medium">Ödeyen:</span>
+                                                            <span>{exp.payer}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <PaymentIcon className="h-3 w-3"/>
+                                                            <span>{paymentMethodNames[exp.paymentMethod] || 'Nakit'}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="font-medium">Tarih:</span>
+                                                            <span>{formatDateTime(exp.date)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="font-medium">Silinme:</span>
+                                                            <span>{formatDateTime(exp.deletedAt)}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            )}
+                                                <div className="flex items-center gap-3 ml-4">
+                                                    <span className="font-bold text-red-500 line-through text-lg">{formatCurrency(exp.amount)}</span>
+                                                    {!isReadOnly && (
+                                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={() => onRestore(exp.id)} className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-full" title="Geri Yükle"><ArrowUturnLeftIcon className="h-4 w-4"/></button>
+                                                            <button onClick={() => setExpenseToPermanentlyDelete(exp)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-full" title="Kalıcı Olarak Sil"><TrashIcon className="h-4 w-4"/></button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </li>
-                                ))}
-                            </ul>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
                 </div>
