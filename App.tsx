@@ -19,7 +19,7 @@ type View = 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa' | 'timeshee
 
 // .NET API'mizin adresini buraya yazıyoruz.
 // Port numarasını kendi bilgisayarındakiyle (örn: 5234) değiştirmeyi unutma!
-const API_BASE_URL = 'http://localhost:5234/api'; 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; 
 
 // Tekrarlı API istekleri için yardımcı bir fonksiyon
 const apiRequest = async (endpoint: string, method: string = 'GET', body: any = null) => {
