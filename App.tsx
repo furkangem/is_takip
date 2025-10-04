@@ -77,7 +77,7 @@ export default function App() {
   const fetchAllData = async () => {
     try {
       setIsLoading(true);
-      const data = await apiRequest('api/Data/all');
+      const data = await apiRequest('/api/Data/all');
       setUsers(data.users);
       // API -> Frontend model eşlemesi (AdSoyad/NotMetni/NotGuncellenmeTarihi -> name/note)
       const normalizedPersonnel: Personnel[] = (data.personnel || []).map((p: any) => {
@@ -287,16 +287,16 @@ export default function App() {
   // =========================================================================
   
   const addCustomer = async (data: Omit<Customer, 'id'>) => {
-    const saved = await apiRequest('api/Musteriler', 'POST', data);
+    const saved = await apiRequest('/api/Musteriler', 'POST', data);
     setCustomers(prev => [...prev, saved]);
   };
   const updateCustomer = async (data: Customer) => {
-    const saved = await apiRequest(`api/Musteriler/${data.id}`, 'PUT', data);
+    const saved = await apiRequest(`/api/Musteriler/${data.id}`, 'PUT', data);
     // Eğer API updated objeyi döndürüyorsa onu kullan; dönmüyorsa data'yı kullan
     setCustomers(prev => prev.map(c => c.id === data.id ? (saved || data) : c));
   };
   const deleteCustomer = async (id: string) => {
-    await apiRequest(`api/Musteriler/${id}`, 'DELETE');
+    await apiRequest(`/api/Musteriler/${id}`, 'DELETE');
     await fetchAllData();
   };
 
@@ -312,7 +312,7 @@ export default function App() {
       incomePaymentMethod: data.incomePaymentMethod,
       incomeGoldType: data.incomePaymentMethod === 'GOLD' ? data.incomeGoldType : null,
     } as any;
-    const saved = await apiRequest('api/Musteriler/isler', 'POST', body);
+    const saved = await apiRequest('/api/Musteriler/isler', 'POST', body);
     // Optimistic update: eklenen işi anında listeye yansıt
     setCustomerJobs(prev => [...prev, saved]);
     
@@ -326,7 +326,7 @@ export default function App() {
         paymentMethod: p.paymentMethod,
       }));
       if (earnings.length > 0) {
-        await apiRequest(`api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', earnings);
+        await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', earnings);
       }
     } catch (e) {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
@@ -375,7 +375,7 @@ export default function App() {
         console.log('JSON parse test:', JSON.parse(jsonString));
         
         // Bulk endpoint kullan - sadece geçerli malzemeleri gönder
-        await apiRequest(`api/Musteriler/isler/${saved.id}/malzemeler/bulk`, 'POST', validMaterials);
+        await apiRequest(`/api/Musteriler/isler/${saved.id}/malzemeler/bulk`, 'POST', validMaterials);
         console.log('✅ Malzemeler başarıyla gönderildi!');
       } else {
         console.log('⚠️ Gönderilecek geçerli malzeme bulunamadı.');
@@ -405,7 +405,7 @@ export default function App() {
       incomePaymentMethod: data.incomePaymentMethod,
       incomeGoldType: data.incomePaymentMethod === 'GOLD' ? data.incomeGoldType : null,
     } as any;
-    const saved = await apiRequest(`api/Musteriler/isler/${data.id}`, 'PUT', body);
+    const saved = await apiRequest(`/api/Musteriler/isler/${data.id}`, 'PUT', body);
     setCustomerJobs(prev => prev.map(j => j.id === data.id ? (saved || data) : j));
     
     // Hakediş satırlarını toplu olarak güncelle/gönder
@@ -419,7 +419,7 @@ export default function App() {
       }));
       // Backend'te bulk uç noktası varsa çağır; yoksa sessizce geç
       if (earnings.length > 0) {
-        await apiRequest(`api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', earnings);
+        await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', earnings);
       }
     } catch (e) {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
@@ -455,7 +455,7 @@ export default function App() {
       
       if (validMaterials.length > 0) {
         // Bulk endpoint kullan - sadece geçerli malzemeleri gönder
-        await apiRequest(`api/Musteriler/isler/${data.id}/malzemeler/bulk`, 'POST', validMaterials);
+        await apiRequest(`/api/Musteriler/isler/${data.id}/malzemeler/bulk`, 'POST', validMaterials);
       }
     } catch (e) {
       console.warn('Malzemeleri gönderirken bir sorun oluştu:', e);
@@ -464,7 +464,7 @@ export default function App() {
     await fetchAllData();
   };
   const deleteCustomerJob = async (id: string) => {
-    await apiRequest(`api/Musteriler/isler/${id}`, 'DELETE');
+    await apiRequest(`/api/Musteriler/isler/${id}`, 'DELETE');
     await fetchAllData();
   };
 
@@ -485,7 +485,7 @@ export default function App() {
     
     console.log('Personel ekleniyor:', body); // Debug için
     
-    const saved = await apiRequest('api/Personel', 'POST', body);
+    const saved = await apiRequest('/api/Personel', 'POST', body);
     
     console.log('Backend\'den gelen veri:', saved); // Debug için
     
@@ -522,11 +522,11 @@ export default function App() {
     
     console.log('Personel güncelleniyor:', body); // Debug için
     
-    await apiRequest(`api/Personel/${data.id}`, 'PUT', body);
+    await apiRequest(`/api/Personel/${data.id}`, 'PUT', body);
     await fetchAllData();
   };
   const deletePersonnel = async (id: number) => {
-    await apiRequest(`api/Personel/${id}`, 'DELETE');
+    await apiRequest(`/api/Personel/${id}`, 'DELETE');
     await fetchAllData();
   };
 
@@ -540,39 +540,39 @@ export default function App() {
       payer: data.payer,
       paymentMethod: data.paymentMethod,
     } as any;
-    const saved = await apiRequest('api/Personel/odemeler', 'POST', body);
+    const saved = await apiRequest('/api/Personel/odemeler', 'POST', body);
     setPersonnelPayments(prev => [...prev, saved]);
     // İlgili özetler ve bakiyeler için veriyi yenile
     await fetchAllData();
   };
   const deletePersonnelPayment = async (id: number) => {
-    await apiRequest(`api/Personel/odemeler/${id}`, 'DELETE');
+    await apiRequest(`/api/Personel/odemeler/${id}`, 'DELETE');
     setPersonnelPayments(prev => prev.filter(p => p.id !== id));
   };
   
   const addUser = async (data: Omit<User, 'id'>) => {
-      const saved = await apiRequest('api/Kullanicilar', 'POST', data);
+      const saved = await apiRequest('/api/Kullanicilar', 'POST', data);
       setUsers(prev => [...prev, saved]);
   };
   const updateUser = async (data: User) => {
-      await apiRequest(`api/Kullanicilar/${data.id}`, 'PUT', data);
+      await apiRequest(`/api/Kullanicilar/${data.id}`, 'PUT', data);
       setUsers(prev => prev.map(u => u.id === data.id ? data : u));
   };
   const deleteUser = async (id: string) => {
-      await apiRequest(`api/Kullanicilar/${id}`, 'DELETE');
+      await apiRequest(`/api/Kullanicilar/${id}`, 'DELETE');
       setUsers(prev => prev.filter(u => u.id !== id));
   };
   
   const addDefterEntry = async (data: Omit<DefterEntry, 'id'>) => {
-      const saved = await apiRequest('api/Kasa/defterkayitlari', 'POST', data);
+      const saved = await apiRequest('/api/Kasa/defterkayitlari', 'POST', data);
       setDefterEntries(prev => [...prev, saved]);
   };
   const updateDefterEntry = async (data: DefterEntry) => {
-      await apiRequest(`api/Kasa/defterkayitlari/${data.id}`, 'PUT', data);
+      await apiRequest(`/api/Kasa/defterkayitlari/${data.id}`, 'PUT', data);
       setDefterEntries(prev => prev.map(e => e.id === data.id ? data : e));
   };
   const deleteDefterEntry = async (id: string) => {
-      await apiRequest(`api/Kasa/defterkayitlari/${id}`, 'DELETE');
+      await apiRequest(`/api/Kasa/defterkayitlari/${id}`, 'DELETE');
       setDefterEntries(prev => prev.filter(e => e.id !== id));
   };
 
