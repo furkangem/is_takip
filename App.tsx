@@ -19,9 +19,9 @@ type View = 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa' | 'timeshee
 
 // .NET API'mizin adresini buraya yazıyoruz.
 // Port numarasını kendi bilgisayarındakiyle (örn: 5234) değiştirmeyi unutma!
-// Geçici çözüm: URL'yi doğrudan yazıyoruz
-const API_BASE_URL = 'https://is-takip-backend-dxud.onrender.com';
-// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://is-takip-backend-dxud.onrender.com';
+// Vercel proxy kullanarak CORS sorununu çözüyoruz
+const API_BASE_URL = '/api/proxy';
+// const API_BASE_URL = 'https://is-takip-backend-dxud.onrender.com';
 
 // Debug için API URL'sini konsola yazdır
 console.log('API_BASE_URL:', API_BASE_URL); 

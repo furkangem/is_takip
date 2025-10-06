@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/proxy.ts": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/proxy/(.*)",
+      "destination": "/api/proxy"
+    }
+  ]
+}
