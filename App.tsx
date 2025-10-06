@@ -337,56 +337,45 @@ export default function App() {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
     }
     
-    // Malzeme verilerini toplu olarak gönder (bulk endpoint ile)
+    // Malzeme verilerini tek tek gönder (bulk yerine)
     console.log('=== MALZEME DEBUG BAŞLADI ===');
     console.log('Gelen data.materials:', data.materials);
     
     try {
-      // Sadece geçerli malzemeleri filtrele (boş adı olanları hariç tut)
       const allMaterials = data.materials || [];
-      console.log('Tüm malzemeler (filtrelemeden önce):', allMaterials);
+      console.log('Tüm malzemeler:', allMaterials);
       
-      const validMaterials = allMaterials
-        .filter(m => {
-          const isValid = m.name && m.name.trim() !== '';
-          console.log(`Malzeme "${m.name}" geçerli mi?`, isValid);
-          return isValid;
-        })
-        .map(m => {
-          const materialName = m.name ? m.name.trim() : '';
-          console.log(`Malzeme adı işleniyor: "${m.name}" -> "${materialName}"`);
-          
-          const mapped = {
-            IsId: saved.id,
-            MalzemeAdi: materialName, // Malzeme adını doğru şekilde ata
-            Birim: m.unit || null,
-            Miktar: parseFloat(m.quantity.toString()) || 0,
-            BirimFiyat: parseFloat(m.unitPrice.toString()) || 0,
-          };
-          console.log('App.tsx - Map edilen malzeme:', mapped);
-          console.log('MalzemeAdi değeri:', mapped.MalzemeAdi, 'Tip:', typeof mapped.MalzemeAdi);
-          return mapped;
-        });
+      const validMaterials = allMaterials.filter(m => {
+        const isValid = m.name && m.name.trim() !== '';
+        console.log(`Malzeme "${m.name}" geçerli mi?`, isValid);
+        return isValid;
+      });
       
       console.log('Filtrelenmiş geçerli malzemeler:', validMaterials);
       
-      if (validMaterials.length > 0) {
-        console.log('Malzeme endpoint\'ine istek gönderiliyor:', `/Musteriler/isler/${saved.id}/malzemeler/bulk`);
-        console.log('Gönderilecek JSON:', JSON.stringify(validMaterials, null, 2));
+      // Her malzemeyi tek tek ekle
+      for (const material of validMaterials) {
+        const materialData = {
+          IsId: saved.id,
+          MalzemeAdi: material.name.trim(),
+          Birim: material.unit || null,
+          Miktar: parseFloat(material.quantity.toString()) || 0,
+          BirimFiyat: parseFloat(material.unitPrice.toString()) || 0,
+        };
         
-        // JSON'u tekrar kontrol et
-        const jsonString = JSON.stringify(validMaterials);
-        console.log('Raw JSON string:', jsonString);
-        console.log('JSON parse test:', JSON.parse(jsonString));
+        console.log('Tek malzeme gönderiliyor:', materialData);
         
-        // Bulk endpoint kullan - sadece geçerli malzemeleri gönder
-        await apiRequest(`/api/Musteriler/isler/${saved.id}/malzemeler/bulk`, 'POST', validMaterials);
-        console.log('✅ Malzemeler başarıyla gönderildi!');
-      } else {
-        console.log('⚠️ Gönderilecek geçerli malzeme bulunamadı.');
+        try {
+          await apiRequest('/api/Musteriler/malzemeler', 'POST', materialData);
+          console.log('✅ Malzeme başarıyla eklendi:', materialData.MalzemeAdi);
+        } catch (e) {
+          console.error('❌ Malzeme eklenirken hata:', materialData.MalzemeAdi, e);
+        }
       }
+      
+      console.log('✅ Tüm malzemeler işlendi!');
     } catch (e) {
-      console.error('❌ Malzemeleri gönderirken bir sorun oluştu:', e);
+      console.error('❌ Malzemeleri işlerken bir sorun oluştu:', e);
     }
     
     console.log('=== MALZEME DEBUG BİTTİ ===');
@@ -430,37 +419,35 @@ export default function App() {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
     }
     
-    // Malzeme verilerini toplu olarak güncelle/gönder (bulk endpoint ile)
+    // Malzeme verilerini tek tek güncelle/gönder
     try {
-      // Sadece geçerli malzemeleri filtrele (boş adı olanları hariç tut)
       const allMaterials = data.materials || [];
-      console.log('Update - Tüm malzemeler (filtrelemeden önce):', allMaterials);
+      console.log('Update - Tüm malzemeler:', allMaterials);
       
-      const validMaterials = allMaterials
-        .filter(m => {
-          const isValid = m.name && m.name.trim() !== '';
-          console.log(`Update - Malzeme "${m.name}" geçerli mi?`, isValid);
-          return isValid;
-        })
-        .map(m => {
-          const materialName = m.name ? m.name.trim() : '';
-          console.log(`Update - Malzeme adı işleniyor: "${m.name}" -> "${materialName}"`);
-          
-          const mapped = {
-            IsId: data.id,
-            MalzemeAdi: materialName, // Malzeme adını doğru şekilde ata
-            Birim: m.unit || null,
-            Miktar: parseFloat(m.quantity.toString()) || 0,
-            BirimFiyat: parseFloat(m.unitPrice.toString()) || 0,
-          };
-          console.log('App.tsx (update) - Map edilen malzeme:', mapped);
-          console.log('Update - MalzemeAdi değeri:', mapped.MalzemeAdi, 'Tip:', typeof mapped.MalzemeAdi);
-          return mapped;
-        });
+      const validMaterials = allMaterials.filter(m => {
+        const isValid = m.name && m.name.trim() !== '';
+        console.log(`Update - Malzeme "${m.name}" geçerli mi?`, isValid);
+        return isValid;
+      });
       
-      if (validMaterials.length > 0) {
-        // Bulk endpoint kullan - sadece geçerli malzemeleri gönder
-        await apiRequest(`/api/Musteriler/isler/${data.id}/malzemeler/bulk`, 'POST', validMaterials);
+      // Her malzemeyi tek tek ekle
+      for (const material of validMaterials) {
+        const materialData = {
+          IsId: data.id,
+          MalzemeAdi: material.name.trim(),
+          Birim: material.unit || null,
+          Miktar: parseFloat(material.quantity.toString()) || 0,
+          BirimFiyat: parseFloat(material.unitPrice.toString()) || 0,
+        };
+        
+        console.log('Update - Tek malzeme gönderiliyor:', materialData);
+        
+        try {
+          await apiRequest('/api/Musteriler/malzemeler', 'POST', materialData);
+          console.log('✅ Update - Malzeme başarıyla eklendi:', materialData.MalzemeAdi);
+        } catch (e) {
+          console.error('❌ Update - Malzeme eklenirken hata:', materialData.MalzemeAdi, e);
+        }
       }
     } catch (e) {
       console.warn('Malzemeleri gönderirken bir sorun oluştu:', e);
