@@ -19,7 +19,12 @@ type View = 'personnel' | 'reports' | 'admin' | 'customers' | 'kasa' | 'timeshee
 
 // .NET API'mizin adresini buraya yazıyoruz.
 // Port numarasını kendi bilgisayarındakiyle (örn: 5234) değiştirmeyi unutma!
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; 
+// Geçici çözüm: URL'yi doğrudan yazıyoruz
+const API_BASE_URL = 'https://is-takip-backend-dxud.onrender.com';
+// const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://is-takip-backend-dxud.onrender.com';
+
+// Debug için API URL'sini konsola yazdır
+console.log('API_BASE_URL:', API_BASE_URL); 
 
 // Tekrarlı API istekleri için yardımcı bir fonksiyon
 const apiRequest = async (endpoint: string, method: string = 'GET', body: any = null) => {

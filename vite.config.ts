@@ -7,9 +7,9 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:5234',
+        target: 'https://is-takip-backend-dxud.onrender.com',
         changeOrigin: true,
-        secure: false
+        secure: true
       }
     }
   }
