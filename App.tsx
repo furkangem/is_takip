@@ -334,32 +334,25 @@ export default function App() {
       if (earnings.length > 0) {
         console.log('Hakediş ekleme deneniyor:', earnings);
         
-        // GEÇİCİ: Backend'deki transaction sorunu nedeniyle hakediş ekleme devre dışı
-        console.warn('⚠️ Hakediş ekleme geçici olarak devre dışı - backend transaction sorunu');
-        console.log('Backend düzeltilene kadar personel hakedişleri kaydedilmeyecek');
-        
-        // TODO: Backend'deki UpsertHakedislerBulk fonksiyonundaki transaction sorunu düzeltilmeli
-        /*
         try {
           // Backend'in beklediği formata çevir (IsHakedisleri modeli)
           const backendEarnings = earnings.map(e => ({
-            IsId: e.isId,
             PersonelId: e.personnelId,
             HakedisTutari: e.payment,
             CalisilanGunSayisi: e.daysWorked,
             OdemeYontemi: e.paymentMethod
+            // IsId backend'de otomatik set edilecek
           }));
           
           console.log('Backend formatında hakediş verisi:', backendEarnings);
           
-          // Önce bulk endpoint'i dene
+          // Bulk endpoint'i kullan
           await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', backendEarnings);
           console.log('✅ Bulk hakediş ekleme başarılı');
         } catch (bulkError) {
           console.warn('Bulk hakediş ekleme başarısız:', bulkError);
-          console.error('❌ Hakediş ekleme tamamen başarısız - backend sorunu');
+          console.error('❌ Hakediş ekleme başarısız:', bulkError);
         }
-        */
       }
     } catch (e) {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
@@ -443,32 +436,25 @@ export default function App() {
       if (earnings.length > 0) {
         console.log('Hakediş güncelleme deneniyor:', earnings);
         
-        // GEÇİCİ: Backend'deki transaction sorunu nedeniyle hakediş güncelleme devre dışı
-        console.warn('⚠️ Hakediş güncelleme geçici olarak devre dışı - backend transaction sorunu');
-        console.log('Backend düzeltilene kadar personel hakedişleri güncellenmeyecek');
-        
-        // TODO: Backend'deki UpsertHakedislerBulk fonksiyonundaki transaction sorunu düzeltilmeli
-        /*
         try {
           // Backend'in beklediği formata çevir (IsHakedisleri modeli)
           const backendEarnings = earnings.map(e => ({
-            IsId: e.isId,
             PersonelId: e.personnelId,
             HakedisTutari: e.payment,
             CalisilanGunSayisi: e.daysWorked,
             OdemeYontemi: e.paymentMethod
+            // IsId backend'de otomatik set edilecek
           }));
           
           console.log('Backend formatında hakediş güncelleme verisi:', backendEarnings);
           
-          // Önce bulk endpoint'i dene
+          // Bulk endpoint'i kullan
           await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', backendEarnings);
           console.log('✅ Bulk hakediş güncelleme başarılı');
         } catch (bulkError) {
           console.warn('Bulk hakediş güncelleme başarısız:', bulkError);
-          console.error('❌ Hakediş güncelleme tamamen başarısız - backend sorunu');
+          console.error('❌ Hakediş güncelleme başarısız:', bulkError);
         }
-        */
       }
     } catch (e) {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
