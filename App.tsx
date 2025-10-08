@@ -419,39 +419,8 @@ export default function App() {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
     }
     
-    // Malzeme verilerini tek tek güncelle/gönder
-    try {
-      const allMaterials = data.materials || [];
-      console.log('Update - Tüm malzemeler:', allMaterials);
-      
-      const validMaterials = allMaterials.filter(m => {
-        const isValid = m.name && m.name.trim() !== '';
-        console.log(`Update - Malzeme "${m.name}" geçerli mi?`, isValid);
-        return isValid;
-      });
-      
-      // Her malzemeyi tek tek ekle
-      for (const material of validMaterials) {
-        const materialData = {
-          IsId: data.id,
-          MalzemeAdi: material.name.trim(),
-          Birim: material.unit || null,
-          Miktar: parseFloat(material.quantity.toString()) || 0,
-          BirimFiyat: parseFloat(material.unitPrice.toString()) || 0,
-        };
-        
-        console.log('Update - Tek malzeme gönderiliyor:', materialData);
-        
-        try {
-          await apiRequest('/api/Musteriler/malzemeler', 'POST', materialData);
-          console.log('✅ Update - Malzeme başarıyla eklendi:', materialData.MalzemeAdi);
-        } catch (e) {
-          console.error('❌ Update - Malzeme eklenirken hata:', materialData.MalzemeAdi, e);
-        }
-      }
-    } catch (e) {
-      console.warn('Malzemeleri gönderirken bir sorun oluştu:', e);
-    }
+    // Malzeme güncelleme işlemi kaldırıldı - sadece yeni iş eklenirken malzemeler eklenir
+    // Personel hakediş güncellemelerinde malzemeler tekrar eklenmemeli
     
     await fetchAllData();
   };
