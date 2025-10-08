@@ -121,22 +121,16 @@ export default function App() {
         const safeId = typeof j.id === 'number' ? j.id : parseInt(String(j.id ?? j.jobId ?? 0), 10);
         const safeCustomerId = typeof j.customerId === 'number' ? j.customerId : parseInt(String(j.customerId ?? j.musteriId ?? 0), 10);
         
-        // Bu işe ait hakedişleri, genel olarak çekilen 'earnings' dizisinden filtrele
-        const jobSpecificEarnings = earnings.filter(e => e.jobId === safeId);
-        console.log(`🔍 Job ${safeId} için hakedişler:`, jobSpecificEarnings);
+        // PersonnelIds ve PersonnelPayments'ı önce boş olarak başlat
+        // Earnings henüz tanımlanmadığı için burada kullanamayız
+        const personnelIds: number[] = (j.personnelIds || j.personeller || []).map((pid: any) => (typeof pid === 'number' ? pid : parseInt(String(pid), 10))).filter((n: any) => !Number.isNaN(n));
         
-        // PersonnelIds'yi job'a özel hakedişlerden türet
-        const personnelIds: number[] = Array.from(new Set(jobSpecificEarnings.map(p => p.personnelId).filter((n: any) => typeof n === 'number' && n > 0)));
-        console.log(`🔍 Job ${safeId} için personel ID'leri:`, personnelIds);
-        
-        // PersonnelPayments'ı job'a özel hakedişlerden oluştur
-        const personnelPayments = jobSpecificEarnings.map((p: any) => ({
-          personnelId: p.personnelId,
-          payment: p.payment,
-          daysWorked: p.daysWorked,
-          paymentMethod: p.paymentMethod,
+        const personnelPayments = (j.personnelPayments || j.hakedisler || []).map((p: any) => ({
+          personnelId: typeof p.personnelId === 'number' ? p.personnelId : parseInt(String(p.personnelId ?? p.pid ?? 0), 10),
+          payment: Number(p.payment ?? p.tutar ?? 0) || 0,
+          daysWorked: Number(p.daysWorked ?? p.gun ?? 0) || 0,
+          paymentMethod: p.paymentMethod ?? p.odemeYontemi,
         }));
-        console.log(`🔍 Job ${safeId} için personel ödemeleri:`, personnelPayments);
         const materials = (j.materials || j.malzemeler || j.IsMalzemeleri || []).map((m: any) => {
           const mapped = {
             id: String(m.id ?? m.malzemeId ?? m.IsMalzemeId ?? `mat-${safeId}-${Math.random()}`),
@@ -177,28 +171,32 @@ export default function App() {
       console.log('Dönüştürülen hakediş verileri:', earnings);
 
       const normalizedJobs = normalizedJobsBase.map((job) => {
-        // Eğer backend zaten Include ile personnelPayments getirdiyse, yeniden ekleme ve çifte sayma yapma
-        if (job.personnelPayments && job.personnelPayments.length > 0) {
-          return job;
+        // Bu job'a ait hakedişleri earnings'den filtrele
+        const jobSpecificEarnings = earnings.filter(e => e.jobId === job.id);
+        console.log(`🔍 Job ${job.id} için hakedişler:`, jobSpecificEarnings);
+        
+        // Eğer bu job için hakediş varsa, personnelPayments ve personnelIds'yi güncelle
+        if (jobSpecificEarnings.length > 0) {
+          const updatedPersonnelPayments = jobSpecificEarnings.map((p: any) => ({
+            personnelId: p.personnelId,
+            payment: p.payment,
+            daysWorked: p.daysWorked,
+            paymentMethod: p.paymentMethod,
+          }));
+          
+          const updatedPersonnelIds = Array.from(new Set(jobSpecificEarnings.map(p => p.personnelId).filter((n: any) => typeof n === 'number' && n > 0)));
+          
+          console.log(`🔍 Job ${job.id} için güncellenmiş personel ID'leri:`, updatedPersonnelIds);
+          console.log(`🔍 Job ${job.id} için güncellenmiş personel ödemeleri:`, updatedPersonnelPayments);
+          
+          return { 
+            ...job, 
+            personnelPayments: updatedPersonnelPayments, 
+            personnelIds: updatedPersonnelIds 
+          } as CustomerJob;
         }
-        const jobEarnings = earnings.filter((e: any) => e.jobId === job.id);
-        if (jobEarnings.length === 0) return job;
-
-        // Merge et ve basit anahtarla duplicate'leri engelle
-        const merged = [...(job.personnelPayments || []), ...jobEarnings.map((e: any) => ({
-          personnelId: e.personnelId,
-          payment: e.payment,
-          daysWorked: e.daysWorked,
-          paymentMethod: e.paymentMethod,
-        }))];
-        const uniqMap = new Map<string, any>();
-        for (const p of merged) {
-          const key = `${p.personnelId}:${p.payment}:${p.daysWorked}:${p.paymentMethod ?? ''}`;
-          if (!uniqMap.has(key)) uniqMap.set(key, p);
-        }
-        const dedupedPayments = Array.from(uniqMap.values());
-        const mergedPersonnelIds = Array.from(new Set([...(job.personnelIds || []), ...dedupedPayments.map((p: any) => p.personnelId)]));
-        return { ...job, personnelPayments: dedupedPayments, personnelIds: mergedPersonnelIds } as CustomerJob;
+        
+        return job;
       });
 
       // Personel ID'leri boşsa, hakedişlerden (personnelPayments) türet
