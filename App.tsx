@@ -157,10 +157,25 @@ export default function App() {
         } as CustomerJob;
       });
 
-      // Backend toplu uç noktasından gelen iş hakedişlerini (IsHakedisleri) job'lara birleştir
-      console.log('Backend\'den gelen hakediş verileri:', data.jobEarnings || data.isHakedisleri || []);
+      // Backend'den gelen tüm job'lardan hakediş verilerini topla
+      console.log('Backend\'den gelen customerJobs:', data.customerJobs);
       
-      const earnings = (data.jobEarnings || data.isHakedisleri || []).map((e: any) => {
+      // Her job'dan personnelPayments (IsHakedisleri) verilerini topla
+      const allEarnings: any[] = [];
+      (data.customerJobs || []).forEach((job: any) => {
+        if (job.personnelPayments && Array.isArray(job.personnelPayments)) {
+          job.personnelPayments.forEach((earning: any) => {
+            allEarnings.push({
+              ...earning,
+              jobId: job.id || job.IsId, // Job ID'sini ekle
+            });
+          });
+        }
+      });
+      
+      console.log('Backend\'den toplanan tüm hakediş verileri:', allEarnings);
+      
+      const earnings = allEarnings.map((e: any) => {
         console.log('🔍 Ham hakediş verisi:', e);
         
         const mapped = {
