@@ -343,148 +343,92 @@ export default function App() {
     await fetchAllData();
   };
 
-  const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
-    // Backend'in beklediği alanlara map et (sadece desteklenen kolonlar)
+ // Lütfen bu iki fonksiyonu App.tsx dosyanızdaki mevcut olanlarla değiştirin.
+
+const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
     const body = {
       customerId: data.customerId,
       location: data.location,
       description: data.description,
-      // Tarihi tam ISO formatına çevir (backend DateTime için daha uyumlu)
       date: data.date ? new Date(`${data.date}T00:00:00`).toISOString() : new Date().toISOString(),
       income: data.income,
       incomePaymentMethod: data.incomePaymentMethod,
       incomeGoldType: data.incomePaymentMethod === 'GOLD' ? data.incomeGoldType : null,
-    } as any;
+    };
     const saved = await apiRequest('/api/Musteriler/isler', 'POST', body);
-    // Optimistic update: eklenen işi anında listeye yansıt
-    setCustomerJobs(prev => [...prev, saved]);
-    
-    // Hakediş satırlarını gönder
-    try {
-      const earnings = (data.personnelPayments || []).map(p => ({
-        // Backend model'ine göre doğru alan isimleri
-        PersonelId: p.personnelId, // Model property: PersonelId
-        HakedisTutari: p.payment, // Model property: HakedisTutari  
-        CalisilanGunSayisi: p.daysWorked, // Model property: CalisilanGunSayisi
-        OdemeYontemi: p.paymentMethod, // Model property: OdemeYontemi
-      }));
-      
-      if (earnings.length > 0) {
-        console.log('Hakediş ekleme deneniyor:', earnings);
-        
-        try {
-          console.log('Backend formatında hakediş verisi:', earnings);
-          
-          // Bulk endpoint'i kullan (earnings zaten doğru formatta)
-          await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', earnings);
-          console.log('✅ Bulk hakediş ekleme başarılı');
-        } catch (bulkError) {
-          console.warn('Bulk hakediş ekleme başarısız:', bulkError);
-          console.error('❌ Hakediş ekleme başarısız:', bulkError);
-        }
-      }
-    } catch (e) {
-      console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
-    }
-    
-    // Malzeme verilerini tek tek gönder (bulk yerine)
-    console.log('=== MALZEME DEBUG BAŞLADI ===');
-    console.log('Gelen data.materials:', data.materials);
     
     try {
-      const allMaterials = data.materials || [];
-      console.log('Tüm malzemeler:', allMaterials);
-      
-      const validMaterials = allMaterials.filter(m => {
-        const isValid = m.name && m.name.trim() !== '';
-        console.log(`Malzeme "${m.name}" geçerli mi?`, isValid);
-        return isValid;
-      });
-      
-      console.log('Filtrelenmiş geçerli malzemeler:', validMaterials);
-      
-      // Her malzemeyi tek tek ekle
-      for (const material of validMaterials) {
-        const materialData = {
-          IsId: saved.id,
-          MalzemeAdi: material.name.trim(),
-          Birim: material.unit || null,
-          Miktar: parseFloat(material.quantity.toString()) || 0,
-          BirimFiyat: parseFloat(material.unitPrice.toString()) || 0,
-        };
-        
-        console.log('Tek malzeme gönderiliyor:', materialData);
-        
-        try {
-          await apiRequest('/api/Musteriler/malzemeler', 'POST', materialData);
-          console.log('✅ Malzeme başarıyla eklendi:', materialData.MalzemeAdi);
-        } catch (e) {
-          console.error('❌ Malzeme eklenirken hata:', materialData.MalzemeAdi, e);
+        // HAKEDİŞLER İÇİN DOĞRU GÖNDERİM (camelCase)
+        const earnings = (data.personnelPayments || []).map(p => ({
+            personnelId: p.personnelId,
+            payment: p.payment,
+            daysWorked: p.daysWorked,
+            paymentMethod: p.paymentMethod,
+        }));
+        if (earnings.length > 0) {
+            await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', earnings);
         }
-      }
-      
-      console.log('✅ Tüm malzemeler işlendi!');
+
+        // MALZEMELER İÇİN GÖNDERİM
+        const materials = (data.materials || [])
+            .filter(m => m.name && m.name.trim() !== '')
+            .map(m => ({
+                MalzemeAdi: m.name,
+                Birim: m.unit,
+                Miktar: m.quantity,
+                BirimFiyat: m.unitPrice,
+            }));
+        if (materials.length > 0) {
+            await apiRequest(`/api/Musteriler/isler/${saved.id}/malzemeler/bulk`, 'POST', materials);
+        }
     } catch (e) {
-      console.error('❌ Malzemeleri işlerken bir sorun oluştu:', e);
+        console.error("İş eklenirken hakediş/malzeme hatası:", e);
     }
     
-    console.log('=== MALZEME DEBUG BİTTİ ===');
-    
-    // Ardından tüm verileri tazele (ID, ilişkiler vs.)
     await fetchAllData();
   };
+
   const updateCustomerJob = async (data: CustomerJob) => {
     const body = {
       id: data.id,
       customerId: data.customerId,
       location: data.location,
       description: data.description,
-      // Backend PostgreSQL 'timestamptz' için UTC ISO bekliyor
-      date: data.date
-        ? (data.date.includes('T')
-            ? new Date(data.date).toISOString()
-            : new Date(`${data.date}T00:00:00`).toISOString())
-        : new Date().toISOString(),
+      date: data.date ? (data.date.includes('T') ? new Date(data.date).toISOString() : new Date(`${data.date}T00:00:00`).toISOString()) : new Date().toISOString(),
       income: data.income,
       incomePaymentMethod: data.incomePaymentMethod,
       incomeGoldType: data.incomePaymentMethod === 'GOLD' ? data.incomeGoldType : null,
-    } as any;
-    const saved = await apiRequest(`/api/Musteriler/isler/${data.id}`, 'PUT', body);
-    setCustomerJobs(prev => prev.map(j => j.id === data.id ? (saved || data) : j));
+    };
+    await apiRequest(`/api/Musteriler/isler/${data.id}`, 'PUT', body);
     
-    // Hakediş satırlarını güncelle/gönder
     try {
-      const earnings = (data.personnelPayments || []).map(p => ({
-        // Backend model'ine göre doğru alan isimleri
-        PersonelId: p.personnelId, // Model property: PersonelId
-        HakedisTutari: p.payment, // Model property: HakedisTutari  
-        CalisilanGunSayisi: p.daysWorked, // Model property: CalisilanGunSayisi
-        OdemeYontemi: p.paymentMethod, // Model property: OdemeYontemi
-      }));
-      
-      if (earnings.length > 0) {
-        console.log('Hakediş güncelleme deneniyor:', earnings);
-        
-        try {
-          console.log('Backend formatında hakediş güncelleme verisi:', earnings);
-          
-          // Bulk endpoint'i kullan (earnings zaten doğru formatta)
-          await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', earnings);
-          console.log('✅ Bulk hakediş güncelleme başarılı');
-        } catch (bulkError) {
-          console.warn('Bulk hakediş güncelleme başarısız:', bulkError);
-          console.error('❌ Hakediş güncelleme başarısız:', bulkError);
-        }
-      }
+        // HAKEDİŞLER İÇİN DOĞRU GÖNDERİM (camelCase)
+        const earnings = (data.personnelPayments || []).map(p => ({
+            personnelId: p.personnelId,
+            payment: p.payment,
+            daysWorked: p.daysWorked,
+            paymentMethod: p.paymentMethod,
+        }));
+        await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', earnings);
+
+        // MALZEMELER İÇİN GÖNDERİM
+        const materials = (data.materials || [])
+            .filter(m => m.name && m.name.trim() !== '')
+            .map(m => ({
+                MalzemeAdi: m.name,
+                Birim: m.unit,
+                Miktar: m.quantity,
+                BirimFiyat: m.unitPrice,
+            }));
+        await apiRequest(`/api/Musteriler/isler/${data.id}/malzemeler/bulk`, 'POST', materials);
+
     } catch (e) {
-      console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
+        console.error("İş güncellenirken hakediş/malzeme hatası:", e);
     }
-    
-    // Malzeme güncelleme işlemi kaldırıldı - sadece yeni iş eklenirken malzemeler eklenir
-    // Personel hakediş güncellemelerinde malzemeler tekrar eklenmemeli
     
     await fetchAllData();
   };
+  
   const deleteCustomerJob = async (id: string) => {
     await apiRequest(`/api/Musteriler/isler/${id}`, 'DELETE');
     await fetchAllData();
