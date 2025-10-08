@@ -160,13 +160,20 @@ export default function App() {
       // Backend toplu uç noktasından gelen iş hakedişlerini (IsHakedisleri) job'lara birleştir
       console.log('Backend\'den gelen hakediş verileri:', data.jobEarnings || data.isHakedisleri || []);
       
-      const earnings = (data.jobEarnings || data.isHakedisleri || []).map((e: any) => ({
-        jobId: typeof e.isId === 'number' ? e.isId : parseInt(String(e.isId ?? e.jobId ?? 0), 10),
-        personnelId: typeof e.personnelId === 'number' ? e.personnelId : parseInt(String(e.personnelId ?? e.personelId ?? 0), 10), // JsonPropertyName: "personnelId"
-        payment: Number(e.payment ?? e.hakedisTutari ?? e.hakedis_tutari ?? 0) || 0, // JsonPropertyName: "payment"
-        daysWorked: Number(e.daysWorked ?? e.calisilanGunSayisi ?? 0) || 0, // JsonPropertyName: "daysWorked"
-        paymentMethod: e.paymentMethod ?? e.odemeYontemi ?? undefined, // JsonPropertyName: "paymentMethod"
-      }));
+      const earnings = (data.jobEarnings || data.isHakedisleri || []).map((e: any) => {
+        console.log('🔍 Ham hakediş verisi:', e);
+        
+        const mapped = {
+          jobId: typeof e.isId === 'number' ? e.isId : parseInt(String(e.isId ?? e.jobId ?? 0), 10),
+          personnelId: typeof e.personnelId === 'number' ? e.personnelId : parseInt(String(e.personnelId ?? e.personelId ?? 0), 10), // JsonPropertyName: "personnelId"
+          payment: Number(e.payment ?? e.hakedisTutari ?? e.hakedis_tutari ?? 0) || 0, // JsonPropertyName: "payment"
+          daysWorked: Number(e.daysWorked ?? e.calisilanGunSayisi ?? 0) || 0, // JsonPropertyName: "daysWorked"
+          paymentMethod: e.paymentMethod ?? e.odemeYontemi ?? undefined, // JsonPropertyName: "paymentMethod"
+        };
+        
+        console.log('🔍 Dönüştürülen hakediş:', mapped);
+        return mapped;
+      });
       
       console.log('Dönüştürülen hakediş verileri:', earnings);
 
