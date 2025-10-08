@@ -334,6 +334,12 @@ export default function App() {
       if (earnings.length > 0) {
         console.log('Hakediş ekleme deneniyor:', earnings);
         
+        // GEÇİCİ: Backend'deki transaction sorunu nedeniyle hakediş ekleme devre dışı
+        console.warn('⚠️ Hakediş ekleme geçici olarak devre dışı - backend transaction sorunu');
+        console.log('Backend düzeltilene kadar personel hakedişleri kaydedilmeyecek');
+        
+        // TODO: Backend'deki UpsertHakedislerBulk fonksiyonundaki transaction sorunu düzeltilmeli
+        /*
         try {
           // Backend'in beklediği formata çevir (IsHakedisleri modeli)
           const backendEarnings = earnings.map(e => ({
@@ -353,6 +359,7 @@ export default function App() {
           console.warn('Bulk hakediş ekleme başarısız:', bulkError);
           console.error('❌ Hakediş ekleme tamamen başarısız - backend sorunu');
         }
+        */
       }
     } catch (e) {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
@@ -436,6 +443,12 @@ export default function App() {
       if (earnings.length > 0) {
         console.log('Hakediş güncelleme deneniyor:', earnings);
         
+        // GEÇİCİ: Backend'deki transaction sorunu nedeniyle hakediş güncelleme devre dışı
+        console.warn('⚠️ Hakediş güncelleme geçici olarak devre dışı - backend transaction sorunu');
+        console.log('Backend düzeltilene kadar personel hakedişleri güncellenmeyecek');
+        
+        // TODO: Backend'deki UpsertHakedislerBulk fonksiyonundaki transaction sorunu düzeltilmeli
+        /*
         try {
           // Backend'in beklediği formata çevir (IsHakedisleri modeli)
           const backendEarnings = earnings.map(e => ({
@@ -455,6 +468,7 @@ export default function App() {
           console.warn('Bulk hakediş güncelleme başarısız:', bulkError);
           console.error('❌ Hakediş güncelleme tamamen başarısız - backend sorunu');
         }
+        */
       }
     } catch (e) {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
