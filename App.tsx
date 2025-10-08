@@ -83,6 +83,7 @@ export default function App() {
     try {
       setIsLoading(true);
       const data = await apiRequest('/api/Data/all');
+      console.log('🔍 Backend\'den gelen tüm veri:', data);
       setUsers(data.users);
       // API -> Frontend model eşlemesi (AdSoyad/NotMetni/NotGuncellenmeTarihi -> name/note)
       const normalizedPersonnel: Personnel[] = (data.personnel || []).map((p: any) => {
@@ -114,15 +115,35 @@ export default function App() {
 
       // CustomerJobs'u normalize et (id ve customerId number, diziler boş değilse maplansın)
       const normalizedJobsBase: CustomerJob[] = (data.customerJobs || []).map((j: any) => {
+        console.log('🔍 Job verisi:', j);
+        console.log('🔍 Job IsHakedisleri:', j.IsHakedisleri);
+        
         const safeId = typeof j.id === 'number' ? j.id : parseInt(String(j.id ?? j.jobId ?? 0), 10);
         const safeCustomerId = typeof j.customerId === 'number' ? j.customerId : parseInt(String(j.customerId ?? j.musteriId ?? 0), 10);
-        const personnelIds: number[] = (j.personnelIds || j.personeller || []).map((pid: any) => (typeof pid === 'number' ? pid : parseInt(String(pid), 10))).filter((n: any) => !Number.isNaN(n));
-        const personnelPayments = (j.personnelPayments || j.hakedisler || []).map((p: any) => ({
-          personnelId: typeof p.personnelId === 'number' ? p.personnelId : parseInt(String(p.personnelId ?? p.pid ?? 0), 10),
-          payment: Number(p.payment ?? p.tutar ?? 0) || 0,
-          daysWorked: Number(p.daysWorked ?? p.gun ?? 0) || 0,
-          paymentMethod: p.paymentMethod ?? p.odemeYontemi,
-        }));
+        
+        // Backend'den Include ile gelen hakediş verilerini kullan
+        const backendHakedisleri = j.IsHakedisleri || [];
+        console.log('🔍 Backend hakedişleri:', backendHakedisleri);
+        
+        // PersonnelIds'yi backend hakedişlerinden türet (JsonPropertyName: "personnelId")
+        const personnelIds: number[] = backendHakedisleri.length > 0
+          ? Array.from(new Set(backendHakedisleri.map((p: any) => p.personnelId ?? p.personelId).filter((n: any) => typeof n === 'number' && n > 0)))
+          : (j.personnelIds || j.personeller || []).map((pid: any) => (typeof pid === 'number' ? pid : parseInt(String(pid), 10))).filter((n: any) => !Number.isNaN(n));
+        
+        // PersonnelPayments'ı normalize et (JsonPropertyName'lere göre)
+        const personnelPayments = backendHakedisleri.length > 0 
+          ? backendHakedisleri.map((p: any) => ({
+              personnelId: typeof p.personnelId === 'number' ? p.personnelId : parseInt(String(p.personnelId ?? p.personelId ?? 0), 10), // JsonPropertyName: "personnelId"
+              payment: Number(p.payment ?? p.hakedisTutari ?? 0) || 0, // JsonPropertyName: "payment"
+              daysWorked: Number(p.daysWorked ?? p.calisilanGunSayisi ?? 0) || 0, // JsonPropertyName: "daysWorked"
+              paymentMethod: p.paymentMethod ?? p.odemeYontemi ?? undefined, // JsonPropertyName: "paymentMethod"
+            }))
+          : (j.personnelPayments || j.hakedisler || []).map((p: any) => ({
+              personnelId: typeof p.personnelId === 'number' ? p.personnelId : parseInt(String(p.personnelId ?? p.pid ?? 0), 10),
+              payment: Number(p.payment ?? p.tutar ?? 0) || 0,
+              daysWorked: Number(p.daysWorked ?? p.gun ?? 0) || 0,
+              paymentMethod: p.paymentMethod ?? p.odemeYontemi,
+            }));
         const materials = (j.materials || j.malzemeler || j.IsMalzemeleri || []).map((m: any) => {
           const mapped = {
             id: String(m.id ?? m.malzemeId ?? m.IsMalzemeId ?? `mat-${safeId}-${Math.random()}`),
@@ -150,13 +171,17 @@ export default function App() {
       });
 
       // Backend toplu uç noktasından gelen iş hakedişlerini (IsHakedisleri) job'lara birleştir
+      console.log('Backend\'den gelen hakediş verileri:', data.jobEarnings || data.isHakedisleri || []);
+      
       const earnings = (data.jobEarnings || data.isHakedisleri || []).map((e: any) => ({
         jobId: typeof e.isId === 'number' ? e.isId : parseInt(String(e.isId ?? e.jobId ?? 0), 10),
-        personnelId: typeof e.personnelId === 'number' ? e.personnelId : parseInt(String(e.personnelId ?? e.personelId ?? 0), 10),
-        payment: Number(e.payment ?? e.hakedisTutari ?? e.hakedis_tutari ?? 0) || 0,
-        daysWorked: Number(e.daysWorked ?? e.calisilanGunSayisi ?? 0) || 0,
-        paymentMethod: e.paymentMethod ?? e.odemeYontemi ?? undefined,
+        personnelId: typeof e.personnelId === 'number' ? e.personnelId : parseInt(String(e.personnelId ?? e.personelId ?? 0), 10), // JsonPropertyName: "personnelId"
+        payment: Number(e.payment ?? e.hakedisTutari ?? e.hakedis_tutari ?? 0) || 0, // JsonPropertyName: "payment"
+        daysWorked: Number(e.daysWorked ?? e.calisilanGunSayisi ?? 0) || 0, // JsonPropertyName: "daysWorked"
+        paymentMethod: e.paymentMethod ?? e.odemeYontemi ?? undefined, // JsonPropertyName: "paymentMethod"
       }));
+      
+      console.log('Dönüştürülen hakediş verileri:', earnings);
 
       const normalizedJobs = normalizedJobsBase.map((job) => {
         // Eğer backend zaten Include ile personnelPayments getirdiyse, yeniden ekleme ve çifte sayma yapma
