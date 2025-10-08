@@ -121,29 +121,22 @@ export default function App() {
         const safeId = typeof j.id === 'number' ? j.id : parseInt(String(j.id ?? j.jobId ?? 0), 10);
         const safeCustomerId = typeof j.customerId === 'number' ? j.customerId : parseInt(String(j.customerId ?? j.musteriId ?? 0), 10);
         
-        // Backend'den Include ile gelen hakediş verilerini kullan
-        const backendHakedisleri = j.IsHakedisleri || [];
-        console.log('🔍 Backend hakedişleri:', backendHakedisleri);
+        // Bu işe ait hakedişleri, genel olarak çekilen 'earnings' dizisinden filtrele
+        const jobSpecificEarnings = earnings.filter(e => e.jobId === safeId);
+        console.log(`🔍 Job ${safeId} için hakedişler:`, jobSpecificEarnings);
         
-        // PersonnelIds'yi backend hakedişlerinden türet (JsonPropertyName: "personnelId")
-        const personnelIds: number[] = backendHakedisleri.length > 0
-          ? Array.from(new Set(backendHakedisleri.map((p: any) => p.personnelId ?? p.personelId).filter((n: any) => typeof n === 'number' && n > 0)))
-          : (j.personnelIds || j.personeller || []).map((pid: any) => (typeof pid === 'number' ? pid : parseInt(String(pid), 10))).filter((n: any) => !Number.isNaN(n));
+        // PersonnelIds'yi job'a özel hakedişlerden türet
+        const personnelIds: number[] = Array.from(new Set(jobSpecificEarnings.map(p => p.personnelId).filter((n: any) => typeof n === 'number' && n > 0)));
+        console.log(`🔍 Job ${safeId} için personel ID'leri:`, personnelIds);
         
-        // PersonnelPayments'ı normalize et (JsonPropertyName'lere göre)
-        const personnelPayments = backendHakedisleri.length > 0 
-          ? backendHakedisleri.map((p: any) => ({
-              personnelId: typeof p.personnelId === 'number' ? p.personnelId : parseInt(String(p.personnelId ?? p.personelId ?? 0), 10), // JsonPropertyName: "personnelId"
-              payment: Number(p.payment ?? p.hakedisTutari ?? 0) || 0, // JsonPropertyName: "payment"
-              daysWorked: Number(p.daysWorked ?? p.calisilanGunSayisi ?? 0) || 0, // JsonPropertyName: "daysWorked"
-              paymentMethod: p.paymentMethod ?? p.odemeYontemi ?? undefined, // JsonPropertyName: "paymentMethod"
-            }))
-          : (j.personnelPayments || j.hakedisler || []).map((p: any) => ({
-              personnelId: typeof p.personnelId === 'number' ? p.personnelId : parseInt(String(p.personnelId ?? p.pid ?? 0), 10),
-              payment: Number(p.payment ?? p.tutar ?? 0) || 0,
-              daysWorked: Number(p.daysWorked ?? p.gun ?? 0) || 0,
-              paymentMethod: p.paymentMethod ?? p.odemeYontemi,
-            }));
+        // PersonnelPayments'ı job'a özel hakedişlerden oluştur
+        const personnelPayments = jobSpecificEarnings.map((p: any) => ({
+          personnelId: p.personnelId,
+          payment: p.payment,
+          daysWorked: p.daysWorked,
+          paymentMethod: p.paymentMethod,
+        }));
+        console.log(`🔍 Job ${safeId} için personel ödemeleri:`, personnelPayments);
         const materials = (j.materials || j.malzemeler || j.IsMalzemeleri || []).map((m: any) => {
           const mapped = {
             id: String(m.id ?? m.malzemeId ?? m.IsMalzemeId ?? `mat-${safeId}-${Math.random()}`),

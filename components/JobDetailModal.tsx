@@ -82,7 +82,12 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, onEdit
                                             <ul className="text-sm space-y-1 mt-1 max-h-24 overflow-y-auto pr-2">
                                                 {job.personnelPayments.map(p => {
                                                     if (p.payment === 0) return null;
-                                                    const personName = personnel.find(per => per.id === p.personnelId)?.name || 'Bilinmeyen';
+                                                    console.log('🔍 JobDetailModal - Personnel Payment:', p);
+                                                    console.log('🔍 JobDetailModal - Personnel listesi:', personnel);
+                                                    console.log('🔍 JobDetailModal - Aranan personnelId:', p.personnelId);
+                                                    const foundPerson = personnel.find(per => per.id === p.personnelId);
+                                                    console.log('🔍 JobDetailModal - Bulunan person:', foundPerson);
+                                                    const personName = foundPerson?.name || 'Bilinmeyen';
                                                     return (
                                                         <li key={`cost-${p.personnelId}`} className="flex justify-between py-0.5">
                                                             <span className="text-gray-700">{personName}</span>
@@ -121,13 +126,17 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, onEdit
                                 <h4 className="text-md font-semibold text-gray-700 mb-2">Çalışan Personeller ve Hakedişleri</h4>
                                 <ul className="space-y-1 text-sm max-h-40 overflow-y-auto">
                                     {job.personnelIds.map(pId => {
+                                        console.log('🔍 JobDetailModal - PersonnelId:', pId);
+                                        console.log('🔍 JobDetailModal - PersonnelIds array:', job.personnelIds);
                                         const paymentInfo = job.personnelPayments.find(p => p.personnelId === pId);
                                         const payment = paymentInfo?.payment || 0;
                                         const days = paymentInfo?.daysWorked || 0;
                                         const method = paymentInfo?.paymentMethod ? `(${paymentMethodNames[paymentInfo.paymentMethod]})` : '';
+                                        const foundPerson = personnel.find(per => per.id === pId);
+                                        console.log('🔍 JobDetailModal - Aranan personnelId:', pId, 'Bulunan person:', foundPerson);
                                         return (
                                             <li key={pId} className="flex justify-between items-center">
-                                                <span className="text-gray-600">{personnel.find(per => per.id === pId)?.name || 'Bilinmeyen'} ({days} gün)</span>
+                                                <span className="text-gray-600">{foundPerson?.name || 'Bilinmeyen'} ({days} gün)</span>
                                                 <span className="font-semibold">{formatCurrency(payment)} <span className="text-xs text-gray-500 font-normal">{method}</span></span>
                                             </li>
                                         )
