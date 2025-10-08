@@ -165,10 +165,10 @@ export default function App() {
         
         const mapped = {
           jobId: typeof e.isId === 'number' ? e.isId : parseInt(String(e.isId ?? e.jobId ?? 0), 10),
-          personnelId: typeof e.personnelId === 'number' ? e.personnelId : parseInt(String(e.personnelId ?? e.personelId ?? 0), 10), // JsonPropertyName: "personnelId"
-          payment: Number(e.payment ?? e.hakedisTutari ?? e.hakedis_tutari ?? 0) || 0, // JsonPropertyName: "payment"
-          daysWorked: Number(e.daysWorked ?? e.calisilanGunSayisi ?? 0) || 0, // JsonPropertyName: "daysWorked"
-          paymentMethod: e.paymentMethod ?? e.odemeYontemi ?? undefined, // JsonPropertyName: "paymentMethod"
+          personnelId: typeof e.personnelId === 'number' ? e.personnelId : parseInt(String(e.personnelId ?? 0), 10), // Sadece JsonPropertyName: "personnelId"
+          payment: Number(e.payment ?? 0) || 0, // Sadece JsonPropertyName: "payment"
+          daysWorked: Number(e.daysWorked ?? 0) || 0, // Sadece JsonPropertyName: "daysWorked"
+          paymentMethod: e.paymentMethod ?? undefined, // Sadece JsonPropertyName: "paymentMethod"
         };
         
         console.log('🔍 Dönüştürülen hakediş:', mapped);
