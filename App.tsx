@@ -362,30 +362,21 @@ export default function App() {
     // Hakediş satırlarını gönder
     try {
       const earnings = (data.personnelPayments || []).map(p => ({
-        isId: saved.id,
-        personnelId: p.personnelId,
-        payment: p.payment,
-        daysWorked: p.daysWorked,
-        paymentMethod: p.paymentMethod,
+        // Backend model'ine göre doğru alan isimleri
+        PersonelId: p.personnelId, // Model property: PersonelId
+        HakedisTutari: p.payment, // Model property: HakedisTutari  
+        CalisilanGunSayisi: p.daysWorked, // Model property: CalisilanGunSayisi
+        OdemeYontemi: p.paymentMethod, // Model property: OdemeYontemi
       }));
       
       if (earnings.length > 0) {
         console.log('Hakediş ekleme deneniyor:', earnings);
         
         try {
-          // Backend'in beklediği formata çevir (IsHakedisleri modeli)
-          const backendEarnings = earnings.map(e => ({
-            PersonelId: e.personnelId,
-            HakedisTutari: e.payment,
-            CalisilanGunSayisi: e.daysWorked,
-            OdemeYontemi: e.paymentMethod
-            // IsId backend'de otomatik set edilecek
-          }));
+          console.log('Backend formatında hakediş verisi:', earnings);
           
-          console.log('Backend formatında hakediş verisi:', backendEarnings);
-          
-          // Bulk endpoint'i kullan
-          await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', backendEarnings);
+          // Bulk endpoint'i kullan (earnings zaten doğru formatta)
+          await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', earnings);
           console.log('✅ Bulk hakediş ekleme başarılı');
         } catch (bulkError) {
           console.warn('Bulk hakediş ekleme başarısız:', bulkError);
@@ -464,30 +455,21 @@ export default function App() {
     // Hakediş satırlarını güncelle/gönder
     try {
       const earnings = (data.personnelPayments || []).map(p => ({
-        isId: data.id,
-        personnelId: p.personnelId,
-        payment: p.payment,
-        daysWorked: p.daysWorked,
-        paymentMethod: p.paymentMethod,
+        // Backend model'ine göre doğru alan isimleri
+        PersonelId: p.personnelId, // Model property: PersonelId
+        HakedisTutari: p.payment, // Model property: HakedisTutari  
+        CalisilanGunSayisi: p.daysWorked, // Model property: CalisilanGunSayisi
+        OdemeYontemi: p.paymentMethod, // Model property: OdemeYontemi
       }));
       
       if (earnings.length > 0) {
         console.log('Hakediş güncelleme deneniyor:', earnings);
         
         try {
-          // Backend'in beklediği formata çevir (IsHakedisleri modeli)
-          const backendEarnings = earnings.map(e => ({
-            PersonelId: e.personnelId,
-            HakedisTutari: e.payment,
-            CalisilanGunSayisi: e.daysWorked,
-            OdemeYontemi: e.paymentMethod
-            // IsId backend'de otomatik set edilecek
-          }));
+          console.log('Backend formatında hakediş güncelleme verisi:', earnings);
           
-          console.log('Backend formatında hakediş güncelleme verisi:', backendEarnings);
-          
-          // Bulk endpoint'i kullan
-          await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', backendEarnings);
+          // Bulk endpoint'i kullan (earnings zaten doğru formatta)
+          await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', earnings);
           console.log('✅ Bulk hakediş güncelleme başarılı');
         } catch (bulkError) {
           console.warn('Bulk hakediş güncelleme başarısız:', bulkError);
