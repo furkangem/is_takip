@@ -321,7 +321,7 @@ export default function App() {
     // Optimistic update: eklenen işi anında listeye yansıt
     setCustomerJobs(prev => [...prev, saved]);
     
-    // Hakediş satırlarını toplu olarak gönder
+    // Hakediş satırlarını gönder
     try {
       const earnings = (data.personnelPayments || []).map(p => ({
         isId: saved.id,
@@ -330,8 +330,45 @@ export default function App() {
         daysWorked: p.daysWorked,
         paymentMethod: p.paymentMethod,
       }));
+      
       if (earnings.length > 0) {
-        await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', earnings);
+        console.log('Hakediş ekleme deneniyor:', earnings);
+        
+        try {
+          // Backend'in beklediği formata çevir (IsHakedisleri modeli)
+          const backendEarnings = earnings.map(e => ({
+            IsId: e.isId,
+            PersonelId: e.personnelId,
+            HakedisTutari: e.payment,
+            CalisilanGunSayisi: e.daysWorked,
+            OdemeYontemi: e.paymentMethod
+          }));
+          
+          console.log('Backend formatında hakediş verisi:', backendEarnings);
+          
+          // Önce bulk endpoint'i dene
+          await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', backendEarnings);
+          console.log('✅ Bulk hakediş ekleme başarılı');
+        } catch (bulkError) {
+          console.warn('Bulk hakediş ekleme başarısız, tek tek deneniyor:', bulkError);
+          
+          // Bulk başarısız olursa tek tek gönder
+          for (const earning of earnings) {
+            try {
+              const singleEarning = {
+                IsId: earning.isId,
+                PersonelId: earning.personnelId,
+                HakedisTutari: earning.payment,
+                CalisilanGunSayisi: earning.daysWorked,
+                OdemeYontemi: earning.paymentMethod
+              };
+              await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler`, 'POST', singleEarning);
+              console.log('✅ Tek hakediş ekleme başarılı:', earning.personnelId);
+            } catch (singleError) {
+              console.error('❌ Tek hakediş ekleme başarısız:', earning.personnelId, singleError);
+            }
+          }
+        }
       }
     } catch (e) {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
@@ -402,7 +439,7 @@ export default function App() {
     const saved = await apiRequest(`/api/Musteriler/isler/${data.id}`, 'PUT', body);
     setCustomerJobs(prev => prev.map(j => j.id === data.id ? (saved || data) : j));
     
-    // Hakediş satırlarını toplu olarak güncelle/gönder
+    // Hakediş satırlarını güncelle/gönder
     try {
       const earnings = (data.personnelPayments || []).map(p => ({
         isId: data.id,
@@ -411,9 +448,45 @@ export default function App() {
         daysWorked: p.daysWorked,
         paymentMethod: p.paymentMethod,
       }));
-      // Backend'te bulk uç noktası varsa çağır; yoksa sessizce geç
+      
       if (earnings.length > 0) {
-        await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', earnings);
+        console.log('Hakediş güncelleme deneniyor:', earnings);
+        
+        try {
+          // Backend'in beklediği formata çevir (IsHakedisleri modeli)
+          const backendEarnings = earnings.map(e => ({
+            IsId: e.isId,
+            PersonelId: e.personnelId,
+            HakedisTutari: e.payment,
+            CalisilanGunSayisi: e.daysWorked,
+            OdemeYontemi: e.paymentMethod
+          }));
+          
+          console.log('Backend formatında hakediş güncelleme verisi:', backendEarnings);
+          
+          // Önce bulk endpoint'i dene
+          await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', backendEarnings);
+          console.log('✅ Bulk hakediş güncelleme başarılı');
+        } catch (bulkError) {
+          console.warn('Bulk hakediş güncelleme başarısız, tek tek deneniyor:', bulkError);
+          
+          // Bulk başarısız olursa tek tek gönder
+          for (const earning of earnings) {
+            try {
+              const singleEarning = {
+                IsId: earning.isId,
+                PersonelId: earning.personnelId,
+                HakedisTutari: earning.payment,
+                CalisilanGunSayisi: earning.daysWorked,
+                OdemeYontemi: earning.paymentMethod
+              };
+              await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler`, 'POST', singleEarning);
+              console.log('✅ Tek hakediş güncelleme başarılı:', earning.personnelId);
+            } catch (singleError) {
+              console.error('❌ Tek hakediş güncelleme başarısız:', earning.personnelId, singleError);
+            }
+          }
+        }
       }
     } catch (e) {
       console.warn('Hakedişleri gönderirken bir sorun oluştu:', e);
