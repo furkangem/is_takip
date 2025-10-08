@@ -350,24 +350,8 @@ export default function App() {
           await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler/bulk`, 'POST', backendEarnings);
           console.log('✅ Bulk hakediş ekleme başarılı');
         } catch (bulkError) {
-          console.warn('Bulk hakediş ekleme başarısız, tek tek deneniyor:', bulkError);
-          
-          // Bulk başarısız olursa tek tek gönder
-          for (const earning of earnings) {
-            try {
-              const singleEarning = {
-                IsId: earning.isId,
-                PersonelId: earning.personnelId,
-                HakedisTutari: earning.payment,
-                CalisilanGunSayisi: earning.daysWorked,
-                OdemeYontemi: earning.paymentMethod
-              };
-              await apiRequest(`/api/Musteriler/isler/${saved.id}/hakedisler`, 'POST', singleEarning);
-              console.log('✅ Tek hakediş ekleme başarılı:', earning.personnelId);
-            } catch (singleError) {
-              console.error('❌ Tek hakediş ekleme başarısız:', earning.personnelId, singleError);
-            }
-          }
+          console.warn('Bulk hakediş ekleme başarısız:', bulkError);
+          console.error('❌ Hakediş ekleme tamamen başarısız - backend sorunu');
         }
       }
     } catch (e) {
@@ -468,24 +452,8 @@ export default function App() {
           await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler/bulk`, 'POST', backendEarnings);
           console.log('✅ Bulk hakediş güncelleme başarılı');
         } catch (bulkError) {
-          console.warn('Bulk hakediş güncelleme başarısız, tek tek deneniyor:', bulkError);
-          
-          // Bulk başarısız olursa tek tek gönder
-          for (const earning of earnings) {
-            try {
-              const singleEarning = {
-                IsId: earning.isId,
-                PersonelId: earning.personnelId,
-                HakedisTutari: earning.payment,
-                CalisilanGunSayisi: earning.daysWorked,
-                OdemeYontemi: earning.paymentMethod
-              };
-              await apiRequest(`/api/Musteriler/isler/${data.id}/hakedisler`, 'POST', singleEarning);
-              console.log('✅ Tek hakediş güncelleme başarılı:', earning.personnelId);
-            } catch (singleError) {
-              console.error('❌ Tek hakediş güncelleme başarısız:', earning.personnelId, singleError);
-            }
-          }
+          console.warn('Bulk hakediş güncelleme başarısız:', bulkError);
+          console.error('❌ Hakediş güncelleme tamamen başarısız - backend sorunu');
         }
       }
     } catch (e) {
