@@ -345,7 +345,7 @@ const JobEditorModal: React.FC<{
                         </div>
                         <div>
                             <label htmlFor="description" className="block text-sm font-medium text-gray-700">İş Açıklaması</label>
-                            <textarea name="description" value={formData.description} onChange={handleChange} required className={commonInputClass} rows={2} placeholder="Yapılan işin açıklaması..."></textarea>
+                            <textarea name="description" value={formData.description} onChange={handleChange} className={commonInputClass} rows={2} placeholder="Yapılan işin açıklaması..."></textarea>
                         </div>
                     </fieldset>
 
