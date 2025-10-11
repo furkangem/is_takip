@@ -430,7 +430,7 @@ const PersonnelLedgerView: React.FC<{
     const { personnel, customers, customerJobs, personnelPayments, onAddPersonnelPayment, onUpdatePersonnelPayment, onDeletePersonnelPayment, onUpdateCustomerJob, isEditable } = props;
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [sortBy, setSortBy] = useState<'name' | 'balance' | 'earnings'>('name');
+    const [sortBy, setSortBy] = useState<'name' | 'balance' | 'earnings' | 'id'>('id');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [statementModalOpen, setStatementModalOpen] = useState(false);
     const [selectedPersonnelForStatement, setSelectedPersonnelForStatement] = useState<Personnel | null>(null);
@@ -456,11 +456,13 @@ const PersonnelLedgerView: React.FC<{
             if (sortBy === 'name') compare = a.name.localeCompare(b.name, 'tr');
             else if (sortBy === 'balance') compare = a.balance - b.balance;
             else if (sortBy === 'earnings') compare = a.earnings - b.earnings;
+            else if (sortBy === 'id') compare = a.id - b.id; // ID'ye göre sıralama eklendi
+            else compare = b.id - a.id; // Varsayılan: en yeni üstte (ID'ye göre)
             return sortDirection === 'asc' ? compare : -compare;
         });
     }, [personnelFinancials, searchQuery, sortBy, sortDirection]);
 
-    const handleSort = (key: 'name' | 'balance' | 'earnings') => {
+    const handleSort = (key: 'name' | 'balance' | 'earnings' | 'id') => {
         if (sortBy === key) {
             setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
         } else {
@@ -474,7 +476,7 @@ const PersonnelLedgerView: React.FC<{
         setStatementModalOpen(true);
     };
 
-    const SortableHeader: React.FC<{ sortKey: 'name' | 'balance' | 'earnings', children: React.ReactNode }> = ({ sortKey, children }) => (
+    const SortableHeader: React.FC<{ sortKey: 'name' | 'balance' | 'earnings' | 'id', children: React.ReactNode }> = ({ sortKey, children }) => (
         <th className="p-3 font-semibold cursor-pointer" onClick={() => handleSort(sortKey)}>
             <div className="flex items-center">
                 {children}

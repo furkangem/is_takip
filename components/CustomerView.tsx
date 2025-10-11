@@ -503,8 +503,12 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
   }, [customers]);
 
     const filteredCustomers = useMemo(() => {
-        if (!searchQuery) return customers;
-        return customers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        let filtered = customers;
+        if (searchQuery) {
+            filtered = customers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        // En yeni kayıtlar üstte olacak şekilde ID'ye göre sırala
+        return filtered.sort((a, b) => b.id - a.id);
     }, [customers, searchQuery]);
     
     useEffect(() => {

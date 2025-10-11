@@ -342,10 +342,14 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   }, [navigateToId, personnel, onNavigationComplete]);
 
   const filteredPersonnel = useMemo(() => {
-    if (!searchQuery) return personnel;
-    return personnel.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    let filtered = personnel;
+    if (searchQuery) {
+      filtered = personnel.filter(p =>
+          p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    // En yeni kayıtlar üstte olacak şekilde ID'ye göre sırala
+    return filtered.sort((a, b) => b.id - a.id);
   }, [personnel, searchQuery]);
 
   useEffect(() => {

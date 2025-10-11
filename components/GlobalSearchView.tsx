@@ -108,7 +108,13 @@ const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({ query, personnel, c
                 icon: BanknotesIcon,
             }));
         
-        return results;
+        // En yeni kayıtlar üstte olacak şekilde ID'ye göre sırala
+        return results.sort((a, b) => {
+            // ID'den sayısal değeri çıkar
+            const aId = parseInt(a.id.split('-').pop() || '0');
+            const bId = parseInt(b.id.split('-').pop() || '0');
+            return bId - aId;
+        });
     }, [query, personnel, customers, customerJobs, defterEntries, sharedExpenses]);
 
 

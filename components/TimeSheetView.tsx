@@ -347,9 +347,21 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
         return j.location.toLowerCase().includes(lowerQuery) || 
                j.description.toLowerCase().includes(lowerQuery) ||
                (customer && customer.name.toLowerCase().includes(lowerQuery));
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [customerJobs, customers, searchQuery]);
+    }).sort((a, b) => {
+        // Önce tarihe göre, sonra ID'ye göre sırala (en yeni üstte)
+        const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (dateCompare !== 0) return dateCompare;
+        return b.id - a.id;
+    }), [customerJobs, customers, searchQuery]);
 
-    const filteredPersonnel = useMemo(() => personnel.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())), [personnel, searchQuery]);
+    const filteredPersonnel = useMemo(() => {
+        let filtered = personnel;
+        if (searchQuery) {
+            filtered = personnel.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        // En yeni kayıtlar üstte olacak şekilde ID'ye göre sırala
+        return filtered.sort((a, b) => b.id - a.id);
+    }, [personnel, searchQuery]);
     
     const jobsByCustomer = useMemo(() => {
         const grouped: { [key: string]: { customer: Customer, jobs: CustomerJob[] } } = {};

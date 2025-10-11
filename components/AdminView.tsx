@@ -142,11 +142,15 @@ const AdminView: React.FC<AdminViewProps> = ({ currentUser, users, personnel, on
     const [searchQuery, setSearchQuery] = useState('');
 
     const filteredUsers = useMemo(() => {
-        if (!searchQuery) return users;
-        return users.filter(u =>
-            u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            u.email.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        let filtered = users;
+        if (searchQuery) {
+            filtered = users.filter(u =>
+                u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                u.email.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+        // En yeni kayıtlar üstte olacak şekilde ID'ye göre sırala
+        return filtered.sort((a, b) => b.id - a.id);
     }, [users, searchQuery]);
 
     const getRoleName = (role: Role) => {
