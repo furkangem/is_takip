@@ -275,7 +275,7 @@ const JobEditorModal: React.FC<{
             customerId,
             date: formData.date,
             location: formData.location,
-            description: formData.description,
+            description: formData.description.trim() || 'İş Kaydı', // Boş açıklama için varsayılan değer
             income: parseFloat(formData.income) || 0,
             incomePaymentMethod: formData.incomePaymentMethod,
             incomeGoldType: formData.incomePaymentMethod === 'GOLD' ? formData.incomeGoldType : undefined,
