@@ -63,13 +63,13 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
     const { allTransactions, transactionTypes } = useMemo(() => {
         const transactions: KasaTransaction[] = [];
 
-        // 1. Process Jobs as single entries
+        // 1. Process Jobs as single entries - Sadece gelir ve malzeme maliyetini göster, personel maliyetini gösterme
         customerJobs.forEach(job => {
             const customer = customers.find(c => c.id === job.customerId);
             
-            const personnelCost = job.personnelPayments.reduce((sum, p) => sum + p.payment, 0);
+            // Personel maliyetini kasaya yansıtma - sadece malzeme maliyetini göster
+            // Personel maliyeti sadece gerçek personel ödemesi yapıldığında görünecek
             const materialCost = job.materials.reduce((sum, m) => sum + (m.quantity * m.unitPrice), 0);
-            const totalCost = personnelCost + materialCost;
 
             transactions.push({
                 id: `job-${job.id}`,
@@ -77,7 +77,7 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
                 description: `${customer?.name || 'Bilinmeyen Müşteri'} - ${job.location}`,
                 type: 'İş Kaydı',
                 amountIn: job.income,
-                amountOut: totalCost,
+                amountOut: materialCost, // Sadece malzeme maliyeti, personel maliyeti yok
                 isJob: true,
                 jobId: job.id,
             });
