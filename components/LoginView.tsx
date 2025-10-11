@@ -115,11 +115,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
               </button>
             </div>
           </form>
-           <div className="text-center text-xs text-gray-500 border-t pt-4">
-              <p className="font-semibold">Test Bilgileri:</p>
-              <p>Süper Admin: omer / omer1</p>
-              <p>Görüntüleyici: baris / baris</p>
-          </div>
         </div>
       </div>
     </div>
