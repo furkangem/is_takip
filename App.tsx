@@ -346,11 +346,16 @@ export default function App() {
  // Lütfen bu iki fonksiyonu App.tsx dosyanızdaki mevcut olanlarla değiştirin.
 
 const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
+    // Tarihi doğru formatta işle (YYYY-MM-DD formatında geliyor)
+    const processedDate = data.date 
+      ? (data.date.includes('T') ? data.date : `${data.date}T00:00:00`)
+      : new Date().toISOString();
+      
     const body = {
       customerId: data.customerId,
       location: data.location,
       description: data.description,
-      date: data.date ? new Date(`${data.date}T00:00:00`).toISOString() : new Date().toISOString(),
+      date: processedDate,
       income: data.income,
       incomePaymentMethod: data.incomePaymentMethod,
       incomeGoldType: data.incomePaymentMethod === 'GOLD' ? data.incomeGoldType : null,
@@ -389,12 +394,17 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
   };
 
   const updateCustomerJob = async (data: CustomerJob) => {
+    // Tarihi doğru formatta işle (YYYY-MM-DD formatında geliyor)
+    const processedDate = data.date 
+      ? (data.date.includes('T') ? data.date : `${data.date}T00:00:00`)
+      : new Date().toISOString();
+      
     const body = {
       id: data.id,
       customerId: data.customerId,
       location: data.location,
       description: data.description,
-      date: data.date ? (data.date.includes('T') ? new Date(data.date).toISOString() : new Date(`${data.date}T00:00:00`).toISOString()) : new Date().toISOString(),
+      date: processedDate,
       income: data.income,
       incomePaymentMethod: data.incomePaymentMethod,
       incomeGoldType: data.incomePaymentMethod === 'GOLD' ? data.incomeGoldType : null,

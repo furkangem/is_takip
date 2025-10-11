@@ -160,8 +160,13 @@ const JobEditorModal: React.FC<{
     useEffect(() => {
         if (isOpen) {
             if (jobToEdit) {
+                // Tarihi doğru formatta ayarla (YYYY-MM-DD)
+                const jobDate = jobToEdit.date.includes('T') 
+                    ? jobToEdit.date.split('T')[0] 
+                    : jobToEdit.date;
+                    
                 setFormData({
-                    date: jobToEdit.date,
+                    date: jobDate,
                     location: jobToEdit.location,
                     description: jobToEdit.description,
                     income: String(jobToEdit.income || ''),
@@ -335,7 +340,7 @@ const JobEditorModal: React.FC<{
                             </div>
                             <div>
                                 <label htmlFor="date" className="block text-sm font-medium text-gray-700">Tarih</label>
-                                <input type="date" name="date" value={(formData.date || '').split('T')[0]} onChange={handleChange} required className={commonInputClass} />
+                                <input type="date" name="date" value={formData.date || ''} onChange={handleChange} required className={commonInputClass} />
                             </div>
                         </div>
                         <div>
@@ -477,7 +482,7 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
     const [jobToView, setJobToView] = useState<CustomerJob | null>(null);
     const [isIncomeHistoryExpanded, setIsIncomeHistoryExpanded] = useState(true);
     
-    const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' });
     const isEditable = currentUser.role === Role.SUPER_ADMIN;
 
     useEffect(() => {

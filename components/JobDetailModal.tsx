@@ -19,7 +19,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ isOpen, onClose, onEdit
 
     if (!isOpen || !job) return null;
 
-    const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' });
 
     const formatIncome = (job: CustomerJob): string => {
         if (job.incomePaymentMethod === 'GOLD') {

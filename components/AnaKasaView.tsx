@@ -252,7 +252,7 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
                                             if (t.originId && t.type === 'Personel Ödemesi') onNavigate('personnel', t.originId);
                                         }}
                                     >
-                                        <td className="p-3 text-gray-600 whitespace-nowrap">{new Date(t.date).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric'})}</td>
+                                        <td className="p-3 text-gray-600 whitespace-nowrap">{new Date(t.date).toLocaleDateString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', timeZone: 'Europe/Istanbul'})}</td>
                                         <td className="p-3 font-medium text-gray-800 max-w-xs truncate" title={t.description}>{t.description}</td>
                                         <td className="p-3"><span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md">{t.type}</span></td>
                                         <td className="p-3 font-bold text-green-600 text-right">{t.amountIn ? formatCurrency(t.amountIn) : '-'}</td>
