@@ -58,37 +58,64 @@ if (typeof window !== 'undefined') {
 
 // Enum mapping fonksiyonları - Türkçe karakter sorununu çözmek için
 const mapPayerToBackend = (payer: string): string => {
-    // Backend'in beklediği değerleri test etmek için farklı formatlar
+    // Backend'in beklediği değerleri - daha güvenli mapping
     const mapping: { [key: string]: string } = {
         'Omer': 'Ömer',
         'Baris': 'Barış', 
         'Kasa': 'Kasa',
-        // Alternatif değerler de deneyelim
+        // Küçük harf alternatifleri
         'omer': 'Ömer',
         'baris': 'Barış',
         'kasa': 'Kasa',
-        // Sayısal değerler de olabilir
+        // Türkçe karakterli versiyonlar
+        'Ömer': 'Ömer',
+        'Barış': 'Barış',
+        'ömer': 'Ömer',
+        'barış': 'Barış',
+        // Sayısal değerler
         '1': 'Ömer',
         '2': 'Barış',
         '3': 'Kasa'
     };
     
+    const mappedValue = mapping[payer] || payer;
+    
     console.log('🔄 Payer Mapping:', {
         input: payer,
-        output: mapping[payer] || payer,
+        output: mappedValue,
+        isMapped: mapping[payer] !== undefined,
         allMappings: mapping
     });
     
-    return mapping[payer] || payer;
+    return mappedValue;
 };
 
 const mapPayerFromBackend = (payer: string): 'Omer' | 'Baris' | 'Kasa' => {
     const mapping: { [key: string]: 'Omer' | 'Baris' | 'Kasa' } = {
         'Ömer': 'Omer',
         'Barış': 'Baris',
-        'Kasa': 'Kasa'
+        'Kasa': 'Kasa',
+        // Alternatif formatlar
+        'omer': 'Omer',
+        'baris': 'Baris',
+        'kasa': 'Kasa',
+        'ömer': 'Omer',
+        'barış': 'Baris',
+        // Sayısal değerler
+        '1': 'Omer',
+        '2': 'Baris',
+        '3': 'Kasa'
     };
-    return mapping[payer] || 'Kasa';
+    
+    const mappedValue = mapping[payer] || 'Kasa';
+    
+    console.log('🔄 Payer From Backend Mapping:', {
+        input: payer,
+        output: mappedValue,
+        isMapped: mapping[payer] !== undefined
+    });
+    
+    return mappedValue;
 };
 
 const mapPaymentMethodToBackend = (method: string): string => {
@@ -712,27 +739,32 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         return;
     }
 
+    // Tutar kontrolü ekle
+    if (!data.amount || data.amount <= 0) {
+        alert('Tutar 0\'dan büyük olmalıdır!');
+        return;
+    }
+
     try {
-        // Backend'in beklediği formatı test etmek için en basit yaklaşım
-        // Önce backend'in tam olarak ne beklediğini anlayalım
+        // Tarih formatını kontrol et ve düzelt
+        let formattedDate = data.date;
+        if (!formattedDate) {
+            formattedDate = new Date().toISOString();
+        } else if (!formattedDate.includes('T')) {
+            // YYYY-MM-DD formatındaysa ISO formatına çevir
+            formattedDate = new Date(formattedDate).toISOString();
+        }
+
+        // Backend'in beklediği format - daha güvenli mapping
         const payload = {
             Aciklama: data.description.trim(),
             Tutar: parseFloat(data.amount.toString()) || 0,
-            Tarih: data.date,
-            OdemeYontemi: data.paymentMethod, // Önce mapping olmadan dene
-            OdeyenKisi: data.payer === 'Omer' ? 'Ömer' : 
-                       data.payer === 'Baris' ? 'Barış' : 
-                       data.payer, // Kasa için mapping yok
-            Durum: data.status
+            Tarih: formattedDate,
+            OdemeYontemi: mapPaymentMethodToBackend(data.paymentMethod),
+            OdeyenKisi: mapPayerToBackend(data.payer),
+            Durum: data.status || 'unpaid'
         };
         
-        console.log('🔍 Backend Format Test:', {
-            originalPayer: data.payer,
-            mappedPayer: payload.OdeyenKisi,
-            originalPaymentMethod: data.paymentMethod,
-            mappedPaymentMethod: payload.OdemeYontemi
-        });
-
         console.log('🔍 Gider Ekleme Debug:', {
             originalData: data,
             payload: payload,
@@ -742,29 +774,53 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
                 mapped: mapPayerToBackend(data.payer),
                 paymentMethodOriginal: data.paymentMethod,
                 paymentMethodMapped: mapPaymentMethodToBackend(data.paymentMethod)
+            },
+            dateTransformation: {
+                original: data.date,
+                formatted: formattedDate
             }
         });
 
         const saved = await apiRequest('/Kasa/ortakgiderler', 'POST', payload);
         console.log('✅ Backend\'den gelen veri:', saved);
         
-        // Backend → Frontend dönüşümü + enum mapping
+        // Backend → Frontend dönüşümü - daha güvenli
         const frontendData: SharedExpense = {
-            id: saved.id || saved.gider_id,
-            description: saved.description || saved.aciklama,
-            amount: saved.amount || saved.tutar,
-            date: saved.date || saved.tarih,
-            paymentMethod: mapPaymentMethodFromBackend(saved.paymentMethod || saved.odemeYontemi),
-            payer: mapPayerFromBackend(saved.payer || saved.odeyenKisi),
-            status: saved.status || saved.durum,
+            id: saved.GiderId || saved.id || saved.gider_id,
+            description: saved.Aciklama || saved.description || saved.aciklama,
+            amount: saved.Tutar || saved.amount || saved.tutar,
+            date: saved.Tarih || saved.date || saved.tarih,
+            paymentMethod: mapPaymentMethodFromBackend(saved.OdemeYontemi || saved.paymentMethod || saved.odemeYontemi),
+            payer: mapPayerFromBackend(saved.OdeyenKisi || saved.payer || saved.odeyenKisi),
+            status: saved.Durum || saved.status || saved.durum || 'unpaid',
             deletedAt: saved.deletedAt || saved.silinmeTarihi
         };
         
         setSharedExpenses(prev => [...prev, frontendData]);
         console.log('✅ Gider başarıyla eklendi:', frontendData);
-    } catch (error) {
+        
+        // Başarı mesajı
+        alert('Gider başarıyla eklendi!');
+        
+    } catch (error: any) {
         console.error('❌ Gider ekleme hatası:', error);
-        alert('Gider eklenirken bir hata oluştu: ' + error.message);
+        
+        // Daha detaylı hata mesajı
+        let errorMessage = 'Gider eklenirken bir hata oluştu';
+        
+        if (error.message.includes('400')) {
+            errorMessage = 'Gönderilen veri formatı hatalı. Lütfen tüm alanları kontrol edin.';
+        } else if (error.message.includes('500')) {
+            errorMessage = 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
+        } else if (error.message.includes('timeout') || error.message.includes('504')) {
+            errorMessage = 'İstek zaman aşımına uğradı. İnternet bağlantınızı kontrol edin.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Sunucuya bağlanılamıyor. İnternet bağlantınızı kontrol edin.';
+        } else {
+            errorMessage = `Hata: ${error.message}`;
+        }
+        
+        alert(errorMessage);
     }
 };
 
