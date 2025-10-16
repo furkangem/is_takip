@@ -29,7 +29,7 @@ export interface Payment {
   date: string;
 }
 
-export type Payer = 'Ömer' | 'Barış' | 'Kasa';
+export type Payer = 'Omer' | 'Baris' | 'Kasa';
 export type PaymentMethod = 'cash' | 'transfer' | 'card';
 
 export interface PersonnelPayment {

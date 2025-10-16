@@ -54,14 +54,74 @@ const clearApiCache = () => {
 // Sayfa yüklendiğinde cache temizle (sadece bir kez)
 if (typeof window !== 'undefined') {
     window.addEventListener('load', clearApiCache, { once: true });
-} 
+}
+
+// Enum mapping fonksiyonları - Türkçe karakter sorununu çözmek için
+const mapPayerToBackend = (payer: string): string => {
+    // Backend'in beklediği değerleri test etmek için farklı formatlar
+    const mapping: { [key: string]: string } = {
+        'Omer': 'Ömer',
+        'Baris': 'Barış', 
+        'Kasa': 'Kasa',
+        // Alternatif değerler de deneyelim
+        'omer': 'Ömer',
+        'baris': 'Barış',
+        'kasa': 'Kasa',
+        // Sayısal değerler de olabilir
+        '1': 'Ömer',
+        '2': 'Barış',
+        '3': 'Kasa'
+    };
+    
+    console.log('🔄 Payer Mapping:', {
+        input: payer,
+        output: mapping[payer] || payer,
+        allMappings: mapping
+    });
+    
+    return mapping[payer] || payer;
+};
+
+const mapPayerFromBackend = (payer: string): 'Omer' | 'Baris' | 'Kasa' => {
+    const mapping: { [key: string]: 'Omer' | 'Baris' | 'Kasa' } = {
+        'Ömer': 'Omer',
+        'Barış': 'Baris',
+        'Kasa': 'Kasa'
+    };
+    return mapping[payer] || 'Kasa';
+};
+
+const mapPaymentMethodToBackend = (method: string): string => {
+    const mapping: { [key: string]: string } = {
+        'cash': 'cash',
+        'transfer': 'transfer',
+        'card': 'card'
+    };
+    return mapping[method] || method;
+};
+
+const mapPaymentMethodFromBackend = (method: string): 'cash' | 'transfer' | 'card' => {
+    const mapping: { [key: string]: 'cash' | 'transfer' | 'card' } = {
+        'cash': 'cash',
+        'transfer': 'transfer',
+        'card': 'card'
+    };
+    return mapping[method] || 'cash';
+}; 
 
 // Tekrarlı API istekleri için yardımcı bir fonksiyon
 const apiRequest = async (endpoint: string, method: string = 'GET', body: any = null, retries: number = 2) => {
-    // :1 sorununu önleme - sadece sonundaki :1'i kaldır
+    // :1 sorununu önleme - daha agresif temizleme
     let cleanEndpoint = endpoint;
-    if (endpoint.endsWith(':1')) {
-        cleanEndpoint = endpoint.slice(0, -2); // Son 2 karakteri (:1) kaldır
+    const originalEndpoint = endpoint;
+    cleanEndpoint = endpoint.replace(/:1$/g, '').replace(/:1\//g, '/').replace(/\/:1/g, '');
+    
+    if (originalEndpoint !== cleanEndpoint) {
+        console.log('⚠️ Frontend :1 sorunu tespit edildi ve düzeltildi:', {
+            originalEndpoint,
+            cleanedEndpoint: cleanEndpoint,
+            changes: originalEndpoint !== cleanEndpoint
+        });
     }
     
     const options: RequestInit = {
@@ -653,34 +713,51 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
     }
 
     try {
-        // Frontend → Backend dönüşümü (JsonPropertyName attribute'larına göre)
+        // Backend'in beklediği formatı test etmek için en basit yaklaşım
+        // Önce backend'in tam olarak ne beklediğini anlayalım
         const payload = {
-            description: data.description.trim(),
-            amount: parseFloat(data.amount.toString()) || 0,
-            date: data.date,
-            paymentMethod: data.paymentMethod,
-            payer: data.payer,
-            status: data.status
+            Aciklama: data.description.trim(),
+            Tutar: parseFloat(data.amount.toString()) || 0,
+            Tarih: data.date,
+            OdemeYontemi: data.paymentMethod, // Önce mapping olmadan dene
+            OdeyenKisi: data.payer === 'Omer' ? 'Ömer' : 
+                       data.payer === 'Baris' ? 'Barış' : 
+                       data.payer, // Kasa için mapping yok
+            Durum: data.status
         };
+        
+        console.log('🔍 Backend Format Test:', {
+            originalPayer: data.payer,
+            mappedPayer: payload.OdeyenKisi,
+            originalPaymentMethod: data.paymentMethod,
+            mappedPaymentMethod: payload.OdemeYontemi
+        });
 
         console.log('🔍 Gider Ekleme Debug:', {
+            originalData: data,
             payload: payload,
-            API_BASE_URL: API_BASE_URL
+            API_BASE_URL: API_BASE_URL,
+            payerMapping: {
+                original: data.payer,
+                mapped: mapPayerToBackend(data.payer),
+                paymentMethodOriginal: data.paymentMethod,
+                paymentMethodMapped: mapPaymentMethodToBackend(data.paymentMethod)
+            }
         });
 
         const saved = await apiRequest('/Kasa/ortakgiderler', 'POST', payload);
         console.log('✅ Backend\'den gelen veri:', saved);
         
-        // Backend → Frontend dönüşümü (JsonPropertyName attribute'ları sayesinde direkt kullanabiliriz)
+        // Backend → Frontend dönüşümü + enum mapping
         const frontendData: SharedExpense = {
-            id: saved.id,
-            description: saved.description,
-            amount: saved.amount,
-            date: saved.date,
-            paymentMethod: saved.paymentMethod,
-            payer: saved.payer,
-            status: saved.status,
-            deletedAt: saved.deletedAt
+            id: saved.id || saved.gider_id,
+            description: saved.description || saved.aciklama,
+            amount: saved.amount || saved.tutar,
+            date: saved.date || saved.tarih,
+            paymentMethod: mapPaymentMethodFromBackend(saved.paymentMethod || saved.odemeYontemi),
+            payer: mapPayerFromBackend(saved.payer || saved.odeyenKisi),
+            status: saved.status || saved.durum,
+            deletedAt: saved.deletedAt || saved.silinmeTarihi
         };
         
         setSharedExpenses(prev => [...prev, frontendData]);
@@ -693,26 +770,34 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
 
 const updateSharedExpense = async (data: SharedExpense) => {
     try {
+        // Backend Türkçe property isimleri bekliyor + enum mapping
         const payload = {
-            description: data.description,
-            amount: parseFloat(data.amount.toString()) || 0,
-            date: data.date,
-            paymentMethod: data.paymentMethod,
-            payer: data.payer,
-            status: data.status
+            Aciklama: data.description,
+            Tutar: parseFloat(data.amount.toString()) || 0,
+            Tarih: data.date,
+            OdemeYontemi: mapPaymentMethodToBackend(data.paymentMethod),
+            OdeyenKisi: mapPayerToBackend(data.payer),
+            Durum: data.status
         };
+        
+        console.log('🔍 Güncelleme Payload:', {
+            originalData: data,
+            payload: payload,
+            endpoint: `/Kasa/ortakgiderler/${data.id}`
+        });
 
         const saved = await apiRequest(`/Kasa/ortakgiderler/${data.id}`, 'PUT', payload);
         
+        // Backend'den gelen veriyi frontend formatına çevir + enum mapping
         const updatedData: SharedExpense = {
-            id: saved.id || data.id,
-            description: saved.description || data.description,
-            amount: saved.amount || data.amount,
-            date: saved.date || data.date,
-            paymentMethod: saved.paymentMethod || data.paymentMethod,
-            payer: saved.payer || data.payer,
-            status: saved.status || data.status,
-            deletedAt: saved.deletedAt || data.deletedAt
+            id: saved.id || saved.gider_id || data.id,
+            description: saved.description || saved.aciklama || data.description,
+            amount: saved.amount || saved.tutar || data.amount,
+            date: saved.date || saved.tarih || data.date,
+            paymentMethod: mapPaymentMethodFromBackend(saved.paymentMethod || saved.odemeYontemi || data.paymentMethod),
+            payer: mapPayerFromBackend(saved.payer || saved.odeyenKisi || data.payer),
+            status: saved.status || saved.durum || data.status,
+            deletedAt: saved.deletedAt || saved.silinmeTarihi || data.deletedAt
         };
         
         setSharedExpenses(prev => prev.map(e => e.id === data.id ? updatedData : e));

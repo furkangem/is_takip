@@ -35,12 +35,16 @@ export default async function handler(req: any, res: any) {
       path = path.substring(1);
     }
     
-    // :1 sorununu önleme - sadece sonundaki :1'i kaldır
-    if (path.endsWith(':1')) {
-      path = path.slice(0, -2); // Son 2 karakteri (:1) kaldır
+    // :1 sorununu önleme - daha agresif temizleme
+    const originalPath = path;
+    path = path.replace(/:1$/g, '').replace(/:1\//g, '/').replace(/\/:1/g, '');
+    
+    if (originalPath !== path) {
       console.log('⚠️ :1 sorunu tespit edildi ve düzeltildi:', {
         originalUrl: req.url,
-        cleanedPath: path
+        originalPath: originalPath,
+        cleanedPath: path,
+        changes: originalPath !== path
       });
     }
     
