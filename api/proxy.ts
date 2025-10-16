@@ -11,14 +11,24 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    // Backend URL'ini oluşturun
-    const backendUrl = `https://is-takip-backend-dxud.onrender.com${req.url?.replace('/api/proxy', '') || ''}`;
+    // Backend URL'ini oluşturun - daha güvenli
+    let backendUrl = `https://is-takip-backend-dxud.onrender.com`;
+    let path = req.url?.replace('/api/proxy', '') || '';
     
-    console.log('Proxy Request:', {
+    // URL temizleme
+    if (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+    
+    backendUrl = `${backendUrl}/${path}`;
+    
+    console.log('🔍 Proxy Request Debug:', {
       method: req.method,
-      url: req.url,
-      backendUrl,
-      body: req.body
+      originalUrl: req.url,
+      cleanedPath: path,
+      finalBackendUrl: backendUrl,
+      body: req.body,
+      headers: req.headers
     });
     
     // Request'i backend'e yönlendirin
@@ -26,25 +36,51 @@ export default async function handler(req: any, res: any) {
       method: req.method,
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'IsTakip-Frontend/1.0',
         ...(req.headers.authorization && { Authorization: req.headers.authorization }),
       },
       body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
+      // Timeout ekleyin
+      signal: AbortSignal.timeout(25000) // 25 saniye
     });
 
     const data = await response.text();
     
-    console.log('Backend Response:', {
+    console.log('✅ Backend Response:', {
       status: response.status,
-      data: data
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      dataLength: data.length,
+      dataPreview: data.substring(0, 200) + (data.length > 200 ? '...' : '')
     });
     
     // Backend response'unu frontend'e gönderin
     res.status(response.status).send(data);
   } catch (error) {
-    console.error('Proxy error:', error);
-    res.status(500).json({ 
-      error: 'Proxy error',
+    console.error('❌ Proxy Error:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name,
+      originalUrl: req.url,
+      method: req.method
+    });
+    
+    // Daha detaylı hata mesajı
+    let errorMessage = 'Proxy error';
+    let statusCode = 500;
+    
+    if (error.name === 'TimeoutError') {
+      errorMessage = 'Backend timeout - server çok yavaş yanıt veriyor';
+      statusCode = 504;
+    } else if (error.message.includes('fetch')) {
+      errorMessage = 'Backend sunucuya bağlanılamıyor';
+      statusCode = 503;
+    }
+    
+    res.status(statusCode).json({ 
+      error: errorMessage,
       details: error.message,
+      originalUrl: req.url,
       backendUrl: `https://is-takip-backend-dxud.onrender.com${req.url?.replace('/api/proxy', '') || ''}`
     });
   }

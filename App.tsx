@@ -569,19 +569,34 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
             status: data.status
         };
 
-         const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler`, {
+        const url = `${API_BASE_URL}/Kasa/ortakgiderler`;
+        console.log('🔍 Gider Ekleme Debug:', {
+            url: url,
+            payload: payload,
+            data: data
+        });
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
+        console.log('📡 Response Debug:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            ok: response.ok
+        });
+
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('API Hatası:', errorText);
-            throw new Error('Gider eklenemedi');
+            console.error('❌ API Hatası:', errorText);
+            throw new Error(`Gider eklenemedi - ${response.status}: ${errorText}`);
         }
 
         const saved = await response.json();
+        console.log('✅ Backend\'den gelen veri:', saved);
         
         // Backend → Frontend dönüşümü (JsonPropertyName attribute'ları sayesinde direkt kullanabiliriz)
         const frontendData: SharedExpense = {
@@ -596,8 +611,9 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         };
         
         setSharedExpenses(prev => [...prev, frontendData]);
+        console.log('✅ Gider başarıyla eklendi:', frontendData);
     } catch (error) {
-        console.error('Gider ekleme hatası:', error);
+        console.error('❌ Gider ekleme hatası:', error);
         alert('Gider eklenirken bir hata oluştu: ' + error.message);
     }
 };
