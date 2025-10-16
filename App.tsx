@@ -755,14 +755,14 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
             formattedDate = new Date(formattedDate).toISOString();
         }
 
-        // Backend'in beklediği format - daha güvenli mapping
+        // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)
         const payload = {
-            Aciklama: data.description.trim(),
-            Tutar: parseFloat(data.amount.toString()) || 0,
-            Tarih: formattedDate,
-            OdemeYontemi: mapPaymentMethodToBackend(data.paymentMethod),
-            OdeyenKisi: mapPayerToBackend(data.payer),
-            Durum: data.status || 'unpaid'
+            description: data.description.trim(),
+            amount: parseFloat(data.amount.toString()) || 0,
+            date: formattedDate,
+            paymentMethod: mapPaymentMethodToBackend(data.paymentMethod),
+            payer: mapPayerToBackend(data.payer),
+            status: data.status || 'unpaid'
         };
         
         console.log('🔍 Gider Ekleme Debug:', {
@@ -784,15 +784,15 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         const saved = await apiRequest('/Kasa/ortakgiderler', 'POST', payload);
         console.log('✅ Backend\'den gelen veri:', saved);
         
-        // Backend → Frontend dönüşümü - daha güvenli
+        // Backend → Frontend dönüşümü - camelCase response'u destekle
         const frontendData: SharedExpense = {
-            id: saved.GiderId || saved.id || saved.gider_id,
-            description: saved.Aciklama || saved.description || saved.aciklama,
-            amount: saved.Tutar || saved.amount || saved.tutar,
-            date: saved.Tarih || saved.date || saved.tarih,
-            paymentMethod: mapPaymentMethodFromBackend(saved.OdemeYontemi || saved.paymentMethod || saved.odemeYontemi),
-            payer: mapPayerFromBackend(saved.OdeyenKisi || saved.payer || saved.odeyenKisi),
-            status: saved.Durum || saved.status || saved.durum || 'unpaid',
+            id: saved.id || saved.giderId || saved.GiderId,
+            description: saved.description || saved.aciklama || saved.Aciklama,
+            amount: saved.amount || saved.tutar || saved.Tutar,
+            date: saved.date || saved.tarih || saved.Tarih,
+            paymentMethod: mapPaymentMethodFromBackend(saved.paymentMethod || saved.odemeYontemi || saved.OdemeYontemi),
+            payer: mapPayerFromBackend(saved.payer || saved.odeyenKisi || saved.OdeyenKisi),
+            status: saved.status || saved.durum || saved.Durum || 'unpaid',
             deletedAt: saved.deletedAt || saved.silinmeTarihi
         };
         
@@ -826,14 +826,22 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
 
 const updateSharedExpense = async (data: SharedExpense) => {
     try {
-        // Backend Türkçe property isimleri bekliyor + enum mapping
+        // Tarih formatını kontrol et ve düzelt
+        let formattedDate = data.date;
+        if (!formattedDate) {
+            formattedDate = new Date().toISOString();
+        } else if (!formattedDate.includes('T')) {
+            formattedDate = new Date(formattedDate).toISOString();
+        }
+
+        // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)
         const payload = {
-            Aciklama: data.description,
-            Tutar: parseFloat(data.amount.toString()) || 0,
-            Tarih: data.date,
-            OdemeYontemi: mapPaymentMethodToBackend(data.paymentMethod),
-            OdeyenKisi: mapPayerToBackend(data.payer),
-            Durum: data.status
+            description: data.description,
+            amount: parseFloat(data.amount.toString()) || 0,
+            date: formattedDate,
+            paymentMethod: mapPaymentMethodToBackend(data.paymentMethod),
+            payer: mapPayerToBackend(data.payer),
+            status: data.status
         };
         
         console.log('🔍 Güncelleme Payload:', {
@@ -846,20 +854,37 @@ const updateSharedExpense = async (data: SharedExpense) => {
         
         // Backend'den gelen veriyi frontend formatına çevir + enum mapping
         const updatedData: SharedExpense = {
-            id: saved.id || saved.gider_id || data.id,
-            description: saved.description || saved.aciklama || data.description,
-            amount: saved.amount || saved.tutar || data.amount,
-            date: saved.date || saved.tarih || data.date,
-            paymentMethod: mapPaymentMethodFromBackend(saved.paymentMethod || saved.odemeYontemi || data.paymentMethod),
-            payer: mapPayerFromBackend(saved.payer || saved.odeyenKisi || data.payer),
-            status: saved.status || saved.durum || data.status,
+            id: saved.id || saved.giderId || saved.GiderId || data.id,
+            description: saved.description || saved.aciklama || saved.Aciklama || data.description,
+            amount: saved.amount || saved.tutar || saved.Tutar || data.amount,
+            date: saved.date || saved.tarih || saved.Tarih || data.date,
+            paymentMethod: mapPaymentMethodFromBackend(saved.paymentMethod || saved.odemeYontemi || saved.OdemeYontemi || data.paymentMethod),
+            payer: mapPayerFromBackend(saved.payer || saved.odeyenKisi || saved.OdeyenKisi || data.payer),
+            status: saved.status || saved.durum || saved.Durum || data.status,
             deletedAt: saved.deletedAt || saved.silinmeTarihi || data.deletedAt
         };
         
         setSharedExpenses(prev => prev.map(e => e.id === data.id ? updatedData : e));
-    } catch (error) {
+        console.log('✅ Gider başarıyla güncellendi:', updatedData);
+    } catch (error: any) {
         console.error('Gider güncelleme hatası:', error);
-        alert('Gider güncellenirken bir hata oluştu');
+        
+        // Daha detaylı hata mesajı
+        let errorMessage = 'Gider güncellenirken bir hata oluştu';
+        
+        if (error.message.includes('400')) {
+            errorMessage = 'Gönderilen veri formatı hatalı. Lütfen tüm alanları kontrol edin.';
+        } else if (error.message.includes('500')) {
+            errorMessage = 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
+        } else if (error.message.includes('timeout') || error.message.includes('504')) {
+            errorMessage = 'İstek zaman aşımına uğradı. İnternet bağlantınızı kontrol edin.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Sunucuya bağlanılamıyor. İnternet bağlantınızı kontrol edin.';
+        } else {
+            errorMessage = `Hata: ${error.message}`;
+        }
+        
+        alert(errorMessage);
     }
 };
 
