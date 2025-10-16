@@ -57,7 +57,7 @@ if (typeof window !== 'undefined') {
 } 
 
 // Tekrarlı API istekleri için yardımcı bir fonksiyon
-const apiRequest = async (endpoint: string, method: string = 'GET', body: any = null) => {
+const apiRequest = async (endpoint: string, method: string = 'GET', body: any = null, retries: number = 2) => {
     // :1 sorununu önleme - sadece sonundaki :1'i kaldır
     let cleanEndpoint = endpoint;
     if (endpoint.endsWith(':1')) {
@@ -88,26 +88,67 @@ const apiRequest = async (endpoint: string, method: string = 'GET', body: any = 
         });
     }
     
-    const response = await fetch(finalUrl, options);
-    if (!response.ok) {
-        // Hata gövdesi JSON ya da düz metin olabilir; ikisini de işle
-        let errorMessage = `İstek başarısız: ${response.status}`;
+    // Retry mekanizması - özellikle PUT/PATCH işlemleri için
+    for (let attempt = 1; attempt <= retries + 1; attempt++) {
         try {
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-                const errorData = await response.json();
-                errorMessage = typeof errorData === 'string' ? errorData : (errorData.message || errorMessage);
-            } else {
-                const text = await response.text();
-                errorMessage = text || errorMessage;
+            console.log(`🔄 API İsteği (Deneme ${attempt}/${retries + 1}):`, {
+                method,
+                endpoint: cleanEndpoint,
+                finalUrl
+            });
+            
+            const response = await fetch(finalUrl, options);
+            
+            if (!response.ok) {
+                // 504 veya 503 hatası ise retry yap
+                if ((response.status === 504 || response.status === 503) && attempt <= retries) {
+                    console.warn(`⚠️ ${response.status} hatası, ${attempt + 1}. deneme yapılıyor...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // 2s, 4s, 6s bekletme
+                    continue;
+                }
+                
+                // Hata gövdesi JSON ya da düz metin olabilir; ikisini de işle
+                let errorMessage = `İstek başarısız: ${response.status}`;
+                try {
+                    const contentType = response.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        errorMessage = typeof errorData === 'string' ? errorData : (errorData.message || errorMessage);
+                    } else {
+                        const text = await response.text();
+                        errorMessage = text || errorMessage;
+                    }
+                } catch {}
+                throw new Error(errorMessage || 'Sunucudan bir hata alındı.');
             }
-        } catch {}
-        throw new Error(errorMessage || 'Sunucudan bir hata alındı.');
+            
+            if (response.status === 204) { // 204 No Content (örn: Delete işlemi)
+                return null;
+            }
+            return response.json();
+            
+        } catch (error) {
+            // Son deneme ise hatayı fırlat
+            if (attempt === retries + 1) {
+                throw error;
+            }
+            
+            // 504/503 veya timeout hatası ise retry yap
+            if ((error.message.includes('504') || error.message.includes('503') || 
+                 error.message.includes('timeout') || error.message.includes('TimeoutError')) && 
+                attempt <= retries) {
+                console.warn(`⚠️ ${error.message}, ${attempt + 1}. deneme yapılıyor...`);
+                await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // 2s, 4s, 6s bekletme
+                continue;
+            }
+            
+            // Diğer hatalar için direkt fırlat
+            throw error;
+        }
     }
-    if (response.status === 204) { // 204 No Content (örn: Delete işlemi)
-        return null;
-    }
-    return response.json();
+    
+    // Bu noktaya asla gelmemeli ama TypeScript için
+    throw new Error('Beklenmeyen hata');
 };
 
 export default function App() {

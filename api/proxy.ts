@@ -57,6 +57,17 @@ export default async function handler(req: any, res: any) {
       timestamp: new Date().toISOString()
     });
     
+    // Güncelleme işlemleri için daha uzun timeout
+    const isUpdateOperation = req.method === 'PUT' || req.method === 'PATCH';
+    const timeoutDuration = isUpdateOperation ? 60000 : 45000; // PUT/PATCH için 60 saniye
+    
+    console.log('⏱️ Timeout ayarı:', {
+      method: req.method,
+      isUpdateOperation,
+      timeoutDuration: `${timeoutDuration / 1000}s`,
+      endpoint: path
+    });
+    
     // Request'i backend'e yönlendirin
     const response = await fetch(backendUrl, {
       method: req.method,
@@ -66,8 +77,8 @@ export default async function handler(req: any, res: any) {
         ...(req.headers.authorization && { Authorization: req.headers.authorization }),
       },
       body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
-      // Timeout ekleyin
-      signal: AbortSignal.timeout(25000) // 25 saniye
+      // Timeout ekleyin - güncelleme işlemleri için daha uzun
+      signal: AbortSignal.timeout(timeoutDuration)
     });
 
     const data = await response.text();
