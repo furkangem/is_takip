@@ -30,7 +30,12 @@ console.log('API_BASE_URL:', API_BASE_URL);
 const apiRequest = async (endpoint: string, method: string = 'GET', body: any = null) => {
     const options: RequestInit = {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        },
     };
     if (body) {
         options.body = JSON.stringify(body);
@@ -569,33 +574,12 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
             status: data.status
         };
 
-        const url = `${API_BASE_URL}/Kasa/ortakgiderler`;
         console.log('🔍 Gider Ekleme Debug:', {
-            url: url,
             payload: payload,
-            data: data
+            API_BASE_URL: API_BASE_URL
         });
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        console.log('📡 Response Debug:', {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries()),
-            ok: response.ok
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ API Hatası:', errorText);
-            throw new Error(`Gider eklenemedi - ${response.status}: ${errorText}`);
-        }
-
-        const saved = await response.json();
+        const saved = await apiRequest('/Kasa/ortakgiderler', 'POST', payload);
         console.log('✅ Backend\'den gelen veri:', saved);
         
         // Backend → Frontend dönüşümü (JsonPropertyName attribute'ları sayesinde direkt kullanabiliriz)
@@ -629,26 +613,7 @@ const updateSharedExpense = async (data: SharedExpense) => {
             status: data.status
         };
 
-        const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler/${data.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error('Gider güncellenemedi');
-        }
-
-        // Response'un JSON olup olmadığını kontrol et
-        const contentType = response.headers.get('content-type');
-        let saved;
-        
-        if (contentType && contentType.includes('application/json')) {
-            saved = await response.json();
-        } else {
-            // JSON değilse, güncellenmiş veriyi kullan
-            saved = data;
-        }
+        const saved = await apiRequest(`/Kasa/ortakgiderler/${data.id}`, 'PUT', payload);
         
         const updatedData: SharedExpense = {
             id: saved.id || data.id,
@@ -670,13 +635,7 @@ const updateSharedExpense = async (data: SharedExpense) => {
 
 const deleteSharedExpense = async (expenseId: number) => {
     try {
-         const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler/${expenseId}`, {
-            method: 'DELETE'
-        });
-
-        if (!response.ok) {
-            throw new Error('Gider silinemedi');
-        }
+         await apiRequest(`/Kasa/ortakgiderler/${expenseId}`, 'DELETE');
 
         setSharedExpenses(prev => prev.map(e => 
             e.id === expenseId ? { ...e, deletedAt: new Date().toISOString() } : e
@@ -689,13 +648,7 @@ const deleteSharedExpense = async (expenseId: number) => {
 
 const restoreSharedExpense = async (expenseId: number) => {
     try {
-         const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler/${expenseId}/restore`, {
-            method: 'POST'
-        });
-
-        if (!response.ok) {
-            throw new Error('Gider geri alınamadı');
-        }
+         await apiRequest(`/Kasa/ortakgiderler/${expenseId}/restore`, 'POST');
 
         setSharedExpenses(prev => prev.map(e => {
             if (e.id === expenseId) {
@@ -712,19 +665,11 @@ const restoreSharedExpense = async (expenseId: number) => {
 
 const permanentlyDeleteSharedExpense = async (expenseId: number) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler/${expenseId}/permanent`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            // Backend'den başarılı yanıt gelirse, frontend'den de kaldır
-            setSharedExpenses(prev => prev.filter(e => e.id !== expenseId));
-            console.log('✅ Gider kalıcı olarak silindi');
-        } else {
-            // Backend endpoint yoksa sadece frontend'den kaldır
-            setSharedExpenses(prev => prev.filter(e => e.id !== expenseId));
-            console.warn('⚠️ Backend endpoint bulunamadı, sadece frontend\'den kaldırıldı');
-        }
+        await apiRequest(`/Kasa/ortakgiderler/${expenseId}/permanent`, 'DELETE');
+        
+        // Backend'den başarılı yanıt gelirse, frontend'den de kaldır
+        setSharedExpenses(prev => prev.filter(e => e.id !== expenseId));
+        console.log('✅ Gider kalıcı olarak silindi');
     } catch (error) {
         console.error('Kalıcı silme hatası:', error);
         // Hata olsa bile frontend'den kaldır

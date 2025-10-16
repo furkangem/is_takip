@@ -3,6 +3,11 @@ export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Cache kontrolü için headers ekleyin
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   // OPTIONS request için
   if (req.method === 'OPTIONS') {
@@ -15,9 +20,15 @@ export default async function handler(req: any, res: any) {
     let backendUrl = `https://is-takip-backend-dxud.onrender.com`;
     let path = req.url?.replace('/api/proxy', '') || '';
     
-    // URL temizleme
+    // URL temizleme ve :1 sorununu önleme
     if (path.startsWith('/')) {
       path = path.substring(1);
+    }
+    
+    // :1 sorununu önleme - eğer URL'de :1 varsa kaldır
+    if (path.endsWith(':1')) {
+      path = path.replace(':1', '');
+      console.log('⚠️ :1 sorunu tespit edildi ve düzeltildi:', path);
     }
     
     backendUrl = `${backendUrl}/${path}`;
