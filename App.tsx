@@ -82,7 +82,7 @@ export default function App() {
   const fetchAllData = async () => {
     try {
       setIsLoading(true);
-      const data = await apiRequest('/api/Data/all');
+      const data = await apiRequest('/Data/all');
       console.log('🔍 Backend\'den gelen tüm veri:', data);
       setUsers(data.users);
       // API -> Frontend model eşlemesi (AdSoyad/NotMetni/NotGuncellenmeTarihi -> name/note)
