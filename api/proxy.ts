@@ -20,6 +20,16 @@ export default async function handler(req: any, res: any) {
     let backendUrl = `https://is-takip-backend-dxud.onrender.com`;
     let path = req.url?.replace('/api/proxy', '') || '';
     
+    // Test endpoint'i - backend bağlantısını test et
+    if (path === 'test' || path === 'health') {
+      res.status(200).json({ 
+        message: 'Proxy çalışıyor',
+        backendUrl: `${backendUrl}/api/health`,
+        timestamp: new Date().toISOString()
+      });
+      return;
+    }
+    
     // URL temizleme ve :1 sorununu önleme
     if (path.startsWith('/')) {
       path = path.substring(1);
@@ -34,7 +44,8 @@ export default async function handler(req: any, res: any) {
       });
     }
     
-    backendUrl = `${backendUrl}/${path}`;
+    // Backend API formatı: https://backend.com/api/[controller]
+    backendUrl = `${backendUrl}/api/${path}`;
     
     console.log('🔍 Proxy Request Debug:', {
       method: req.method,
@@ -42,7 +53,8 @@ export default async function handler(req: any, res: any) {
       cleanedPath: path,
       finalBackendUrl: backendUrl,
       body: req.body,
-      headers: req.headers
+      headers: req.headers,
+      timestamp: new Date().toISOString()
     });
     
     // Request'i backend'e yönlendirin
@@ -95,7 +107,8 @@ export default async function handler(req: any, res: any) {
       error: errorMessage,
       details: error.message,
       originalUrl: req.url,
-      backendUrl: `https://is-takip-backend-dxud.onrender.com${req.url?.replace('/api/proxy', '') || ''}`
+      backendUrl: `https://is-takip-backend-dxud.onrender.com/api/${req.url?.replace('/api/proxy/', '') || ''}`,
+      timestamp: new Date().toISOString()
     });
   }
 }
