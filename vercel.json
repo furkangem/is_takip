@@ -15,6 +15,16 @@
       "source": "/api/proxy/(.*):1",
       "destination": "/api/proxy/$1",
       "permanent": false
+    },
+    {
+      "source": "/(.*):1",
+      "destination": "/$1",
+      "permanent": false
+    },
+    {
+      "source": "/api/proxy/(.*)/:1",
+      "destination": "/api/proxy/$1",
+      "permanent": false
     }
   ],
   "headers": [

@@ -25,10 +25,14 @@ export default async function handler(req: any, res: any) {
       path = path.substring(1);
     }
     
-    // :1 sorununu önleme - eğer URL'de :1 varsa kaldır
-    if (path.endsWith(':1')) {
-      path = path.replace(':1', '');
-      console.log('⚠️ :1 sorunu tespit edildi ve düzeltildi:', path);
+    // :1 sorununu önleme - daha kapsamlı temizleme
+    path = path.replace(/:1$/, '').replace(/:1\//, '/').replace(/\/:1/, '');
+    
+    if (req.url?.includes(':1')) {
+      console.log('⚠️ :1 sorunu tespit edildi ve düzeltildi:', {
+        originalUrl: req.url,
+        cleanedPath: path
+      });
     }
     
     backendUrl = `${backendUrl}/${path}`;

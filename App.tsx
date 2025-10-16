@@ -24,10 +24,33 @@ const API_BASE_URL = '/api/proxy';
 // const API_BASE_URL = 'https://is-takip-backend-dxud.onrender.com';
 
 // Debug için API URL'sini konsola yazdır
-console.log('API_BASE_URL:', API_BASE_URL); 
+console.log('API_BASE_URL:', API_BASE_URL);
+
+// :1 sorununu önlemek için cache temizleme
+const clearApiCache = () => {
+    // Service Worker cache temizleme
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+            registrations.forEach(registration => registration.unregister());
+        });
+    }
+    
+    // Local storage temizleme (sadece API cache'i)
+    Object.keys(localStorage).forEach(key => {
+        if (key.includes('api') || key.includes('cache')) {
+            localStorage.removeItem(key);
+        }
+    });
+};
+
+// Sayfa yüklendiğinde cache temizle
+window.addEventListener('load', clearApiCache); 
 
 // Tekrarlı API istekleri için yardımcı bir fonksiyon
 const apiRequest = async (endpoint: string, method: string = 'GET', body: any = null) => {
+    // :1 sorununu önleme - endpoint'i temizle
+    let cleanEndpoint = endpoint.replace(/:1$/, '').replace(/:1\//, '/').replace(/\/:1/, '');
+    
     const options: RequestInit = {
         method,
         headers: { 
@@ -40,7 +63,19 @@ const apiRequest = async (endpoint: string, method: string = 'GET', body: any = 
     if (body) {
         options.body = JSON.stringify(body);
     }
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+    
+    const finalUrl = `${API_BASE_URL}${cleanEndpoint}`;
+    
+    // Debug için URL'yi kontrol et
+    if (endpoint.includes(':1')) {
+        console.log('⚠️ :1 sorunu frontend\'de tespit edildi:', {
+            originalEndpoint: endpoint,
+            cleanedEndpoint: cleanEndpoint,
+            finalUrl: finalUrl
+        });
+    }
+    
+    const response = await fetch(finalUrl, options);
     if (!response.ok) {
         // Hata gövdesi JSON ya da düz metin olabilir; ikisini de işle
         let errorMessage = `İstek başarısız: ${response.status}`;
