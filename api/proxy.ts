@@ -25,10 +25,9 @@ export default async function handler(req: any, res: any) {
       path = path.substring(1);
     }
     
-    // :1 sorununu önleme - daha kapsamlı temizleme
-    path = path.replace(/:1$/, '').replace(/:1\//, '/').replace(/\/:1/, '');
-    
-    if (req.url?.includes(':1')) {
+    // :1 sorununu önleme - sadece sonundaki :1'i kaldır
+    if (path.endsWith(':1')) {
+      path = path.slice(0, -2); // Son 2 karakteri (:1) kaldır
       console.log('⚠️ :1 sorunu tespit edildi ve düzeltildi:', {
         originalUrl: req.url,
         cleanedPath: path

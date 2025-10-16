@@ -28,28 +28,41 @@ console.log('API_BASE_URL:', API_BASE_URL);
 
 // :1 sorununu önlemek için cache temizleme
 const clearApiCache = () => {
-    // Service Worker cache temizleme
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-            registrations.forEach(registration => registration.unregister());
-        });
-    }
-    
-    // Local storage temizleme (sadece API cache'i)
-    Object.keys(localStorage).forEach(key => {
-        if (key.includes('api') || key.includes('cache')) {
-            localStorage.removeItem(key);
+    try {
+        // Service Worker cache temizleme
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                registrations.forEach(registration => registration.unregister());
+            }).catch(() => {}); // Hata durumunda sessizce geç
         }
-    });
+        
+        // Local storage temizleme (sadece API cache'i)
+        Object.keys(localStorage).forEach(key => {
+            if (key.includes('api') || key.includes('cache')) {
+                try {
+                    localStorage.removeItem(key);
+                } catch (e) {
+                    // Hata durumunda sessizce geç
+                }
+            }
+        });
+    } catch (e) {
+        // Genel hata durumunda sessizce geç
+    }
 };
 
-// Sayfa yüklendiğinde cache temizle
-window.addEventListener('load', clearApiCache); 
+// Sayfa yüklendiğinde cache temizle (sadece bir kez)
+if (typeof window !== 'undefined') {
+    window.addEventListener('load', clearApiCache, { once: true });
+} 
 
 // Tekrarlı API istekleri için yardımcı bir fonksiyon
 const apiRequest = async (endpoint: string, method: string = 'GET', body: any = null) => {
-    // :1 sorununu önleme - endpoint'i temizle
-    let cleanEndpoint = endpoint.replace(/:1$/, '').replace(/:1\//, '/').replace(/\/:1/, '');
+    // :1 sorununu önleme - sadece sonundaki :1'i kaldır
+    let cleanEndpoint = endpoint;
+    if (endpoint.endsWith(':1')) {
+        cleanEndpoint = endpoint.slice(0, -2); // Son 2 karakteri (:1) kaldır
+    }
     
     const options: RequestInit = {
         method,
