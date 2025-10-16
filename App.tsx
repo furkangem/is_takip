@@ -559,7 +559,7 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
     }
 
     try {
-        // Frontend → Backend dönüşümü (JsonPropertyName'e göre)
+        // Frontend → Backend dönüşümü (JsonPropertyName attribute'larına göre)
         const payload = {
             description: data.description.trim(),
             amount: parseFloat(data.amount.toString()) || 0,
@@ -569,7 +569,7 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
             status: data.status
         };
 
-         const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler`, {
+         const response = await fetch(`${API_BASE_URL}/api/Kasa/ortakgiderler`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -583,7 +583,7 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
 
         const saved = await response.json();
         
-        // Backend → Frontend dönüşümü
+        // Backend → Frontend dönüşümü (JsonPropertyName attribute'ları sayesinde direkt kullanabiliriz)
         const frontendData: SharedExpense = {
             id: saved.id,
             description: saved.description,
@@ -605,7 +605,6 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
 const updateSharedExpense = async (data: SharedExpense) => {
     try {
         const payload = {
-            id: data.id,
             description: data.description,
             amount: parseFloat(data.amount.toString()) || 0,
             date: data.date,
@@ -614,7 +613,7 @@ const updateSharedExpense = async (data: SharedExpense) => {
             status: data.status
         };
 
-        const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler/${data.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/Kasa/ortakgiderler/${data.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -655,7 +654,7 @@ const updateSharedExpense = async (data: SharedExpense) => {
 
 const deleteSharedExpense = async (expenseId: number) => {
     try {
-         const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler/${expenseId}`, {
+         const response = await fetch(`${API_BASE_URL}/api/Kasa/ortakgiderler/${expenseId}`, {
             method: 'DELETE'
         });
 
@@ -674,7 +673,7 @@ const deleteSharedExpense = async (expenseId: number) => {
 
 const restoreSharedExpense = async (expenseId: number) => {
     try {
-         const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler/${expenseId}/restore`, {
+         const response = await fetch(`${API_BASE_URL}/api/Kasa/ortakgiderler/${expenseId}/restore`, {
             method: 'POST'
         });
 
@@ -697,7 +696,7 @@ const restoreSharedExpense = async (expenseId: number) => {
 
 const permanentlyDeleteSharedExpense = async (expenseId: number) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/Kasa/ortakgiderler/${expenseId}/permanent`, {
+        const response = await fetch(`${API_BASE_URL}/api/Kasa/ortakgiderler/${expenseId}/permanent`, {
             method: 'DELETE'
         });
 
