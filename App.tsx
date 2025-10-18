@@ -56,85 +56,6 @@ if (typeof window !== 'undefined') {
     window.addEventListener('load', clearApiCache, { once: true });
 }
 
-// Enum mapping fonksiyonları - Türkçe karakter sorununu çözmek için
-const mapPayerToBackend = (payer: string): string => {
-    // Backend'in beklediği değerleri - daha güvenli mapping
-    const mapping: { [key: string]: string } = {
-        'Omer': 'Ömer',
-        'Baris': 'Barış', 
-        'Kasa': 'Kasa',
-        // Küçük harf alternatifleri
-        'omer': 'Ömer',
-        'baris': 'Barış',
-        'kasa': 'Kasa',
-        // Türkçe karakterli versiyonlar
-        'Ömer': 'Ömer',
-        'Barış': 'Barış',
-        'ömer': 'Ömer',
-        'barış': 'Barış',
-        // Sayısal değerler
-        '1': 'Ömer',
-        '2': 'Barış',
-        '3': 'Kasa'
-    };
-    
-    const mappedValue = mapping[payer] || payer;
-    
-    console.log('🔄 Payer Mapping:', {
-        input: payer,
-        output: mappedValue,
-        isMapped: mapping[payer] !== undefined,
-        allMappings: mapping
-    });
-    
-    return mappedValue;
-};
-
-const mapPayerFromBackend = (payer: string): 'Omer' | 'Baris' | 'Kasa' => {
-    const mapping: { [key: string]: 'Omer' | 'Baris' | 'Kasa' } = {
-        'Ömer': 'Omer',
-        'Barış': 'Baris',
-        'Kasa': 'Kasa',
-        // Alternatif formatlar
-        'omer': 'Omer',
-        'baris': 'Baris',
-        'kasa': 'Kasa',
-        'ömer': 'Omer',
-        'barış': 'Baris',
-        // Sayısal değerler
-        '1': 'Omer',
-        '2': 'Baris',
-        '3': 'Kasa'
-    };
-    
-    const mappedValue = mapping[payer] || 'Kasa';
-    
-    console.log('🔄 Payer From Backend Mapping:', {
-        input: payer,
-        output: mappedValue,
-        isMapped: mapping[payer] !== undefined
-    });
-    
-    return mappedValue;
-};
-
-const mapPaymentMethodToBackend = (method: string): string => {
-    const mapping: { [key: string]: string } = {
-        'cash': 'cash',
-        'transfer': 'transfer',
-        'card': 'card'
-    };
-    return mapping[method] || method;
-};
-
-const mapPaymentMethodFromBackend = (method: string): 'cash' | 'transfer' | 'card' => {
-    const mapping: { [key: string]: 'cash' | 'transfer' | 'card' } = {
-        'cash': 'cash',
-        'transfer': 'transfer',
-        'card': 'card'
-    };
-    return mapping[method] || 'cash';
-}; 
 
 // Tekrarlı API istekleri için yardımcı bir fonksiyon
 const apiRequest = async (endpoint: string, method: string = 'GET', body: any = null, retries: number = 2) => {
@@ -760,8 +681,8 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
             description: data.description.trim(),
             amount: parseFloat(data.amount.toString()) || 0,
             date: formattedDate,
-            paymentMethod: mapPaymentMethodToBackend(data.paymentMethod),
-            payer: mapPayerToBackend(data.payer),
+            paymentMethod: data.paymentMethod,
+            payer: data.payer,
             status: data.status || 'unpaid'
         };
         
@@ -769,12 +690,6 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
             originalData: data,
             payload: payload,
             API_BASE_URL: API_BASE_URL,
-            payerMapping: {
-                original: data.payer,
-                mapped: mapPayerToBackend(data.payer),
-                paymentMethodOriginal: data.paymentMethod,
-                paymentMethodMapped: mapPaymentMethodToBackend(data.paymentMethod)
-            },
             dateTransformation: {
                 original: data.date,
                 formatted: formattedDate
@@ -790,8 +705,8 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
             description: saved.description || saved.aciklama || saved.Aciklama,
             amount: saved.amount || saved.tutar || saved.Tutar,
             date: saved.date || saved.tarih || saved.Tarih,
-            paymentMethod: mapPaymentMethodFromBackend(saved.paymentMethod || saved.odemeYontemi || saved.OdemeYontemi),
-            payer: mapPayerFromBackend(saved.payer || saved.odeyenKisi || saved.OdeyenKisi),
+            paymentMethod: saved.paymentMethod || saved.odemeYontemi || saved.OdemeYontemi || data.paymentMethod,
+            payer: saved.payer || saved.odeyenKisi || saved.OdeyenKisi || data.payer,
             status: saved.status || saved.durum || saved.Durum || 'unpaid',
             deletedAt: saved.deletedAt || saved.silinmeTarihi
         };
@@ -839,8 +754,8 @@ const updateSharedExpense = async (data: SharedExpense) => {
             description: data.description,
             amount: parseFloat(data.amount.toString()) || 0,
             date: formattedDate,
-            paymentMethod: mapPaymentMethodToBackend(data.paymentMethod),
-            payer: mapPayerToBackend(data.payer),
+            paymentMethod: data.paymentMethod,
+            payer: data.payer,
             status: data.status
         };
         
@@ -852,14 +767,14 @@ const updateSharedExpense = async (data: SharedExpense) => {
 
         const saved = await apiRequest(`/Kasa/ortakgiderler/${data.id}`, 'PUT', payload);
         
-        // Backend'den gelen veriyi frontend formatına çevir + enum mapping
+        // Backend'den gelen veriyi frontend formatına çevir
         const updatedData: SharedExpense = {
             id: saved.id || saved.giderId || saved.GiderId || data.id,
             description: saved.description || saved.aciklama || saved.Aciklama || data.description,
             amount: saved.amount || saved.tutar || saved.Tutar || data.amount,
             date: saved.date || saved.tarih || saved.Tarih || data.date,
-            paymentMethod: mapPaymentMethodFromBackend(saved.paymentMethod || saved.odemeYontemi || saved.OdemeYontemi || data.paymentMethod),
-            payer: mapPayerFromBackend(saved.payer || saved.odeyenKisi || saved.OdeyenKisi || data.payer),
+            paymentMethod: saved.paymentMethod || saved.odemeYontemi || saved.OdemeYontemi || data.paymentMethod,
+            payer: saved.payer || saved.odeyenKisi || saved.OdeyenKisi || data.payer,
             status: saved.status || saved.durum || saved.Durum || data.status,
             deletedAt: saved.deletedAt || saved.silinmeTarihi || data.deletedAt
         };
