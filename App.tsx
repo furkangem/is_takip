@@ -699,19 +699,32 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         const saved = await apiRequest('/Kasa/ortakgiderler', 'POST', payload);
         console.log('✅ Backend\'den gelen veri:', saved);
         
-        // Backend → Frontend dönüşümü - camelCase response'u destekle
+        // Backend → Frontend dönüşümü - daha güvenli mapping
         const frontendData: SharedExpense = {
-            id: saved.id || saved.giderId || saved.GiderId,
-            description: saved.description || saved.aciklama || saved.Aciklama,
-            amount: saved.amount || saved.tutar || saved.Tutar,
-            date: saved.date || saved.tarih || saved.Tarih,
-            paymentMethod: saved.paymentMethod || saved.odemeYontemi || saved.OdemeYontemi || data.paymentMethod,
-            payer: saved.payer || saved.odeyenKisi || saved.OdeyenKisi || data.payer,
-            status: saved.status || saved.durum || saved.Durum || 'unpaid',
+            id: saved.id || saved.giderId || saved.GiderId || Date.now(), // Fallback ID
+            description: saved.description || saved.aciklama || saved.Aciklama || data.description,
+            amount: Number(saved.amount || saved.tutar || saved.Tutar || data.amount) || 0,
+            date: saved.date || saved.tarih || saved.Tarih || formattedDate,
+            paymentMethod: saved.paymentMethod || saved.odemeYontemi || saved.OdemeYontemi || data.paymentMethod || 'cash',
+            payer: saved.payer || saved.odeyenKisi || saved.OdeyenKisi || data.payer || 'Kasa',
+            status: saved.status || saved.durum || saved.Durum || data.status || 'unpaid',
             deletedAt: saved.deletedAt || saved.silinmeTarihi
         };
         
-        setSharedExpenses(prev => [...prev, frontendData]);
+        console.log('🔍 Frontend Data:', frontendData);
+        console.log('🔍 Mevcut SharedExpenses:', sharedExpenses.length);
+        
+        // State'i güncelle
+        setSharedExpenses(prev => {
+            const updated = [...prev, frontendData];
+            console.log('🔍 Güncellenmiş SharedExpenses:', updated.length);
+            return updated;
+        });
+        
+        // Tüm verileri yeniden yükle - backend formatı tutarsız olabilir
+        console.log('🔄 Tüm veriler yeniden yükleniyor...');
+        await fetchAllData();
+        
         console.log('✅ Gider başarıyla eklendi:', frontendData);
         
     } catch (error: any) {
