@@ -360,30 +360,73 @@
                             <ChevronDownIcon className={`h-5 w-5 transition-transform ${showDeleted ? 'rotate-180' : ''}`} />
                         </button>
                         {showDeleted && (
-                            <div className="p-2"> <div className="space-y-2">
+                            <div className="p-4">
+                                <div className="space-y-3">
                                     {deletedExpenses.map(exp => {
                                         const PaymentIcon = paymentMethodIcons[exp.paymentMethod] || CashIcon;
                                         return (
-                                            <div key={exp.id} className="bg-white rounded-lg border border-gray-200 p-3 group hover:shadow-sm transition-shadow">
+                                            <div key={exp.id} className="bg-white rounded-lg border border-gray-200 p-4 group hover:shadow-sm transition-shadow">
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex-1 min-w-0">
-                                                        {/* ... Diğer Bilgiler ... */}
-                                                        <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
+                                                        {/* Ana Bilgiler */}
+                                                        <div className="mb-3">
+                                                            <h4 className="font-semibold text-gray-800 text-sm mb-1">{exp.description}</h4>
+                                                            <div className="text-lg font-bold text-red-600">{formatCurrency(exp.amount)}</div>
+                                                        </div>
+                                                        
+                                                        {/* Detay Bilgiler */}
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-gray-600">
                                                             <div className="flex items-center gap-1">
                                                                 <span className="font-medium">Ödeyen:</span>
-                                                                {/* === GÖSTERİM GÜNCELLEMESİ === */}
                                                                 <span>{payerDisplayNames[exp.payer] || exp.payer}</span>
-                                                                {/* ========================== */}
                                                             </div>
-                                                            {/* ... Diğer Bilgiler ... */}
+                                                            <div className="flex items-center gap-1">
+                                                                <PaymentIcon className="h-3 w-3"/>
+                                                                <span>{paymentMethodNames[exp.paymentMethod] || 'Nakit'}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="font-medium">Durum:</span>
+                                                                <span className={`px-1.5 py-0.5 text-xs rounded-full ${exp.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                                    {exp.status === 'paid' ? 'Ödendi' : 'Ödenmedi'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="font-medium">Tarih:</span>
+                                                                <span>{formatDateTime(exp.date)}</span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Silinme Tarihi */}
+                                                        <div className="mt-2 text-xs text-gray-500">
+                                                            <span className="font-medium">Silinme Tarihi:</span> {formatDateTime(exp.deletedAt)}
                                                         </div>
                                                     </div>
-                                                    {/* ... Silme/Geri Yükleme Butonları ... */}
+                                                    
+                                                    {/* Butonlar */}
+                                                    <div className="flex items-center gap-2 ml-4">
+                                                        <button 
+                                                            onClick={() => onRestore(exp.id)} 
+                                                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded-md transition-colors"
+                                                            title="Geri Yükle"
+                                                        >
+                                                            <ArrowUturnLeftIcon className="h-3 w-3"/>
+                                                            Geri Yükle
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setExpenseToPermanentlyDelete(exp)} 
+                                                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md transition-colors"
+                                                            title="Kalıcı Olarak Sil"
+                                                        >
+                                                            <TrashIcon className="h-3 w-3"/>
+                                                            Kalıcı Sil
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
                                     })}
-                            </div> </div>
+                                </div>
+                            </div>
                         )}
                     </div>
                 )}
