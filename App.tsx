@@ -714,9 +714,6 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         setSharedExpenses(prev => [...prev, frontendData]);
         console.log('✅ Gider başarıyla eklendi:', frontendData);
         
-        // Başarı mesajı
-        alert('Gider başarıyla eklendi!');
-        
     } catch (error: any) {
         console.error('❌ Gider ekleme hatası:', error);
         
