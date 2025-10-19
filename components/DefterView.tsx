@@ -257,6 +257,15 @@ const DefterView: React.FC<DefterViewProps> = (props) => {
     // Güvenlik kontrolü - undefined verileri boş array'e çevir
     const safeEntries = entries || [];
     const safeNotes = notes || [];
+    
+    // Güvenlik kontrolü - callback fonksiyonları için
+    const safeOnAddEntry = onAddEntry || (() => {});
+    const safeOnUpdateEntry = onUpdateEntry || (() => {});
+    const safeOnDeleteEntry = onDeleteEntry || (() => {});
+    const safeOnAddNote = onAddNote || (() => {});
+    const safeOnUpdateNote = onUpdateNote || (() => {});
+    const safeOnDeleteNote = onDeleteNote || (() => {});
+    const safeOnNavigationComplete = onNavigationComplete || (() => {});
 
     useEffect(() => {
         if (navigateToId) {
@@ -267,10 +276,10 @@ const DefterView: React.FC<DefterViewProps> = (props) => {
                 const timer = setTimeout(() => {
                     element.classList.remove('bg-blue-100', 'ring-2', 'ring-blue-500');
                 }, 2500);
-                onNavigationComplete();
+                safeOnNavigationComplete();
                 return () => clearTimeout(timer);
             } else {
-                onNavigationComplete();
+                safeOnNavigationComplete();
             }
         }
     }, [navigateToId, onNavigationComplete]);
@@ -287,11 +296,11 @@ const DefterView: React.FC<DefterViewProps> = (props) => {
     const [showPaidExpenses, setShowPaidExpenses] = useState(false);
     const [showCompletedNotes, setShowCompletedNotes] = useState(false);
 
-    const handleSaveEntry = (data: DefterEntry | Omit<DefterEntry, 'id'>) => { 'id' in data ? onUpdateEntry(data) : onAddEntry(data as Omit<DefterEntry, 'id'>) };
-    const handleToggleEntryStatus = (entry: DefterEntry) => onUpdateEntry({ ...entry, status: entry.status === 'unpaid' ? 'paid' : 'unpaid', paidDate: entry.status === 'unpaid' ? new Date().toISOString().split('T')[0] : undefined });
+    const handleSaveEntry = (data: DefterEntry | Omit<DefterEntry, 'id'>) => { 'id' in data ? safeOnUpdateEntry(data) : safeOnAddEntry(data as Omit<DefterEntry, 'id'>) };
+    const handleToggleEntryStatus = (entry: DefterEntry) => safeOnUpdateEntry({ ...entry, status: entry.status === 'unpaid' ? 'paid' : 'unpaid', paidDate: entry.status === 'unpaid' ? new Date().toISOString().split('T')[0] : undefined });
     
-    const handleSaveNote = (data: Omit<DefterNote, 'id' | 'createdAt' | 'completed'> | DefterNote) => { 'id' in data ? onUpdateNote(data) : onAddNote(data) };
-    const handleToggleNoteStatus = (note: DefterNote) => onUpdateNote({ ...note, completed: !note.completed });
+    const handleSaveNote = (data: Omit<DefterNote, 'id' | 'createdAt' | 'completed'> | DefterNote) => { 'id' in data ? safeOnUpdateNote(data) : safeOnAddNote(data) };
+    const handleToggleNoteStatus = (note: DefterNote) => safeOnUpdateNote({ ...note, completed: !note.completed });
 
     const { incomeEntries, expenseEntries } = useMemo(() => {
         const sortLogic = (a: DefterEntry, b: DefterEntry) => new Date(a.dueDate || a.date).getTime() - new Date(b.dueDate || b.date).getTime();
@@ -433,9 +442,9 @@ const DefterView: React.FC<DefterViewProps> = (props) => {
 
             <Suspense fallback={null}>
                 {isEntryModalOpen && <DefterEntryEditorModal isOpen={isEntryModalOpen} onClose={() => setIsEntryModalOpen(false)} onSave={handleSaveEntry} entryToEdit={entryToEdit} />}
-                {entryToDelete && <ConfirmationModal isOpen={!!entryToDelete} onClose={() => setEntryToDelete(null)} onConfirm={() => { if(entryToDelete) onDeleteEntry(entryToDelete.id); setEntryToDelete(null); }} title="Kaydı Sil" message={`'${entryToDelete?.description}' kaydını silmek istediğinizden emin misiniz?`}/>}
+                {entryToDelete && <ConfirmationModal isOpen={!!entryToDelete} onClose={() => setEntryToDelete(null)} onConfirm={() => { if(entryToDelete) safeOnDeleteEntry(entryToDelete.id); setEntryToDelete(null); }} title="Kaydı Sil" message={`'${entryToDelete?.description}' kaydını silmek istediğinizden emin misiniz?`}/>}
                 {isNoteModalOpen && <NoteEditorModal isOpen={isNoteModalOpen} onClose={() => setIsNoteModalOpen(false)} onSave={handleSaveNote} noteToEdit={noteToEdit} />}
-                {noteToDelete && <ConfirmationModal isOpen={!!noteToDelete} onClose={() => setNoteToDelete(null)} onConfirm={() => { if(noteToDelete) onDeleteNote(noteToDelete.id); setNoteToDelete(null); }} title="Notu Sil" message={`'${noteToDelete?.title}' başlıklı notu silmek istediğinizden emin misiniz?`}/>}
+                {noteToDelete && <ConfirmationModal isOpen={!!noteToDelete} onClose={() => setNoteToDelete(null)} onConfirm={() => { if(noteToDelete) safeOnDeleteNote(noteToDelete.id); setNoteToDelete(null); }} title="Notu Sil" message={`'${noteToDelete?.title}' başlıklı notu silmek istediğinizden emin misiniz?`}/>}
             </Suspense>
         </>
     );

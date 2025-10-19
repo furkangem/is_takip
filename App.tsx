@@ -654,6 +654,42 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
       setDefterEntries(prev => prev.filter(e => e.id !== id));
   };
 
+  const addDefterNote = async (data: Omit<DefterNote, 'id' | 'createdAt' | 'completed'>) => {
+    try {
+      // Backend /api/Kasa/defternotlari POST endpoint'ini çağır
+      const saved = await apiRequest('/Kasa/defternotlari', 'POST', data);
+      // State'i güncelle
+      setDefterNotes(prev => [...prev, saved].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (error: any) {
+        console.error('❌ Defter notu ekleme hatası:', error);
+        alert('Defter notu eklenirken bir hata oluştu: ' + error.message);
+    }
+  };
+
+  const updateDefterNote = async (data: DefterNote) => {
+    try {
+      // Backend /api/Kasa/defternotlari/{id} PUT endpoint'ini çağır
+      const saved = await apiRequest(`/Kasa/defternotlari/${data.id}`, 'PUT', data);
+      // State'i güncelle
+      setDefterNotes(prev => prev.map(n => n.id === data.id ? saved : n));
+    } catch (error: any) {
+        console.error('❌ Defter notu güncelleme hatası:', error);
+        alert('Defter notu güncellenirken bir hata oluştu: ' + error.message);
+    }
+  };
+
+  const deleteDefterNote = async (id: string) => {
+    try {
+      // Backend /api/Kasa/defternotlari/{id} DELETE endpoint'ini çağır
+      await apiRequest(`/Kasa/defternotlari/${id}`, 'DELETE');
+      // State'i güncelle
+      setDefterNotes(prev => prev.filter(n => n.id !== parseInt(id, 10))); // ID number olabilir, string'i number'a çevir
+    } catch (error: any) {
+        console.error('❌ Defter notu silme hatası:', error);
+        alert('Defter notu silinirken bir hata oluştu: ' + error.message);
+    }
+  };
+
   const addSharedExpense = async (data: Omit<SharedExpense, 'id'>) => {
     if (!data.description || data.description.trim() === '') {
         alert('Açıklama alanı boş bırakılamaz!');
@@ -947,6 +983,9 @@ const permanentlyDeleteSharedExpense = async (expenseId: number) => {
                     onAddDefterEntry={addDefterEntry}
                     onUpdateDefterEntry={updateDefterEntry}
                     onDeleteDefterEntry={deleteDefterEntry}
+                    onAddDefterNote={addDefterNote}
+                    onUpdateDefterNote={updateDefterNote}
+                    onDeleteDefterNote={deleteDefterNote}
                     onAddSharedExpense={addSharedExpense}
                     onUpdateSharedExpense={updateSharedExpense}
                     onDeleteSharedExpense={deleteSharedExpense}
