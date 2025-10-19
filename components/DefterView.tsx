@@ -8,7 +8,63 @@ const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
 const formatDate = (dateString?: string) => dateString ? new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
-const formatDateTime = (dateString?: string) => dateString ? new Date(dateString).toLocaleString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+const formatDateTime = (dateString?: string) => {
+    if (!dateString) return '-'; // Gelen değer boşsa tire döndür
+    try {
+        // Backend'den gelen tarih string'inin UTC olduğunu varsayıyoruz.
+        // JavaScript'in Date nesnesinin bunu doğru yorumlaması için string'in
+        // sonunda 'Z' (UTC işareti) olduğundan emin olalım veya ISO formatına yakınlaştıralım.
+
+        let processedDateString = dateString.replace(' ', 'T'); // "YYYY-MM-DD HH:mm:ss" formatını "YYYY-MM-DDTHH:mm:ss" yap
+
+        // Eğer 'Z' yoksa ve saat bilgisi varsa (T içeriyorsa) ve timezone offset (+/-) yoksa 'Z' ekle
+        if (!processedDateString.endsWith('Z') && processedDateString.includes('T') && !processedDateString.includes('+') && !processedDateString.includes('-')) {
+             // Veritabanından gelen .NET DateTime string'i fazla milisaniye içerebilir, ilk 3 haneyi alalım
+             const parts = processedDateString.split('.');
+             if (parts.length > 1) {
+                 processedDateString = parts[0] + '.' + parts[1].substring(0, 3) + 'Z';
+             } else {
+                 processedDateString += 'Z'; // Milisaniye yoksa direkt Z ekle
+             }
+        }
+        // Eğer sadece tarih varsa ("YYYY-MM-DD"), bunu UTC gece yarısı olarak yorumlamasını önle, yerel tarih olarak al.
+        else if (!processedDateString.includes('T') && !processedDateString.includes(':')) {
+             // Saat ekleyerek tarayıcının yerel olarak yorumlamasını sağla (örn: "2023-10-19T00:00:00")
+             const dateOnly = new Date(processedDateString + 'T00:00:00');
+             if (!isNaN(dateOnly.getTime())) {
+                 // Sadece tarihi göster
+                 return dateOnly.toLocaleDateString('tr-TR', {
+                     day: '2-digit',
+                     month: 'long',
+                     year: 'numeric'
+                 });
+             }
+        }
+
+
+        const date = new Date(processedDateString); // Tarihi UTC olarak yorumla
+
+        // Geçersiz tarih kontrolü
+        if (isNaN(date.getTime())) {
+             console.warn("formatDateTime: Geçersiz tarih formatı algılandı.", dateString, "->", processedDateString);
+             return dateString; // Hata durumunda orijinal string'i göster
+        }
+
+        // toLocaleString, tarayıcının yerel saat dilimine göre doğru çeviriyi yapacaktır.
+        // Örnek: 12:50 UTC -> 15:50 TR Saati
+        return date.toLocaleString('tr-TR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+            // timeZone: 'Europe/Istanbul' // Genellikle gerekmez, tarayıcı halleder
+        });
+    } catch (error) {
+        console.error("formatDateTime hatası:", error, "Gelen Değer:", dateString);
+        return '-'; // Hata durumunda tire döndür
+    }
+};
 
 const DefterEntryEditorModal: React.FC<{
     isOpen: boolean;
