@@ -352,6 +352,22 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     return filtered.sort((a, b) => b.id - a.id);
   }, [personnel, searchQuery]);
 
+  // Her personelin kalan bakiyesini hesapla (hakediş - ödenen)
+  const personnelBalanceMap = useMemo(() => {
+    const map = new Map<number, number>();
+    personnel.forEach(person => {
+        const personJobs = customerJobs.filter(job => job.personnelIds.includes(person.id));
+        const earnings = personJobs.reduce((sum, job) => {
+            const earningInfo = job.personnelPayments.find(pp => pp.personnelId === person.id);
+            return sum + (earningInfo?.payment || 0);
+        }, 0);
+        const payments = personnelPayments.filter(pp => pp.personnelId === person.id);
+        const totalPaid = payments.reduce((sum, pp) => sum + pp.amount, 0);
+        map.set(person.id, earnings - totalPaid);
+    });
+    return map;
+  }, [personnel, customerJobs, personnelPayments]);
+
   useEffect(() => {
     const isSelectedInList = filteredPersonnel.some(p => p.id === selectedPersonnelId);
 
@@ -516,7 +532,15 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
                 <ul>{filteredPersonnel.map(p => {
                     return (
                         <li key={p.id}><button onClick={() => handleSelectPersonnel(p)} className={`w-full text-left p-4 transition-colors duration-150 ${selectedPersonnel?.id === p.id ? 'bg-blue-100 border-l-4 border-blue-500' : 'hover:bg-gray-100'}`}>
-                            <p className="font-semibold text-gray-800">{p.name || 'İsimsiz'}</p>
+                            <p className="font-semibold text-gray-800 flex items-center justify-between">
+                                <span>{p.name || 'İsimsiz'}</span>
+                                {((personnelBalanceMap.get(p.id) || 0) > 0) && (
+                                    <span
+                                        className="ml-2 inline-block h-2 w-2 rounded-full bg-red-500"
+                                        title={`Kalan: ${formatCurrency(personnelBalanceMap.get(p.id) || 0)}`}
+                                    />
+                                )}
+                            </p>
                         </button></li>
                     );
                 })}</ul>
