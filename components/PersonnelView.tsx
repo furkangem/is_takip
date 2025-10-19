@@ -536,7 +536,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
                                 <span>{p.name || 'İsimsiz'}</span>
                                 {((personnelBalanceMap.get(p.id) || 0) > 0) && (
                                     <span
-                                        className="ml-2 inline-block h-2 w-2 rounded-full bg-red-500"
+                                        className="ml-3 inline-block h-1 w-10 rounded-full bg-red-500 animate-pulse opacity-80 motion-reduce:animate-none"
                                         title={`Kalan: ${formatCurrency(personnelBalanceMap.get(p.id) || 0)}`}
                                     />
                                 )}
