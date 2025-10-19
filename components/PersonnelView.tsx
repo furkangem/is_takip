@@ -280,8 +280,8 @@ const AddPaymentModal: React.FC<{
                                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             >
                                 <option value="Kasa">Kasa</option>
-                                <option value="Ömer">Ömer</option>
-                                <option value="Barış">Barış</option>
+                                <option value="Omer">Ömer</option>
+                                <option value="Baris">Barış</option>
                             </select>
                         </div>
                         <div>

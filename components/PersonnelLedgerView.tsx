@@ -118,7 +118,9 @@ const AddPaymentModal: React.FC<{
                         <div>
                             <label htmlFor="payer" className="block text-sm font-medium text-gray-700">Ödeyen</label>
                             <select id="payer" value={formData.payer} onChange={(e) => setFormData(p => ({...p, payer: e.target.value as Payer}))} className={commonInputClass}>
-                                <option value="Kasa">Kasa</option> <option value="Ömer">Ömer</option> <option value="Barış">Barış</option>
+                                <option value="Kasa">Kasa</option>
+                                <option value="Omer">Ömer</option>
+                                <option value="Baris">Barış</option>
                             </select>
                         </div>
                         <div>
