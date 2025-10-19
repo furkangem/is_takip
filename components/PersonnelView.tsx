@@ -201,13 +201,14 @@ const AddPaymentModal: React.FC<{
         }
         
         let finalDate: string;
-        if (!dateTime) {
+        if (!dateTime || dateTime === '') {
             // Eğer tarih seçilmemişse güncel tarih ve saati kullan
             finalDate = new Date().toISOString();
         } else {
             // Eğer tarih seçilmişse, seçilen tarihi al ama saati güncel saat yap
             const selectedDate = new Date(dateTime);
             const now = new Date();
+            // Seçilen tarihi koru, sadece saati güncel yap
             selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
             finalDate = selectedDate.toISOString();
         }
@@ -242,8 +243,14 @@ const AddPaymentModal: React.FC<{
                         <input
                             type="date"
                             id="date-time"
-                            value={dateTime.split('T')[0]}
-                            onChange={(e) => setDateTime(e.target.value ? e.target.value + 'T00:00' : '')}
+                            value={dateTime ? dateTime.split('T')[0] : ''}
+                            onChange={(e) => {
+                                if (e.target.value) {
+                                    setDateTime(e.target.value + 'T00:00');
+                                } else {
+                                    setDateTime('');
+                                }
+                            }}
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                         <p className="text-xs text-gray-500 mt-1">Tarih seçilmezse güncel tarih ve saat kullanılır</p>
