@@ -153,8 +153,8 @@ const PersonnelEditorModal: React.FC<{
 const AddPaymentModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    // FIX: Update onSave to include payer and paymentMethod.
-    onSave: (paymentData: {amount: number, jobId?: number, payer: Payer, paymentMethod: PaymentMethod}) => void;
+    // FIX: Update onSave to include payer, paymentMethod and date.
+    onSave: (paymentData: {amount: number, jobId?: number, payer: Payer, paymentMethod: PaymentMethod, date: string}) => void;
     personnel: Personnel;
     personnelJobs: CustomerJob[];
 }> = ({ isOpen, onClose, onSave, personnel, personnelJobs }) => {
@@ -163,6 +163,17 @@ const AddPaymentModal: React.FC<{
     // FIX: Add state for payer and paymentMethod.
     const [payer, setPayer] = useState<Payer>('Kasa');
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+    const [dateTime, setDateTime] = useState<string>('');
+
+    const formatLocalDateTimeForInput = (d: Date) => {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const mm = pad(d.getMonth() + 1);
+        const dd = pad(d.getDate());
+        const hh = pad(d.getHours());
+        const mi = pad(d.getMinutes());
+        return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    };
 
 
     useEffect(() => {
@@ -172,6 +183,10 @@ const AddPaymentModal: React.FC<{
             // FIX: Reset payer and paymentMethod on close.
             setPayer('Kasa');
             setPaymentMethod('cash');
+            setDateTime('');
+        } else {
+            const now = new Date();
+            setDateTime(formatLocalDateTimeForInput(now));
         }
     }, [isOpen]);
 
@@ -184,8 +199,21 @@ const AddPaymentModal: React.FC<{
             alert('Lütfen geçerli bir ödeme tutarı girin.');
             return;
         }
-        // FIX: Pass payer and paymentMethod to onSave.
-        onSave({amount: numericAmount, jobId: jobId ? Number(jobId) : undefined, payer, paymentMethod});
+        
+        let finalDate: string;
+        if (!dateTime) {
+            // Eğer tarih seçilmemişse güncel tarih ve saati kullan
+            finalDate = new Date().toISOString();
+        } else {
+            // Eğer tarih seçilmişse, seçilen tarihi al ama saati güncel saat yap
+            const selectedDate = new Date(dateTime);
+            const now = new Date();
+            selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+            finalDate = selectedDate.toISOString();
+        }
+        
+        // FIX: Pass payer, paymentMethod and date to onSave.
+        onSave({amount: numericAmount, jobId: jobId ? Number(jobId) : undefined, payer, paymentMethod, date: finalDate});
         onClose();
     };
 
@@ -210,6 +238,17 @@ const AddPaymentModal: React.FC<{
                         />
                     </div>
                      <div>
+                        <label htmlFor="date-time" className="block text-sm font-medium text-gray-700">Tarih (Opsiyonel)</label>
+                        <input
+                            type="date"
+                            id="date-time"
+                            value={dateTime.split('T')[0]}
+                            onChange={(e) => setDateTime(e.target.value ? e.target.value + 'T00:00' : '')}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Tarih seçilmezse güncel tarih ve saat kullanılır</p>
+                    </div>
+                    <div>
                         <label htmlFor="job-id" className="block text-sm font-medium text-gray-700">İş (Opsiyonel)</label>
                         <select
                             id="job-id"
@@ -411,15 +450,15 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     }
   };
 
-  // FIX: Update function signature to accept payer and paymentMethod and correct jobId type.
-  const handleAddPayment = (paymentData: {amount: number, jobId?: number, payer: Payer, paymentMethod: PaymentMethod}) => {
+  // FIX: Update function signature to accept payer, paymentMethod and date.
+  const handleAddPayment = (paymentData: {amount: number, jobId?: number, payer: Payer, paymentMethod: PaymentMethod, date: string}) => {
     if(selectedPersonnel) {
         // FIX: Add payer and paymentMethod to the new payment object.
         onAddPersonnelPayment({
             personnelId: selectedPersonnel.id,
             amount: paymentData.amount,
             customerJobId: paymentData.jobId,
-            date: new Date().toISOString(),
+            date: paymentData.date || new Date().toISOString(),
             payer: paymentData.payer,
             paymentMethod: paymentData.paymentMethod,
         });
