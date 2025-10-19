@@ -254,6 +254,10 @@ interface DefterViewProps {
 const DefterView: React.FC<DefterViewProps> = (props) => {
     const { entries, notes, onAddEntry, onUpdateEntry, onDeleteEntry, onAddNote, onUpdateNote, onDeleteNote, isReadOnly, navigateToId, onNavigationComplete } = props;
 
+    // Güvenlik kontrolü - undefined verileri boş array'e çevir
+    const safeEntries = entries || [];
+    const safeNotes = notes || [];
+
     useEffect(() => {
         if (navigateToId) {
             const element = document.getElementById(`defter-item-${navigateToId}`);
@@ -291,19 +295,19 @@ const DefterView: React.FC<DefterViewProps> = (props) => {
 
     const { incomeEntries, expenseEntries } = useMemo(() => {
         const sortLogic = (a: DefterEntry, b: DefterEntry) => new Date(a.dueDate || a.date).getTime() - new Date(b.dueDate || b.date).getTime();
-        const incomes = entries.filter(e => e.type === 'income');
-        const expenses = entries.filter(e => e.type === 'expense');
+        const incomes = safeEntries.filter(e => e.type === 'income');
+        const expenses = safeEntries.filter(e => e.type === 'expense');
         return {
             incomeEntries: { unpaid: incomes.filter(e => e.status === 'unpaid').sort(sortLogic), paid: incomes.filter(e => e.status === 'paid').sort((a,b) => new Date(b.paidDate || b.date).getTime() - new Date(a.paidDate || a.date).getTime()) },
             expenseEntries: { unpaid: expenses.filter(e => e.status === 'unpaid').sort(sortLogic), paid: expenses.filter(e => e.status === 'paid').sort((a,b) => new Date(b.paidDate || b.date).getTime() - new Date(a.paidDate || a.date).getTime()) },
         };
-    }, [entries]);
+    }, [safeEntries]);
     
     const { uncompletedNotes, completedNotes } = useMemo(() => {
-        const uncompleted = notes.filter(n => !n.completed).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        const completed = notes.filter(n => n.completed).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const uncompleted = safeNotes.filter(n => !n.completed).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const completed = safeNotes.filter(n => n.completed).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         return { uncompletedNotes: uncompleted, completedNotes: completed };
-    }, [notes]);
+    }, [safeNotes]);
     
     const totalUnpaidIncome = useMemo(() => incomeEntries.unpaid.reduce((sum: number, e: DefterEntry) => sum + e.amount, 0), [incomeEntries.unpaid]);
     const totalUnpaidExpense = useMemo(() => expenseEntries.unpaid.reduce((sum: number, e: DefterEntry) => sum + e.amount, 0), [expenseEntries.unpaid]);
