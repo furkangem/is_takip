@@ -140,3 +140,13 @@ export interface WorkDay {
   location?: string;
   jobDescription?: string;
 }
+
+export interface PuantajKayitlari {
+  kayitId: number;
+  personelId: number;
+  musteriIsId: number;
+  tarih: string;
+  gunlukUcret: number;
+  konum?: string;
+  isTanimi?: string;
+}

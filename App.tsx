@@ -1,6 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 // mockData importunu siliyoruz, artık veriler API'den gelecek.
-import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, DefterNote, WorkDay, SharedExpense } from './types';
+import { Role, User, Personnel, PersonnelPayment, Customer, CustomerJob, DefterEntry, DefterNote, WorkDay, SharedExpense, PuantajKayitlari } from './types';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LoginView from './components/LoginView';
@@ -174,6 +174,7 @@ export default function App() {
   const [defterNotes, setDefterNotes] = useState<DefterNote[]>([]);
   const [workDays, setWorkDays] = useState<WorkDay[]>([]);
   const [sharedExpenses, setSharedExpenses] = useState<SharedExpense[]>([]);
+  const [puantajKayitlari, setPuantajKayitlari] = useState<PuantajKayitlari[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
@@ -365,6 +366,18 @@ export default function App() {
       setDefterEntries(data.defterEntries);
       setDefterNotes(data.defterNotes);
       setWorkDays(data.workDays);
+      
+      // Puantaj Kayıtları veri dönüşümü
+      const normalizedPuantajKayitlari: PuantajKayitlari[] = (data.puantajKayitlari || []).map((p: any) => ({
+        kayitId: p.kayitId ?? p.KayitId ?? p.id,
+        personelId: p.personelId ?? p.PersonelId ?? p.personnelId,
+        musteriIsId: p.musteriIsId ?? p.MusteriIsId ?? p.customerJobId,
+        tarih: p.tarih ?? p.Tarih ?? p.date,
+        gunlukUcret: Number(p.gunlukUcret ?? p.GunlukUcret ?? p.dailyWage ?? 0) || 0,
+        konum: p.konum ?? p.Konum ?? p.location,
+        isTanimi: p.isTanimi ?? p.IsTanimi ?? p.jobDescription,
+      }));
+      setPuantajKayitlari(normalizedPuantajKayitlari);
     } catch (error) {
       console.error("API'den veri çekerken hata:", error);
     } finally {
@@ -626,6 +639,39 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
   const deletePersonnelPayment = async (id: number) => {
     await apiRequest(`/Personel/odemeler/${id}`, 'DELETE');
     setPersonnelPayments(prev => prev.filter(p => p.id !== id));
+  };
+
+  // Puantaj Kayıtları CRUD Fonksiyonları
+  const addPuantajKaydi = async (data: Omit<PuantajKayitlari, 'kayitId'>) => {
+    const body = {
+      personelId: data.personelId,
+      musteriIsId: data.musteriIsId,
+      tarih: data.tarih ? new Date(data.tarih).toISOString() : new Date().toISOString(),
+      gunlukUcret: data.gunlukUcret,
+      konum: data.konum || null,
+      isTanimi: data.isTanimi || null,
+    };
+    const saved = await apiRequest('/Puantaj', 'POST', body);
+    setPuantajKayitlari(prev => [...prev, saved]);
+  };
+
+  const updatePuantajKaydi = async (data: PuantajKayitlari) => {
+    const body = {
+      kayitId: data.kayitId,
+      personelId: data.personelId,
+      musteriIsId: data.musteriIsId,
+      tarih: data.tarih ? new Date(data.tarih).toISOString() : new Date().toISOString(),
+      gunlukUcret: data.gunlukUcret,
+      konum: data.konum || null,
+      isTanimi: data.isTanimi || null,
+    };
+    await apiRequest(`/Puantaj/${data.kayitId}`, 'PUT', body);
+    setPuantajKayitlari(prev => prev.map(k => k.kayitId === data.kayitId ? data : k));
+  };
+
+  const deletePuantajKaydi = async (kayitId: number) => {
+    await apiRequest(`/Puantaj/${kayitId}`, 'DELETE');
+    setPuantajKayitlari(prev => prev.filter(k => k.kayitId !== kayitId));
   };
   
   const addUser = async (data: Omit<User, 'id'>) => {
@@ -935,11 +981,15 @@ const permanentlyDeleteSharedExpense = async (expenseId: number) => {
                     customers={customers}
                     customerJobs={customerJobs}
                     personnelPayments={personnelPayments}
+                    puantajKayitlari={puantajKayitlari}
                     onAddPersonnel={addPersonnel}
                     onUpdatePersonnel={updatePersonnel}
                     onDeletePersonnel={deletePersonnel}
                     onAddPersonnelPayment={addPersonnelPayment}
                     onDeletePersonnelPayment={deletePersonnelPayment}
+                    onAddPuantajKaydi={addPuantajKaydi}
+                    onUpdatePuantajKaydi={updatePuantajKaydi}
+                    onDeletePuantajKaydi={deletePuantajKaydi}
                     navigateToId={navigateToItem?.view === 'personnel' ? navigateToItem.id : null}
                     onNavigationComplete={handleNavigationComplete}
                   />

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 // FIX: Import Payer and PaymentMethod types.
-import { Personnel, User, Role, PersonnelPayment, CustomerJob, Customer, Payer, PaymentMethod } from '../types';
+import { Personnel, User, Role, PersonnelPayment, CustomerJob, Customer, Payer, PaymentMethod, PuantajKayitlari } from '../types';
 import { UserGroupIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, CreditCardIcon, XMarkIcon, BriefcaseIcon, BanknotesIcon, TrendingUpIcon, TrendingDownIcon, ClipboardDocumentListIcon, CurrencyDollarIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 
@@ -141,6 +141,168 @@ const PersonnelEditorModal: React.FC<{
                             İptal
                         </button>
                         <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Kaydet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const AddPuantajModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (kayit: PuantajKayitlari | Omit<PuantajKayitlari, 'kayitId'>) => void;
+    personnel: Personnel;
+    customerJobs: CustomerJob[];
+    kayitToEdit: PuantajKayitlari | null;
+}> = ({ isOpen, onClose, onSave, personnel, customerJobs, kayitToEdit }) => {
+    const [musteriIsId, setMusteriIsId] = useState<string>('');
+    const [tarih, setTarih] = useState<string>('');
+    const [gunlukUcret, setGunlukUcret] = useState<string>('');
+    const [konum, setKonum] = useState<string>('');
+    const [isTanimi, setIsTanimi] = useState<string>('');
+
+    useEffect(() => {
+        if (isOpen) {
+            if (kayitToEdit) {
+                setMusteriIsId(kayitToEdit.musteriIsId.toString());
+                setTarih(kayitToEdit.tarih.split('T')[0]);
+                setGunlukUcret(kayitToEdit.gunlukUcret.toString());
+                setKonum(kayitToEdit.konum || '');
+                setIsTanimi(kayitToEdit.isTanimi || '');
+            } else {
+                setMusteriIsId('');
+                setTarih(new Date().toISOString().split('T')[0]);
+                setGunlukUcret('');
+                setKonum('');
+                setIsTanimi('');
+            }
+        }
+    }, [isOpen, kayitToEdit]);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (!musteriIsId || !tarih || !gunlukUcret) {
+            alert('Personel ID, tarih ve günlük ücret alanları zorunludur!');
+            return;
+        }
+        
+        const numericUcret = parseFloat(gunlukUcret);
+        if (isNaN(numericUcret) || numericUcret < 0) {
+            alert('Günlük ücret geçerli bir sayı olmalıdır!');
+            return;
+        }
+
+        const kayitData = {
+            personelId: personnel.id,
+            musteriIsId: parseInt(musteriIsId),
+            tarih: new Date(tarih).toISOString(),
+            gunlukUcret: numericUcret,
+            konum: konum.trim() || undefined,
+            isTanimi: isTanimi.trim() || undefined,
+        };
+        
+        if (kayitToEdit) {
+            onSave({ ...kayitToEdit, ...kayitData });
+        } else {
+            onSave(kayitData);
+        }
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h3 className="text-lg font-semibold text-gray-800">
+                        {kayitToEdit ? 'Puantaj Kaydını Düzenle' : 'Yeni Puantaj Kaydı Ekle'}
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <XMarkIcon className="h-6 w-6" />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label htmlFor="personnel-name" className="block text-sm font-medium text-gray-700">Personel</label>
+                        <input
+                            type="text"
+                            value={personnel.name}
+                            disabled
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-600"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="musteri-is-id" className="block text-sm font-medium text-gray-700">İş</label>
+                        <select
+                            id="musteri-is-id"
+                            value={musteriIsId}
+                            onChange={(e) => setMusteriIsId(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            required
+                        >
+                            <option value="">İş Seçin</option>
+                            {customerJobs.map(job => (
+                                <option key={job.id} value={job.id}>{job.location} - {job.description}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="tarih" className="block text-sm font-medium text-gray-700">Tarih</label>
+                        <input
+                            type="date"
+                            id="tarih"
+                            value={tarih}
+                            onChange={(e) => setTarih(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="gunluk-ucret" className="block text-sm font-medium text-gray-700">Günlük Ücret (₺)</label>
+                        <input
+                            type="number"
+                            id="gunluk-ucret"
+                            value={gunlukUcret}
+                            onChange={(e) => setGunlukUcret(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            required
+                            placeholder="Örn: 500"
+                            min="0"
+                            step="0.01"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="konum" className="block text-sm font-medium text-gray-700">Konum (Opsiyonel)</label>
+                        <input
+                            type="text"
+                            id="konum"
+                            value={konum}
+                            onChange={(e) => setKonum(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Çalışma konumu"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="is-tanimi" className="block text-sm font-medium text-gray-700">İş Tanımı (Opsiyonel)</label>
+                        <textarea
+                            id="is-tanimi"
+                            value={isTanimi}
+                            onChange={(e) => setIsTanimi(e.target.value)}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            rows={3}
+                            placeholder="Yapılan işin detayları"
+                        />
+                    </div>
+                    <div className="mt-6 flex justify-end gap-3">
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                            İptal
+                        </button>
+                        <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
                             Kaydet
                         </button>
                     </div>
@@ -315,16 +477,20 @@ interface PersonnelViewProps {
   customers: Customer[];
   customerJobs: CustomerJob[];
   personnelPayments: PersonnelPayment[];
+  puantajKayitlari: PuantajKayitlari[];
   onAddPersonnel: (personnel: Omit<Personnel, 'id'>) => void;
   onUpdatePersonnel: (personnel: Personnel) => void;
   onDeletePersonnel: (personnelId: number) => void;
   onAddPersonnelPayment: (payment: Omit<PersonnelPayment, 'id'>) => void;
   onDeletePersonnelPayment: (paymentId: number) => void;
+  onAddPuantajKaydi: (kayit: Omit<PuantajKayitlari, 'kayitId'>) => void;
+  onUpdatePuantajKaydi: (kayit: PuantajKayitlari) => void;
+  onDeletePuantajKaydi: (kayitId: number) => void;
   navigateToId: number | null;
   onNavigationComplete: () => void;
 }
 
-const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, personnel, customers, customerJobs, personnelPayments, onAddPersonnel, onUpdatePersonnel, onDeletePersonnel, onAddPersonnelPayment, onDeletePersonnelPayment, navigateToId, onNavigationComplete }) => {
+const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, personnel, customers, customerJobs, personnelPayments, puantajKayitlari, onAddPersonnel, onUpdatePersonnel, onDeletePersonnel, onAddPersonnelPayment, onDeletePersonnelPayment, onAddPuantajKaydi, onUpdatePuantajKaydi, onDeletePuantajKaydi, navigateToId, onNavigationComplete }) => {
   const [selectedPersonnelId, setSelectedPersonnelId] = useState<number | null>(personnel.length > 0 ? personnel[0].id : null);
   const selectedPersonnel = useMemo(() => 
     personnel.find(p => p.id === selectedPersonnelId) || null
@@ -354,6 +520,10 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
   const [selectedJobForDetails, setSelectedJobForDetails] = useState<CustomerJob | null>(null);
   const [isNoteEditing, setIsNoteEditing] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [isPuantajModalOpen, setIsPuantajModalOpen] = useState(false);
+  const [puantajToEdit, setPuantajToEdit] = useState<PuantajKayitlari | null>(null);
+  const [isPuantajDeleteModalOpen, setIsPuantajDeleteModalOpen] = useState(false);
+  const [puantajToDelete, setPuantajToDelete] = useState<PuantajKayitlari | null>(null);
 
   useEffect(() => {
     if (selectedPersonnel) {
@@ -476,6 +646,95 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
     setSelectedJobForDetails(job);
     setJobDetailsModalOpen(true);
   };
+
+  const handleOpenAddPuantajModal = () => { 
+    setPuantajToEdit(null); 
+    setIsPuantajModalOpen(true); 
+  };
+
+  const handleOpenEditPuantajModal = (kayit: PuantajKayitlari) => { 
+    setPuantajToEdit(kayit); 
+    setIsPuantajModalOpen(true); 
+  };
+
+  const handleOpenDeletePuantajModal = (kayit: PuantajKayitlari) => { 
+    setPuantajToDelete(kayit); 
+    setIsPuantajDeleteModalOpen(true); 
+  };
+
+  const handleConfirmDeletePuantaj = () => {
+    if (puantajToDelete) {
+        onDeletePuantajKaydi(puantajToDelete.kayitId);
+        setIsPuantajDeleteModalOpen(false);
+        setPuantajToDelete(null);
+    }
+  };
+
+  const handleSavePuantaj = (data: PuantajKayitlari | Omit<PuantajKayitlari, 'kayitId'>) => {
+    if ('kayitId' in data) {
+      onUpdatePuantajKaydi(data);
+    } else {
+      onAddPuantajKaydi(data);
+    }
+  };
+
+  const handleDownloadPuantajPdf = async () => {
+    if (!selectedPersonnel || selectedPersonnelPuantaj.length === 0) {
+      alert('İndirilecek puantaj kaydı bulunmuyor.');
+      return;
+    }
+
+    try {
+      const startDate = filters.startDate || new Date('2023-01-01').toISOString().split('T')[0];
+      const endDate = filters.endDate || new Date().toISOString().split('T')[0];
+      
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+        personelId: selectedPersonnel.id.toString(),
+        groupBy: 'personel'
+      });
+
+      const response = await fetch(`/api/puantaj/report/pdf?${params}`);
+      
+      if (!response.ok) {
+        throw new Error('PDF oluşturulurken hata oluştu');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Puantaj_${selectedPersonnel.name}_${startDate}_${endDate}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('PDF indirme hatası:', error);
+      alert('PDF indirilirken hata oluştu. Lütfen tekrar deneyin.');
+    }
+  };
+
+  // Seçili personelin puantaj kayıtlarını filtrele
+  const selectedPersonnelPuantaj = useMemo(() => {
+    if (!selectedPersonnel) return [];
+    
+    const start = filters.startDate ? new Date(filters.startDate) : null;
+    if(start) start.setHours(0,0,0,0);
+    const end = filters.endDate ? new Date(filters.endDate) : null;
+    if(end) end.setHours(23,59,59,999);
+
+    return puantajKayitlari
+      .filter(kayit => kayit.personelId === selectedPersonnel.id)
+      .filter(kayit => {
+        const kayitTarih = new Date(kayit.tarih);
+        if(start && kayitTarih < start) return false;
+        if(end && kayitTarih > end) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime());
+  }, [selectedPersonnel, puantajKayitlari, filters]);
 
   const { totalPaymentDue, totalPaid, balance, jobs, payments } = useMemo(() => {
     if (!selectedPersonnel) return { totalPaymentDue: 0, totalPaid: 0, balance: 0, jobs: [], payments: [] };
@@ -741,6 +1000,95 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
                     </div>
                 </div>
             </div>
+            
+            {/* Puantaj Kayıtları Bölümü */}
+            <div className="bg-white p-4 rounded-lg shadow-md space-y-4">
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                    <h3 className="text-lg font-semibold text-gray-800">Puantaj Kayıtları</h3>
+                    <div className="flex gap-2">
+                        {isEditable && (
+                            <button 
+                                onClick={handleOpenAddPuantajModal} 
+                                className="flex items-center text-sm font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-md"
+                            >
+                                <PlusIcon className="h-4 w-4 mr-2" />
+                                Puantaj Ekle
+                            </button>
+                        )}
+                        <button 
+                            onClick={() => handleDownloadPuantajPdf()} 
+                            className="flex items-center text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-md"
+                            disabled={selectedPersonnelPuantaj.length === 0}
+                        >
+                            <ClipboardDocumentListIcon className="h-4 w-4 mr-2" />
+                            PDF İndir
+                        </button>
+                    </div>
+                </div>
+                <div className="bg-gray-50 rounded-lg border flex-1 overflow-y-auto min-h-[200px]">
+                    {selectedPersonnelPuantaj.length > 0 ? (
+                        <ul className="divide-y divide-gray-200">
+                            {selectedPersonnelPuantaj.map(kayit => {
+                                const job = customerJobs.find(j => j.id === kayit.musteriIsId);
+                                const customer = customers.find(c => c.id === job?.customerId);
+                                return (
+                                    <li key={kayit.kayitId} className="p-3 flex justify-between items-center group">
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <p className="font-medium text-gray-800">
+                                                    {job ? job.location : `İş #${kayit.musteriIsId}`}
+                                                </p>
+                                                <p className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">
+                                                    {formatDate(kayit.tarih)}
+                                                </p>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {customer?.name} - {job?.description || kayit.isTanimi || 'İş tanımı yok'}
+                                            </p>
+                                            {kayit.konum && (
+                                                <p className="text-xs text-blue-600 mt-1">📍 {kayit.konum}</p>
+                                            )}
+                                        </div>
+                                        <div className="text-right flex-shrink-0 min-w-[100px]">
+                                            <p className="font-bold text-lg text-green-600">
+                                                {formatCurrency(kayit.gunlukUcret)}
+                                            </p>
+                                            {isEditable && (
+                                                <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button 
+                                                        onClick={() => handleOpenEditPuantajModal(kayit)}
+                                                        className="text-blue-600 hover:text-blue-800"
+                                                        title="Düzenle"
+                                                    >
+                                                        <PencilIcon className="h-4 w-4" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleOpenDeletePuantajModal(kayit)}
+                                                        className="text-red-600 hover:text-red-800"
+                                                        title="Sil"
+                                                    >
+                                                        <TrashIcon className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    ) : (
+                        <div className="p-4 text-center text-sm text-gray-500 h-full flex items-center justify-center">
+                            <ClipboardDocumentListIcon className="h-8 w-8 text-gray-300 mb-2"/>
+                            <span>
+                                {filters.startDate || filters.endDate 
+                                    ? "Filtrelenmiş puantaj kaydı bulunmuyor." 
+                                    : "Bu personel için puantaj kaydı bulunmuyor."
+                                }
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow-md">
@@ -761,6 +1109,25 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ currentUser, users, perso
             personnel={personnel}
             customer={customers.find(c => c.id === selectedJobForDetails?.customerId)}
         />}
+        {selectedPersonnel && isEditable && isPuantajModalOpen && (
+            <AddPuantajModal 
+                isOpen={isPuantajModalOpen} 
+                onClose={() => setIsPuantajModalOpen(false)} 
+                onSave={handleSavePuantaj} 
+                personnel={selectedPersonnel} 
+                customerJobs={customerJobs}
+                kayitToEdit={puantajToEdit}
+            />
+        )}
+        {isPuantajDeleteModalOpen && (
+            <ConfirmationModal 
+                isOpen={isPuantajDeleteModalOpen} 
+                onClose={() => setIsPuantajDeleteModalOpen(false)} 
+                onConfirm={handleConfirmDeletePuantaj} 
+                title="Puantaj Kaydını Sil" 
+                message={`${puantajToDelete ? formatDate(puantajToDelete.tarih) : ''} tarihli ${puantajToDelete ? formatCurrency(puantajToDelete.gunlukUcret) : ''} tutarındaki puantaj kaydını silmek istediğinizden emin misiniz?`}
+            />
+        )}
     </Suspense>
     </>
   );
