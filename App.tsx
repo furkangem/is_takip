@@ -414,7 +414,7 @@ export default function App() {
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(user));
       await fetchAllData(); 
-      if (user.email === 'baris') setCurrentView('timesheet');
+      if (user.email === 'baris') setCurrentView('personnel');
       else setCurrentView('customers');
       return true;
     } catch (error: any) {
