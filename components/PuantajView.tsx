@@ -78,19 +78,8 @@ const PuantajView: React.FC<PuantajViewProps> = ({
       });
     }
 
-    // Müşteriye göre grupla
-    const groupedJobs = jobs.reduce((acc, job) => {
-      const customer = customers.find(c => c.id === job.customerId);
-      const customerName = customer?.name || 'Bilinmeyen Müşteri';
-      
-      if (!acc[customerName]) {
-        acc[customerName] = [];
-      }
-      acc[customerName].push(job);
-      return acc;
-    }, {} as Record<string, CustomerJob[]>);
-
-    return groupedJobs;
+    // Tarihe göre sırala (en yeni önce)
+    return jobs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [customerJobs, filters, searchQuery, customers]);
 
   // Personel listesini filtrele
@@ -295,34 +284,32 @@ const PuantajView: React.FC<PuantajViewProps> = ({
             
             <div className="overflow-y-auto max-h-[600px]">
               {viewMode === 'job' ? (
-                // İş Listesi
-                Object.entries(filteredJobs).map(([customerName, jobs]) => (
-                  <div key={customerName} className="border-b">
-                    <div className="p-3 bg-gray-50 font-medium text-gray-800">
-                      {customerName}
-                    </div>
-                    {jobs.map(job => (
+                // İş Listesi - Sadece işler, müşteri gruplandırması yok
+                <div>
+                  {filteredJobs.map(job => {
+                    const customer = customers.find(c => c.id === job.customerId);
+                    return (
                       <button
                         key={job.id}
                         onClick={() => {
                           setSelectedJobId(job.id);
                           setSelectedPersonnelId(null);
                         }}
-                        className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
+                        className={`w-full text-left p-3 hover:bg-gray-50 transition-colors border-b ${
                           selectedJobId === job.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
                         }`}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <p className="font-medium text-gray-800">{job.location}</p>
-                            <p className="text-sm text-gray-500">{job.description}</p>
+                            <p className="text-sm text-gray-500">{customer?.name} - {job.description}</p>
                             <p className="text-xs text-gray-400">{formatDate(job.date)}</p>
                           </div>
                         </div>
                       </button>
-                    ))}
-                  </div>
-                ))
+                    );
+                  })}
+                </div>
               ) : (
                 // Personel Listesi
                 <div>
