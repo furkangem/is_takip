@@ -188,6 +188,7 @@ interface PuantajViewProps {
   onAddPuantajKaydi: (kayit: Omit<PuantajKayitlari, 'kayitId'>) => void;
   onUpdatePuantajKaydi: (kayit: PuantajKayitlari) => void;
   onDeletePuantajKaydi: (kayitId: number) => void;
+  onFetchPuantajData: (startDate?: string, endDate?: string) => Promise<void>;
 }
 
 const PuantajView: React.FC<PuantajViewProps> = ({ 
@@ -198,7 +199,8 @@ const PuantajView: React.FC<PuantajViewProps> = ({
   puantajKayitlari, 
   onAddPuantajKaydi, 
   onUpdatePuantajKaydi, 
-  onDeletePuantajKaydi 
+  onDeletePuantajKaydi,
+  onFetchPuantajData
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [kayitToEdit, setKayitToEdit] = useState<PuantajKayitlari | null>(null);
@@ -326,15 +328,18 @@ const PuantajView: React.FC<PuantajViewProps> = ({
   const setDateRange = (period: 'this_month' | 'last_month' | 'all' | 'default') => {
     if (period === 'all') {
       setFilters({ startDate: '', endDate: '' });
+      onFetchPuantajData();
       return;
     }
     if (period === 'default') {
       const defaultStart = new Date('2023-01-01');
       const today = new Date();
-      setFilters({ 
+      const newFilters = { 
         startDate: defaultStart.toISOString().split('T')[0], 
         endDate: today.toISOString().split('T')[0] 
-      });
+      };
+      setFilters(newFilters);
+      onFetchPuantajData(newFilters.startDate, newFilters.endDate);
       return;
     }
     const now = new Date();
@@ -347,7 +352,9 @@ const PuantajView: React.FC<PuantajViewProps> = ({
       start = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
       end = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
     }
-    setFilters({ startDate: start.toISOString().split('T')[0], endDate: end.toISOString().split('T')[0] });
+    const newFilters = { startDate: start.toISOString().split('T')[0], endDate: end.toISOString().split('T')[0] };
+    setFilters(newFilters);
+    onFetchPuantajData(newFilters.startDate, newFilters.endDate);
   };
 
   const isEditable = currentUser.role === Role.SUPER_ADMIN;
@@ -412,13 +419,21 @@ const PuantajView: React.FC<PuantajViewProps> = ({
               <input 
                 type="date" 
                 value={filters.startDate} 
-                onChange={e => setFilters(p => ({...p, startDate: e.target.value}))} 
+                onChange={e => {
+                  const newFilters = {...filters, startDate: e.target.value};
+                  setFilters(newFilters);
+                  onFetchPuantajData(newFilters.startDate, newFilters.endDate);
+                }} 
                 className={commonInputClass} 
               />
               <input 
                 type="date" 
                 value={filters.endDate} 
-                onChange={e => setFilters(p => ({...p, endDate: e.target.value}))} 
+                onChange={e => {
+                  const newFilters = {...filters, endDate: e.target.value};
+                  setFilters(newFilters);
+                  onFetchPuantajData(newFilters.startDate, newFilters.endDate);
+                }} 
                 className={commonInputClass} 
               />
               <button onClick={() => setDateRange('default')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Varsayılan</button>

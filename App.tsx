@@ -368,17 +368,8 @@ export default function App() {
       setDefterNotes(data.defterNotes);
       setWorkDays(data.workDays);
       
-      // Puantaj Kayıtları veri dönüşümü
-      const normalizedPuantajKayitlari: PuantajKayitlari[] = (data.puantajKayitlari || []).map((p: any) => ({
-        kayitId: p.kayitId ?? p.KayitId ?? p.id,
-        personelId: p.personelId ?? p.PersonelId ?? p.personnelId,
-        musteriIsId: p.musteriIsId ?? p.MusteriIsId ?? p.customerJobId,
-        tarih: p.tarih ?? p.Tarih ?? p.date,
-        gunlukUcret: Number(p.gunlukUcret ?? p.GunlukUcret ?? p.dailyWage ?? 0) || 0,
-        konum: p.konum ?? p.Konum ?? p.location,
-        isTanimi: p.isTanimi ?? p.IsTanimi ?? p.jobDescription,
-      }));
-      setPuantajKayitlari(normalizedPuantajKayitlari);
+      // Puantaj verilerini ayrı olarak çek
+      await fetchPuantajData();
     } catch (error) {
       console.error("API'den veri çekerken hata:", error);
     } finally {
@@ -652,8 +643,9 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
       konum: data.konum || null,
       isTanimi: data.isTanimi || null,
     };
-    const saved = await apiRequest('/Puantaj', 'POST', body);
-    setPuantajKayitlari(prev => [...prev, saved]);
+    await apiRequest('/Puantaj', 'POST', body);
+    // Verileri yeniden çek
+    await fetchPuantajData();
   };
 
   const updatePuantajKaydi = async (data: PuantajKayitlari) => {
@@ -667,12 +659,50 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
       isTanimi: data.isTanimi || null,
     };
     await apiRequest(`/Puantaj/${data.kayitId}`, 'PUT', body);
-    setPuantajKayitlari(prev => prev.map(k => k.kayitId === data.kayitId ? data : k));
+    // Verileri yeniden çek
+    await fetchPuantajData();
   };
 
   const deletePuantajKaydi = async (kayitId: number) => {
     await apiRequest(`/Puantaj/${kayitId}`, 'DELETE');
-    setPuantajKayitlari(prev => prev.filter(k => k.kayitId !== kayitId));
+    // Verileri yeniden çek
+    await fetchPuantajData();
+  };
+
+  // Puantaj verilerini ayrı olarak çekme fonksiyonu
+  const fetchPuantajData = async (startDate?: string, endDate?: string) => {
+    try {
+      let url = '/Puantaj';
+      const params = new URLSearchParams();
+      
+      if (startDate) {
+        params.append('startDate', startDate);
+      }
+      if (endDate) {
+        params.append('endDate', endDate);
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      const data = await apiRequest(url);
+      console.log('🔍 Backend\'den gelen puantaj verileri:', data);
+      
+      const normalizedPuantajKayitlari: PuantajKayitlari[] = (data || []).map((p: any) => ({
+        kayitId: p.kayitId ?? p.KayitId ?? p.id,
+        personelId: p.personelId ?? p.PersonelId ?? p.personnelId,
+        musteriIsId: p.musteriIsId ?? p.MusteriIsId ?? p.customerJobId,
+        tarih: p.tarih ?? p.Tarih ?? p.date,
+        gunlukUcret: Number(p.gunlukUcret ?? p.GunlukUcret ?? p.dailyWage ?? 0) || 0,
+        konum: p.konum ?? p.Konum ?? p.location,
+        isTanimi: p.isTanimi ?? p.IsTanimi ?? p.jobDescription,
+      }));
+      
+      setPuantajKayitlari(normalizedPuantajKayitlari);
+    } catch (error) {
+      console.error("Puantaj verilerini çekerken hata:", error);
+    }
   };
   
   const addUser = async (data: Omit<User, 'id'>) => {
@@ -1017,6 +1047,7 @@ const permanentlyDeleteSharedExpense = async (expenseId: number) => {
                     onAddPuantajKaydi={addPuantajKaydi}
                     onUpdatePuantajKaydi={updatePuantajKaydi}
                     onDeletePuantajKaydi={deletePuantajKaydi}
+                    onFetchPuantajData={fetchPuantajData}
                   />
                 )}
                 {currentView === 'admin' && (
