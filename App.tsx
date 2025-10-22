@@ -8,6 +8,7 @@ import LoadingSpinner from './components/ui/LoadingSpinner';
 
 // Bileşenleri lazy load ederek performansı artırıyoruz
 const PersonnelView = lazy(() => import('./components/PersonnelView'));
+const PuantajView = lazy(() => import('./components/PuantajView'));
 const ReportView = lazy(() => import('./components/ReportView'));
 const AdminView = lazy(() => import('./components/AdminView'));
 const CustomerView = lazy(() => import('./components/CustomerView'));
@@ -414,7 +415,7 @@ export default function App() {
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(user));
       await fetchAllData(); 
-      if (user.email === 'baris') setCurrentView('personnel');
+      if (user.email === 'baris') setCurrentView('timesheet');
       else setCurrentView('customers');
       return true;
     } catch (error: any) {
@@ -981,15 +982,11 @@ const permanentlyDeleteSharedExpense = async (expenseId: number) => {
                     customers={customers}
                     customerJobs={customerJobs}
                     personnelPayments={personnelPayments}
-                    puantajKayitlari={puantajKayitlari}
                     onAddPersonnel={addPersonnel}
                     onUpdatePersonnel={updatePersonnel}
                     onDeletePersonnel={deletePersonnel}
                     onAddPersonnelPayment={addPersonnelPayment}
                     onDeletePersonnelPayment={deletePersonnelPayment}
-                    onAddPuantajKaydi={addPuantajKaydi}
-                    onUpdatePuantajKaydi={updatePuantajKaydi}
-                    onDeletePuantajKaydi={deletePuantajKaydi}
                     navigateToId={navigateToItem?.view === 'personnel' ? navigateToItem.id : null}
                     onNavigationComplete={handleNavigationComplete}
                   />
@@ -1008,6 +1005,18 @@ const permanentlyDeleteSharedExpense = async (expenseId: number) => {
                       onDeleteCustomerJob={deleteCustomerJob}
                       navigateToId={navigateToItem?.view === 'customers' ? navigateToItem.id : null}
                       onNavigationComplete={handleNavigationComplete}
+                  />
+                )}
+                {currentView === 'timesheet' && (
+                  <PuantajView
+                    currentUser={currentUser}
+                    personnel={personnel}
+                    customers={customers}
+                    customerJobs={customerJobs}
+                    puantajKayitlari={puantajKayitlari}
+                    onAddPuantajKaydi={addPuantajKaydi}
+                    onUpdatePuantajKaydi={updatePuantajKaydi}
+                    onDeletePuantajKaydi={deletePuantajKaydi}
                   />
                 )}
                 {currentView === 'admin' && (

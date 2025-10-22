@@ -17,8 +17,9 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, currentUser, isOpen }) => {
   const navItems = [
-    { id: 'personnel', label: 'Puantaj', icon: CalendarDaysIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
+    { id: 'personnel', label: 'Personel Yönetimi', icon: UsersIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
     { id: 'customers', label: 'Müşteriler', icon: BuildingOffice2Icon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
+    { id: 'timesheet', label: 'Puantaj', icon: CalendarDaysIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
     { id: 'kasa', label: 'Kasa', icon: BanknotesIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
     { id: 'reports', label: 'Raporlar', icon: ChartBarIcon, roles: [Role.SUPER_ADMIN, Role.VIEWER] },
     { id: 'admin', label: 'Admin Paneli', icon: CogIcon, roles: [Role.SUPER_ADMIN] },
@@ -26,7 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, currentU
 
   const visibleNavItems = navItems.filter(item => {
     if (currentUser.email === 'baris') {
-      return item.id === 'personnel';
+      return item.id === 'timesheet';
     }
     return item.roles.includes(currentUser.role);
   });
