@@ -247,6 +247,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
     }, []);
 
     useEffect(() => {
+        // Sadece görünüm modu değiştiğinde seçimi sıfırla
         setSelectedId(null);
         setSearchQuery('');
     }, [viewMode]);
@@ -387,12 +388,28 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
 
     const filteredPersonnel = useMemo(() => {
         let filtered = personnel;
+        
+        // Eğer personel görünüm modunda bir iş seçilmişse, sadece o işe atanmış personelleri göster
+        if (viewMode === 'personnel') {
+            // Önce seçilen öğenin iş olup olmadığını kontrol et
+            const selectedJob = customerJobs.find(j => j.id === selectedId);
+            if (selectedJob) {
+                const personnelInSelectedJob = new Set<string>();
+                filteredWorkDays.forEach(wd => {
+                    if (wd.customerJobId === selectedJob.id) {
+                        personnelInSelectedJob.add(wd.personnelId);
+                    }
+                });
+                filtered = personnel.filter(p => personnelInSelectedJob.has(p.id));
+            }
+        }
+        
         if (searchQuery) {
-            filtered = personnel.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+            filtered = filtered.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
         }
         // En yeni kayıtlar üstte olacak şekilde ID'ye göre sırala
         return filtered.sort((a, b) => b.id - a.id);
-    }, [personnel, searchQuery]);
+    }, [personnel, searchQuery, selectedId, viewMode, customerJobs, filteredWorkDays]);
     
     const jobsByCustomer = useMemo(() => {
         const grouped: { [key: string]: { customer: Customer, jobs: CustomerJob[] } } = {};
@@ -512,11 +529,59 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
                             })}
                         </div>
                     )}
-                    {viewMode === 'personnel' && <ul>{filteredPersonnel.map(p => (
-                        <li key={p.id}><button onClick={() => setSelectedId(p.id)} className={`w-full text-left p-3 transition-colors ${selectedId === p.id ? 'bg-blue-100 border-l-4 border-blue-500' : 'hover:bg-gray-100'}`}>
-                            <p className="font-semibold text-gray-800">{p.name}</p>
-                        </button></li>
-                    ))}</ul>}
+                    {viewMode === 'personnel' && (
+                        <div className="space-y-1 p-2">
+                            {jobsByCustomer.map(({ customer, jobs }) => {
+                                const isOpen = openAccordions.has(customer.id);
+                                return (
+                                    <div key={customer.id}>
+                                        <button onClick={() => toggleAccordion(customer.id)} className="w-full flex justify-between items-center p-3 bg-gray-100 hover:bg-gray-200 text-left rounded-md transition-colors">
+                                            <span className="font-bold text-gray-800">{customer.name}</span>
+                                            {isOpen ? <ChevronUpIcon className="h-5 w-5 text-gray-500" /> : <ChevronDownIcon className="h-5 w-5 text-gray-500" />}
+                                        </button>
+                                        {isOpen && (
+                                            <ul className="pl-4 pt-1">
+                                                {jobs.map(job => (
+                                                    <li key={job.id}>
+                                                        <button onClick={() => setSelectedId(job.id)} className={`w-full text-left p-3 transition-colors rounded-md ${selectedId === job.id ? 'bg-blue-100 border-l-4 border-blue-500' : 'hover:bg-gray-50'}`}>
+                                                            <div className="flex justify-between items-start">
+                                                                <span className="font-semibold text-gray-800 pr-2">{job.location}</span>
+                                                                <span className="text-xs text-gray-500 flex-shrink-0">{formatDate(job.date)}</span>
+                                                            </div>
+                                                            <p className="text-xs text-gray-500 mt-1 truncate">{job.description}</p>
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-2 px-3">
+                                    {selectedId && customerJobs.find(j => j.id === selectedId) 
+                                        ? "Bu İşe Atanmış Personeller" 
+                                        : "Tüm Personeller"}
+                                </h4>
+                                <ul>
+                                    {filteredPersonnel.map(p => (
+                                        <li key={p.id}>
+                                            <button onClick={() => setSelectedId(p.id)} className={`w-full text-left p-3 transition-colors ${selectedId === p.id ? 'bg-blue-100 border-l-4 border-blue-500' : 'hover:bg-gray-100'}`}>
+                                                <p className="font-semibold text-gray-800">{p.name}</p>
+                                            </button>
+                                        </li>
+                                    ))}
+                                    {filteredPersonnel.length === 0 && (
+                                        <li className="p-3 text-center text-sm text-gray-500 bg-gray-50 rounded-md">
+                                            {selectedId && customerJobs.find(j => j.id === selectedId) 
+                                                ? "Bu işe atanmış personel bulunmamaktadır."
+                                                : "Personel bulunmamaktadır."}
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="w-full md:w-2/3 lg:w-3/4 space-y-4">
