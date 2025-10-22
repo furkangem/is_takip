@@ -275,7 +275,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
         
         setIsDownloadingPdf(true);
         try {
-            const apiUrl = `/api/proxy/Puantaj/report/pdf?startDate=${startDate}&endDate=${endDate}`;
+            const apiUrl = `/Puantaj/report/pdf?startDate=${startDate}&endDate=${endDate}`;
             
             const response = await fetch(apiUrl);
             

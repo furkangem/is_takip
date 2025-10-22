@@ -158,7 +158,7 @@ const PuantajView: React.FC<PuantajViewProps> = ({
       });
 
       // Backend endpoint'ini kontrol et
-      const response = await fetch(`/api/proxy/Puantaj/report/pdf?${params}`);
+      const response = await fetch(`/Puantaj/report/pdf?${params}`);
       
       if (!response.ok) {
         throw new Error(`PDF oluşturulurken hata oluştu: ${response.status} ${response.statusText}`);
