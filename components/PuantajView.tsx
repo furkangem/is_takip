@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Personnel, User, Role, CustomerJob, Customer, PuantajKayitlari } from '../types';
-import { CalendarDaysIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ClipboardDocumentListIcon, BuildingOffice2Icon, UserGroupIcon, CheckIcon } from './icons/Icons';
+import { CalendarDaysIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ClipboardDocumentListIcon, BuildingOffice2Icon, UserGroupIcon, DocumentCheckIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 
 const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
@@ -363,7 +363,7 @@ const PuantajView: React.FC<PuantajViewProps> = ({
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <CheckIcon className="h-5 w-5 text-green-600 mr-2" />
+                      <DocumentCheckIcon className="h-5 w-5 text-green-600 mr-2" />
                       <div>
                         <p className="font-medium text-green-800">Müşteriden Gelen Ödeme</p>
                         <div className="flex items-center text-sm text-green-600">
