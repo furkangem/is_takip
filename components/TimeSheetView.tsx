@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { CustomerJob, Personnel, WorkDay, Customer } from '../types';
 import { BriefcaseIcon, UsersIcon, MagnifyingGlassIcon, ChevronDownIcon, ChevronUpIcon, CalendarDaysIcon, TrendingUpIcon, DocumentArrowDownIcon } from './icons/Icons';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import { NotoSansRegular } from '../utils/noto-sans-tr';
+// import jsPDF from 'jspdf';
+// import 'jspdf-autotable';
+// import { NotoSansRegular } from '../utils/noto-sans-tr';
 
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
@@ -222,6 +222,7 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());
+    const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
     const formatDateForInput = (date: Date): string => {
         const year = date.getFullYear();
@@ -269,76 +270,106 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
         });
     }, [workDays, startDate, endDate]);
 
-    const generatePdf = () => {
-        const personnelData = filteredWorkDays.reduce((acc, wd) => {
-            let entry = acc.get(wd.personnelId);
-            if (!entry) {
-                const person = personnel.find(p => p.id === wd.personnelId);
-                if (person) {
-                    entry = { name: person.name, days: 0, earnings: 0 };
-                    acc.set(wd.personnelId, entry);
-                }
+    const downloadPdfReport = async () => {
+        if (isDownloadingPdf) return;
+        
+        setIsDownloadingPdf(true);
+        try {
+            const apiUrl = `/api/proxy/Puantaj/report/pdf?startDate=${startDate}&endDate=${endDate}`;
+            
+            const response = await fetch(apiUrl);
+            
+            if (!response.ok) {
+                throw new Error(`PDF oluşturulurken hata oluştu: ${response.status} ${response.statusText}`);
             }
-            if (entry) {
-                entry.days += 1;
-                entry.earnings += wd.wage;
-            }
-            return acc;
-        // FIX: Explicitly typed the new Map() to resolve 'unknown' type on 'data' in the subsequent .map() call.
-        }, new Map<string, { name: string; days: number; earnings: number }>());
 
-        const puantajVerisi = Array.from(personnelData.values())
-            .map((data: { name: string; days: number; earnings: number }, index) => ({
-                id: index + 1,
-                ad: data.name,
-                gun: data.days,
-                toplam: data.earnings
-            }))
-            .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
-
-        if (puantajVerisi.length === 0) {
-            alert("Rapor oluşturmak için seçilen tarih aralığında veri bulunamadı.");
-            return;
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Puantaj_Raporu_${startDate}_${endDate}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('PDF indirme hatası:', error);
+            alert(`PDF indirilirken hata oluştu: ${error.message}`);
+        } finally {
+            setIsDownloadingPdf(false);
         }
-
-        const doc = new jsPDF();
-
-        doc.addFileToVFS('NotoSans-Regular.ttf', NotoSansRegular);
-        doc.addFont('NotoSans-Regular.ttf', 'NotoSans-Regular', 'normal');
-        doc.setFont('NotoSans-Regular', 'normal');
-
-        doc.setFontSize(18);
-        doc.text("Aylık Puantaj Raporu", 14, 22);
-        doc.setFontSize(11);
-        doc.setTextColor(100);
-        const dateRangeText = `Tarih Aralığı: ${formatDate(startDate)} - ${formatDate(endDate)}`;
-        doc.text(dateRangeText, 14, 29);
-
-        const head = [["ID", "Personel Adı", "Çalışma Günü", "Toplam Hakediş"]];
-        const body = puantajVerisi.map(p => [
-            p.id,
-            p.ad,
-            p.gun,
-            formatCurrency(p.toplam)
-        ]);
-
-        (doc as any).autoTable({
-            head: head,
-            body: body,
-            startY: 35,
-            styles: {
-                font: 'NotoSans-Regular',
-                fontStyle: 'normal'
-            },
-            headStyles: {
-                font: 'NotoSans-Regular',
-                fontStyle: 'normal',
-                fillColor: [41, 128, 185]
-            }
-        });
-
-        doc.save('puantaj-raporu.pdf');
     };
+
+    // const generatePdf = () => {
+    //     const personnelData = filteredWorkDays.reduce((acc, wd) => {
+    //         let entry = acc.get(wd.personnelId);
+    //         if (!entry) {
+    //             const person = personnel.find(p => p.id === wd.personnelId);
+    //             if (person) {
+    //                 entry = { name: person.name, days: 0, earnings: 0 };
+    //                 acc.set(wd.personnelId, entry);
+    //             }
+    //         }
+    //         if (entry) {
+    //             entry.days += 1;
+    //             entry.earnings += wd.wage;
+    //         }
+    //         return acc;
+    //     // FIX: Explicitly typed the new Map() to resolve 'unknown' type on 'data' in the subsequent .map() call.
+    //     }, new Map<string, { name: string; days: number; earnings: number }>());
+
+    //     const puantajVerisi = Array.from(personnelData.values())
+    //         .map((data: { name: string; days: number; earnings: number }, index) => ({
+    //             id: index + 1,
+    //             ad: data.name,
+    //             gun: data.days,
+    //             toplam: data.earnings
+    //         }))
+    //         .sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+
+    //     if (puantajVerisi.length === 0) {
+    //         alert("Rapor oluşturmak için seçilen tarih aralığında veri bulunamadı.");
+    //         return;
+    //     }
+
+    //     const doc = new jsPDF();
+
+    //     doc.addFileToVFS('NotoSans-Regular.ttf', NotoSansRegular);
+    //     doc.addFont('NotoSans-Regular.ttf', 'NotoSans-Regular', 'normal');
+    //     doc.setFont('NotoSans-Regular', 'normal');
+
+    //     doc.setFontSize(18);
+    //     doc.text("Aylık Puantaj Raporu", 14, 22);
+    //     doc.setFontSize(11);
+    //     doc.setTextColor(100);
+    //     const dateRangeText = `Tarih Aralığı: ${formatDate(startDate)} - ${formatDate(endDate)}`;
+    //     doc.text(dateRangeText, 14, 29);
+
+    //     const head = [["ID", "Personel Adı", "Çalışma Günü", "Toplam Hakediş"]];
+    //     const body = puantajVerisi.map(p => [
+    //         p.id,
+    //         p.ad,
+    //         p.gun,
+    //         formatCurrency(p.toplam)
+    //     ]);
+
+    //     (doc as any).autoTable({
+    //         head: head,
+    //         body: body,
+    //         startY: 35,
+    //         styles: {
+    //             font: 'NotoSans-Regular',
+    //             fontStyle: 'normal'
+    //         },
+    //         headStyles: {
+    //             font: 'NotoSans-Regular',
+    //             fontStyle: 'normal',
+    //             fillColor: [41, 128, 185]
+    //         }
+    //     });
+
+    //     doc.save('puantaj-raporu.pdf');
+    // };
 
 
     const filteredJobs = useMemo(() => customerJobs.filter(j => {
@@ -510,9 +541,13 @@ const TimeSheetView: React.FC<TimeSheetViewProps> = ({ personnel, customers, cus
                         </button>
                     </div>
                      <div>
-                        <button onClick={generatePdf} className="w-full flex items-center justify-center bg-green-600 text-white font-bold py-2 px-4 rounded-md shadow-sm hover:bg-green-700 transition-colors">
+                        <button 
+                            onClick={downloadPdfReport} 
+                            disabled={isDownloadingPdf}
+                            className="w-full flex items-center justify-center bg-green-600 text-white font-bold py-2 px-4 rounded-md shadow-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
-                            <span>PDF Raporu İndir</span>
+                            <span>{isDownloadingPdf ? 'İndiriliyor...' : 'PDF Raporu İndir'}</span>
                         </button>
                     </div>
                 </div>
