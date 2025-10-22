@@ -1,183 +1,12 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Personnel, User, Role, CustomerJob, Customer, PuantajKayitlari } from '../types';
-import { CalendarDaysIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ClipboardDocumentListIcon } from './icons/Icons';
+import { CalendarDaysIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon, ClipboardDocumentListIcon, BuildingOffice2Icon, UserGroupIcon, CheckIcon } from './icons/Icons';
 import StatCard from './ui/StatCard';
 
 const ConfirmationModal = lazy(() => import('./ui/ConfirmationModal'));
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(value);
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' });
-
-const AddPuantajModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (kayit: PuantajKayitlari | Omit<PuantajKayitlari, 'kayitId'>) => void;
-    personnel: Personnel[];
-    customerJobs: CustomerJob[];
-    kayitToEdit: PuantajKayitlari | null;
-}> = ({ isOpen, onClose, onSave, personnel, customerJobs, kayitToEdit }) => {
-    const [personelId, setPersonelId] = useState<string>('');
-    const [musteriIsId, setMusteriIsId] = useState<string>('');
-    const [tarih, setTarih] = useState<string>('');
-    const [gunlukUcret, setGunlukUcret] = useState<string>('');
-    const [konum, setKonum] = useState<string>('');
-    const [isTanimi, setIsTanimi] = useState<string>('');
-
-    useEffect(() => {
-        if (isOpen) {
-            if (kayitToEdit) {
-                setPersonelId(kayitToEdit.personelId.toString());
-                setMusteriIsId(kayitToEdit.musteriIsId.toString());
-                setTarih(kayitToEdit.tarih.split('T')[0]);
-                setGunlukUcret(kayitToEdit.gunlukUcret.toString());
-                setKonum(kayitToEdit.konum || '');
-                setIsTanimi(kayitToEdit.isTanimi || '');
-            } else {
-                setPersonelId('');
-                setMusteriIsId('');
-                setTarih(new Date().toISOString().split('T')[0]);
-                setGunlukUcret('');
-                setKonum('');
-                setIsTanimi('');
-            }
-        }
-    }, [isOpen, kayitToEdit]);
-
-    if (!isOpen) return null;
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        if (!personelId || !musteriIsId || !tarih || !gunlukUcret) {
-            alert('Personel, iş, tarih ve günlük ücret alanları zorunludur!');
-            return;
-        }
-        
-        const numericUcret = parseFloat(gunlukUcret);
-        if (isNaN(numericUcret) || numericUcret < 0) {
-            alert('Günlük ücret geçerli bir sayı olmalıdır!');
-            return;
-        }
-
-        const kayitData = {
-            personelId: parseInt(personelId),
-            musteriIsId: parseInt(musteriIsId),
-            tarih: new Date(tarih).toISOString(),
-            gunlukUcret: numericUcret,
-            konum: konum.trim() || undefined,
-            isTanimi: isTanimi.trim() || undefined,
-        };
-        
-        if (kayitToEdit) {
-            onSave({ ...kayitToEdit, ...kayitData });
-        } else {
-            onSave(kayitData);
-        }
-        onClose();
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                        {kayitToEdit ? 'Puantaj Kaydını Düzenle' : 'Yeni Puantaj Kaydı Ekle'}
-                    </h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                        <XMarkIcon className="h-6 w-6" />
-                    </button>
-                </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div>
-                        <label htmlFor="personel-id" className="block text-sm font-medium text-gray-700">Personel</label>
-                        <select
-                            id="personel-id"
-                            value={personelId}
-                            onChange={(e) => setPersonelId(e.target.value)}
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            required
-                        >
-                            <option value="">Personel Seçin</option>
-                            {personnel.map(person => (
-                                <option key={person.id} value={person.id}>{person.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="musteri-is-id" className="block text-sm font-medium text-gray-700">İş</label>
-                        <select
-                            id="musteri-is-id"
-                            value={musteriIsId}
-                            onChange={(e) => setMusteriIsId(e.target.value)}
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            required
-                        >
-                            <option value="">İş Seçin</option>
-                            {customerJobs.map(job => (
-                                <option key={job.id} value={job.id}>{job.location} - {job.description}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="tarih" className="block text-sm font-medium text-gray-700">Tarih</label>
-                        <input
-                            type="date"
-                            id="tarih"
-                            value={tarih}
-                            onChange={(e) => setTarih(e.target.value)}
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="gunluk-ucret" className="block text-sm font-medium text-gray-700">Günlük Ücret (₺)</label>
-                        <input
-                            type="number"
-                            id="gunluk-ucret"
-                            value={gunlukUcret}
-                            onChange={(e) => setGunlukUcret(e.target.value)}
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            required
-                            placeholder="Örn: 500"
-                            min="0"
-                            step="0.01"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="konum" className="block text-sm font-medium text-gray-700">Konum (Opsiyonel)</label>
-                        <input
-                            type="text"
-                            id="konum"
-                            value={konum}
-                            onChange={(e) => setKonum(e.target.value)}
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Çalışma konumu"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="is-tanimi" className="block text-sm font-medium text-gray-700">İş Tanımı (Opsiyonel)</label>
-                        <textarea
-                            id="is-tanimi"
-                            value={isTanimi}
-                            onChange={(e) => setIsTanimi(e.target.value)}
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            rows={3}
-                            placeholder="Yapılan işin detayları"
-                        />
-                    </div>
-                    <div className="mt-6 flex justify-end gap-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                            İptal
-                        </button>
-                        <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                            Kaydet
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
 
 interface PuantajViewProps {
   currentUser: User;
@@ -202,10 +31,9 @@ const PuantajView: React.FC<PuantajViewProps> = ({
   onDeletePuantajKaydi,
   onFetchPuantajData
 }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [kayitToEdit, setKayitToEdit] = useState<PuantajKayitlari | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [kayitToDelete, setKayitToDelete] = useState<PuantajKayitlari | null>(null);
+  const [viewMode, setViewMode] = useState<'job' | 'personnel'>('job');
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [selectedPersonnelId, setSelectedPersonnelId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({ startDate: '', endDate: '' });
 
@@ -221,8 +49,9 @@ const PuantajView: React.FC<PuantajViewProps> = ({
     }
   }, []);
 
-  const filteredPuantaj = useMemo(() => {
-    let filtered = puantajKayitlari;
+  // İş listesini filtrele
+  const filteredJobs = useMemo(() => {
+    let jobs = customerJobs;
     
     // Tarih filtresi
     const start = filters.startDate ? new Date(filters.startDate) : null;
@@ -230,70 +59,81 @@ const PuantajView: React.FC<PuantajViewProps> = ({
     const end = filters.endDate ? new Date(filters.endDate) : null;
     if(end) end.setHours(23,59,59,999);
 
-    filtered = filtered.filter(kayit => {
-      const kayitTarih = new Date(kayit.tarih);
-      if(start && kayitTarih < start) return false;
-      if(end && kayitTarih > end) return false;
+    jobs = jobs.filter(job => {
+      const jobDate = new Date(job.date);
+      if(start && jobDate < start) return false;
+      if(end && jobDate > end) return false;
       return true;
     });
 
     // Arama filtresi
     if (searchQuery) {
-      filtered = filtered.filter(kayit => {
-        const person = personnel.find(p => p.id === kayit.personelId);
-        const job = customerJobs.find(j => j.id === kayit.musteriIsId);
-        const customer = customers.find(c => c.id === job?.customerId);
-        
+      jobs = jobs.filter(job => {
+        const customer = customers.find(c => c.id === job.customerId);
         return (
-          person?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job?.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          customer?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          kayit.konum?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          kayit.isTanimi?.toLowerCase().includes(searchQuery.toLowerCase())
+          job.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          job.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          customer?.name.toLowerCase().includes(searchQuery.toLowerCase())
         );
       });
     }
 
-    return filtered.sort((a, b) => new Date(b.tarih).getTime() - new Date(a.tarih).getTime());
-  }, [puantajKayitlari, filters, searchQuery, personnel, customerJobs, customers]);
+    // Müşteriye göre grupla
+    const groupedJobs = jobs.reduce((acc, job) => {
+      const customer = customers.find(c => c.id === job.customerId);
+      const customerName = customer?.name || 'Bilinmeyen Müşteri';
+      
+      if (!acc[customerName]) {
+        acc[customerName] = [];
+      }
+      acc[customerName].push(job);
+      return acc;
+    }, {} as Record<string, CustomerJob[]>);
 
-  const handleOpenAddModal = () => { 
-    setKayitToEdit(null); 
-    setIsModalOpen(true); 
-  };
+    return groupedJobs;
+  }, [customerJobs, filters, searchQuery, customers]);
 
-  const handleOpenEditModal = (kayit: PuantajKayitlari) => { 
-    setKayitToEdit(kayit); 
-    setIsModalOpen(true); 
-  };
+  // Personel listesini filtrele
+  const filteredPersonnel = useMemo(() => {
+    let personel = personnel;
 
-  const handleOpenDeleteModal = (kayit: PuantajKayitlari) => { 
-    setKayitToDelete(kayit); 
-    setIsDeleteModalOpen(true); 
-  };
-
-  const handleConfirmDelete = () => {
-    if (kayitToDelete) {
-        onDeletePuantajKaydi(kayitToDelete.kayitId);
-        setIsDeleteModalOpen(false);
-        setKayitToDelete(null);
+    // Arama filtresi
+    if (searchQuery) {
+      personel = personel.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
-  };
 
-  const handleSave = (data: PuantajKayitlari | Omit<PuantajKayitlari, 'kayitId'>) => {
-    if ('kayitId' in data) {
-      onUpdatePuantajKaydi(data);
-    } else {
-      onAddPuantajKaydi(data);
-    }
-  };
+    return personel.sort((a, b) => a.name.localeCompare(b.name));
+  }, [personnel, searchQuery]);
+
+  // Seçilen işin detayları
+  const selectedJob = useMemo(() => {
+    if (!selectedJobId) return null;
+    return customerJobs.find(job => job.id === selectedJobId);
+  }, [selectedJobId, customerJobs]);
+
+  // Seçilen personelin detayları
+  const selectedPersonnel = useMemo(() => {
+    if (!selectedPersonnelId) return null;
+    return personnel.find(p => p.id === selectedPersonnelId);
+  }, [selectedPersonnelId, personnel]);
+
+  // Seçilen işe ait puantaj kayıtları
+  const jobPuantajRecords = useMemo(() => {
+    if (!selectedJobId) return [];
+    
+    return puantajKayitlari.filter(kayit => kayit.musteriIsId === selectedJobId);
+  }, [selectedJobId, puantajKayitlari]);
+
+  // Seçilen personelin puantaj kayıtları
+  const personnelPuantajRecords = useMemo(() => {
+    if (!selectedPersonnelId) return [];
+    
+    return puantajKayitlari.filter(kayit => kayit.personelId === selectedPersonnelId);
+  }, [selectedPersonnelId, puantajKayitlari]);
 
   const handleDownloadPdf = async () => {
-    if (filteredPuantaj.length === 0) {
-      alert('İndirilecek puantaj kaydı bulunmuyor.');
-      return;
-    }
-
     try {
       const startDate = filters.startDate || new Date('2023-01-01').toISOString().split('T')[0];
       const endDate = filters.endDate || new Date().toISOString().split('T')[0];
@@ -301,13 +141,14 @@ const PuantajView: React.FC<PuantajViewProps> = ({
       const params = new URLSearchParams({
         startDate,
         endDate,
-        groupBy: 'personel'
+        groupBy: viewMode === 'job' ? 'is' : 'personel'
       });
 
-      const response = await fetch(`/api/puantaj/report/pdf?${params}`);
+      // Backend endpoint'ini kontrol et
+      const response = await fetch(`/api/proxy/Puantaj/report/pdf?${params}`);
       
       if (!response.ok) {
-        throw new Error('PDF oluşturulurken hata oluştu');
+        throw new Error(`PDF oluşturulurken hata oluştu: ${response.status} ${response.statusText}`);
       }
 
       const blob = await response.blob();
@@ -321,7 +162,7 @@ const PuantajView: React.FC<PuantajViewProps> = ({
       document.body.removeChild(a);
     } catch (error) {
       console.error('PDF indirme hatası:', error);
-      alert('PDF indirilirken hata oluştu. Lütfen tekrar deneyin.');
+      alert(`PDF indirilirken hata oluştu: ${error.message}`);
     }
   };
 
@@ -360,201 +201,268 @@ const PuantajView: React.FC<PuantajViewProps> = ({
   const isEditable = currentUser.role === Role.SUPER_ADMIN;
   const commonInputClass = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-100 text-gray-900 focus:ring-blue-500 focus:border-blue-500";
 
-  // İstatistikler
-  const stats = useMemo(() => {
-    const totalDays = filteredPuantaj.length;
-    const totalEarnings = filteredPuantaj.reduce((sum, kayit) => sum + kayit.gunlukUcret, 0);
-    const uniquePersonnel = new Set(filteredPuantaj.map(k => k.personelId)).size;
-    
-    return { totalDays, totalEarnings, uniquePersonnel };
-  }, [filteredPuantaj]);
-
   return (
     <>
-      <div className="space-y-6">
-        {/* Başlık ve İstatistikler */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-3xl font-bold text-gray-800 flex items-center">
-                <CalendarDaysIcon className="h-8 w-8 mr-3 text-blue-600"/>
-                Puantaj Yönetimi
-              </h2>
-              <p className="text-gray-500 text-sm mt-1">Personel çalışma kayıtları ve raporları</p>
+      <div className="flex flex-col h-full">
+        {/* Üst Filtreler ve Butonlar */}
+        <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            {/* Görünüm Modu Butonları */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('job')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewMode === 'job'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <BuildingOffice2Icon className="h-4 w-4 inline mr-2" />
+                İş'e Göre
+              </button>
+              <button
+                onClick={() => setViewMode('personnel')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewMode === 'personnel'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <UserGroupIcon className="h-4 w-4 inline mr-2" />
+                Personel'e Göre
+              </button>
             </div>
-            {isEditable && (
-              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                <button 
-                  onClick={handleOpenAddModal} 
-                  className="flex items-center text-sm font-medium text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg shadow-sm transition-colors"
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Puantaj Ekle
-                </button>
-                <button 
-                  onClick={handleDownloadPdf} 
-                  className="flex items-center text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg shadow-sm transition-colors"
-                  disabled={filteredPuantaj.length === 0}
-                >
-                  <ClipboardDocumentListIcon className="h-4 w-4 mr-2" />
-                  PDF İndir
-                </button>
+
+            {/* Tarih Filtreleri */}
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center gap-2">
+                <CalendarDaysIcon className="h-4 w-4 text-gray-500" />
+                <input 
+                  type="date" 
+                  value={filters.startDate} 
+                  onChange={e => {
+                    const newFilters = {...filters, startDate: e.target.value};
+                    setFilters(newFilters);
+                    onFetchPuantajData(newFilters.startDate, newFilters.endDate);
+                  }} 
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <CalendarDaysIcon className="h-4 w-4 text-gray-500" />
+                <input 
+                  type="date" 
+                  value={filters.endDate} 
+                  onChange={e => {
+                    const newFilters = {...filters, endDate: e.target.value};
+                    setFilters(newFilters);
+                    onFetchPuantajData(newFilters.startDate, newFilters.endDate);
+                  }} 
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+              </div>
+            </div>
+
+            {/* PDF İndirme Butonu */}
+            <button 
+              onClick={handleDownloadPdf} 
+              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ClipboardDocumentListIcon className="h-4 w-4 mr-2" />
+              PDF Raporu İndir
+            </button>
           </div>
         </div>
 
-        {/* İstatistik Kartları */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <StatCard title="Toplam Çalışma Günü" value={stats.totalDays.toString()} icon={CalendarDaysIcon} color="blue" />
-          <StatCard title="Toplam Hakediş" value={formatCurrency(stats.totalEarnings)} icon={ClipboardDocumentListIcon} color="green" />
-          <StatCard title="Çalışan Personel" value={stats.uniquePersonnel.toString()} icon={CalendarDaysIcon} color="purple" />
-        </div>
-
-        {/* Filtreler */}
-        <div className="bg-white p-4 rounded-lg shadow-md space-y-4">
-          <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-            <h3 className="text-lg font-semibold text-gray-800">Puantaj Kayıtları</h3>
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 items-end">
-              <input 
-                type="date" 
-                value={filters.startDate} 
-                onChange={e => {
-                  const newFilters = {...filters, startDate: e.target.value};
-                  setFilters(newFilters);
-                  onFetchPuantajData(newFilters.startDate, newFilters.endDate);
-                }} 
-                className={commonInputClass} 
-              />
-              <input 
-                type="date" 
-                value={filters.endDate} 
-                onChange={e => {
-                  const newFilters = {...filters, endDate: e.target.value};
-                  setFilters(newFilters);
-                  onFetchPuantajData(newFilters.startDate, newFilters.endDate);
-                }} 
-                className={commonInputClass} 
-              />
-              <button onClick={() => setDateRange('default')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Varsayılan</button>
-              <button onClick={() => setDateRange('this_month')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Bu Ay</button>
-              <button onClick={() => setDateRange('all')} className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Tümü</button>
-            </div>
-          </div>
-          
-          {/* Arama */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input 
-              type="text" 
-              placeholder="Personel, iş, müşteri veya konum ara..." 
-              value={searchQuery} 
-              onChange={(e) => setSearchQuery(e.target.value)} 
-              className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Puantaj Listesi */}
-          <div className="bg-gray-50 rounded-lg border flex-1 overflow-y-auto min-h-[400px]">
-            {filteredPuantaj.length > 0 ? (
-              <ul className="divide-y divide-gray-200">
-                {filteredPuantaj.map(kayit => {
-                  const person = personnel.find(p => p.id === kayit.personelId);
-                  const job = customerJobs.find(j => j.id === kayit.musteriIsId);
-                  const customer = customers.find(c => c.id === job?.customerId);
-                  
-                  return (
-                    <li key={kayit.kayitId} className="p-4 flex justify-between items-center group hover:bg-gray-100">
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start gap-2">
-                          <p className="font-medium text-gray-800">
-                            {person?.name || 'Bilinmeyen Personel'}
-                          </p>
-                          <p className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">
-                            {formatDate(kayit.tarih)}
-                          </p>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {job ? job.location : `İş #${kayit.musteriIsId}`} - {customer?.name || 'Bilinmeyen Müşteri'}
-                        </p>
-                        {job?.description && (
-                          <p className="text-xs text-gray-500 mt-1">{job.description}</p>
-                        )}
-                        {kayit.konum && (
-                          <p className="text-xs text-blue-600 mt-1">📍 {kayit.konum}</p>
-                        )}
-                        {kayit.isTanimi && (
-                          <p className="text-xs text-gray-500 mt-1">{kayit.isTanimi}</p>
-                        )}
-                      </div>
-                      <div className="text-right flex-shrink-0 min-w-[120px]">
-                        <p className="font-bold text-lg text-green-600">
-                          {formatCurrency(kayit.gunlukUcret)}
-                        </p>
-                        {isEditable && (
-                          <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              onClick={() => handleOpenEditModal(kayit)}
-                              className="text-blue-600 hover:text-blue-800"
-                              title="Düzenle"
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleOpenDeleteModal(kayit)}
-                              className="text-red-600 hover:text-red-800"
-                              title="Sil"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <div className="p-8 text-center text-sm text-gray-500 h-full flex items-center justify-center">
-                <CalendarDaysIcon className="h-12 w-12 text-gray-300 mb-4"/>
-                <div>
-                  <p className="text-gray-500 font-medium">Puantaj Kaydı Bulunmuyor</p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    {searchQuery || filters.startDate || filters.endDate 
-                      ? "Arama kriterlerinize uygun kayıt bulunamadı." 
-                      : "Başlamak için yeni bir puantaj kaydı ekleyin."
-                    }
-                  </p>
+        {/* Ana İçerik */}
+        <div className="flex flex-col lg:flex-row gap-6 flex-1">
+          {/* Sol Panel - Liste */}
+          <div className="w-full lg:w-1/3 bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="p-4 border-b">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
                 </div>
+                <input 
+                  type="text" 
+                  placeholder="Ara..." 
+                  value={searchQuery} 
+                  onChange={(e) => setSearchQuery(e.target.value)} 
+                  className="w-full pl-10 pr-4 py-2 border rounded-md bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
+            <div className="overflow-y-auto max-h-[600px]">
+              {viewMode === 'job' ? (
+                // İş Listesi
+                Object.entries(filteredJobs).map(([customerName, jobs]) => (
+                  <div key={customerName} className="border-b">
+                    <div className="p-3 bg-gray-50 font-medium text-gray-800">
+                      {customerName}
+                    </div>
+                    {jobs.map(job => (
+                      <button
+                        key={job.id}
+                        onClick={() => {
+                          setSelectedJobId(job.id);
+                          setSelectedPersonnelId(null);
+                        }}
+                        className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
+                          selectedJobId === job.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-800">{job.location}</p>
+                            <p className="text-sm text-gray-500">{job.description}</p>
+                            <p className="text-xs text-gray-400">{formatDate(job.date)}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ))
+              ) : (
+                // Personel Listesi
+                <div>
+                  {filteredPersonnel.map(person => (
+                    <button
+                      key={person.id}
+                      onClick={() => {
+                        setSelectedPersonnelId(person.id);
+                        setSelectedJobId(null);
+                      }}
+                      className={`w-full text-left p-3 hover:bg-gray-50 transition-colors border-b ${
+                        selectedPersonnelId === person.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium text-gray-800">{person.name}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sağ Panel - Detaylar */}
+          <div className="w-full lg:w-2/3 bg-white rounded-lg shadow-md overflow-hidden">
+            {viewMode === 'job' && selectedJob ? (
+              // İş Detayları
+              <div className="p-6">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">{selectedJob.location}</h2>
+                  <p className="text-gray-600">{customers.find(c => c.id === selectedJob.customerId)?.name} - {selectedJob.description}</p>
+                </div>
+
+                {/* Müşteriden Gelen Ödeme */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <CheckIcon className="h-5 w-5 text-green-600 mr-2" />
+                      <div>
+                        <p className="font-medium text-green-800">Müşteriden Gelen Ödeme</p>
+                        <div className="flex items-center text-sm text-green-600">
+                          <CalendarDaysIcon className="h-4 w-4 mr-1" />
+                          {formatDate(selectedJob.date)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedJob.income)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Personel Puantaj ve Hakedişleri */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <UserGroupIcon className="h-5 w-5 mr-2" />
+                    Personel Puantaj ve Hakedişleri
+                  </h3>
+                  
+                  {jobPuantajRecords.length > 0 ? (
+                    <div className="space-y-3">
+                      {jobPuantajRecords.map(kayit => {
+                        const person = personnel.find(p => p.id === kayit.personelId);
+                        return (
+                          <div key={kayit.kayitId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center">
+                              <UserGroupIcon className="h-4 w-4 text-gray-500 mr-2" />
+                              <span className="font-medium text-gray-800">{person?.name || 'Bilinmeyen Personel'}</span>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-gray-800">{formatCurrency(kayit.gunlukUcret)}</p>
+                              <p className="text-xs text-gray-500">{formatDate(kayit.tarih)}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-8">Bu iş için puantaj kaydı bulunmuyor.</p>
+                  )}
+                </div>
+              </div>
+            ) : viewMode === 'personnel' && selectedPersonnel ? (
+              // Personel Detayları
+              <div className="p-6">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">{selectedPersonnel.name}</h2>
+                  <p className="text-gray-600">Personel Puantaj Detayları</p>
+                </div>
+
+                {/* Personel Puantaj Kayıtları */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <CalendarDaysIcon className="h-5 w-5 mr-2" />
+                    Puantaj Kayıtları
+                  </h3>
+                  
+                  {personnelPuantajRecords.length > 0 ? (
+                    <div className="space-y-3">
+                      {personnelPuantajRecords.map(kayit => {
+                        const job = customerJobs.find(j => j.id === kayit.musteriIsId);
+                        const customer = customers.find(c => c.id === job?.customerId);
+                        return (
+                          <div key={kayit.kayitId} className="p-4 bg-gray-50 rounded-lg">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-800">{job?.location || 'Bilinmeyen İş'}</p>
+                                <p className="text-sm text-gray-600">{customer?.name} - {job?.description}</p>
+                                <p className="text-xs text-gray-500">{formatDate(kayit.tarih)}</p>
+                                {kayit.konum && (
+                                  <p className="text-xs text-blue-600 mt-1">📍 {kayit.konum}</p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-green-600">{formatCurrency(kayit.gunlukUcret)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-8">Bu personel için puantaj kaydı bulunmuyor.</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // Seçim Yapılmamış
+              <div className="flex flex-col items-center justify-center h-full p-8">
+                <CalendarDaysIcon className="h-16 w-16 text-gray-300 mb-4" />
+                <p className="text-gray-500 text-lg font-medium">Detayları görmek için bir {viewMode === 'job' ? 'iş' : 'personel'} seçin</p>
+                <p className="text-gray-400 text-sm mt-2">Sol panelden bir {viewMode === 'job' ? 'iş' : 'personel'} seçerek detaylarını görüntüleyebilirsiniz</p>
               </div>
             )}
           </div>
         </div>
       </div>
-
-      <Suspense fallback={null}>
-        {isModalOpen && (
-          <AddPuantajModal 
-            isOpen={isModalOpen} 
-            onClose={() => setIsModalOpen(false)} 
-            onSave={handleSave} 
-            personnel={personnel} 
-            customerJobs={customerJobs}
-            kayitToEdit={kayitToEdit}
-          />
-        )}
-        {isDeleteModalOpen && (
-          <ConfirmationModal 
-            isOpen={isDeleteModalOpen} 
-            onClose={() => setIsDeleteModalOpen(false)} 
-            onConfirm={handleConfirmDelete} 
-            title="Puantaj Kaydını Sil" 
-            message={`${kayitToDelete ? formatDate(kayitToDelete.tarih) : ''} tarihli ${kayitToDelete ? formatCurrency(kayitToDelete.gunlukUcret) : ''} tutarındaki puantaj kaydını silmek istediğinizden emin misiniz?`}
-          />
-        )}
-      </Suspense>
     </>
   );
 };
