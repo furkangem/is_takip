@@ -62,13 +62,13 @@ const PuantajView: React.FC<PuantajViewProps> = ({
 
     // Müşterileri filtrele - sadece belirtilen tarih aralığında işi olan müşteriler
     customersWithJobs = customersWithJobs.filter(customer => {
-      const customerJobs = customerJobs.filter(job => {
+      const customerJobsForThisCustomer = customerJobs.filter(job => {
         const jobDate = new Date(job.date);
         if(start && jobDate < start) return false;
         if(end && jobDate > end) return false;
         return job.customerId === customer.id;
       });
-      return customerJobs.length > 0;
+      return customerJobsForThisCustomer.length > 0;
     });
 
     // Arama filtresi
