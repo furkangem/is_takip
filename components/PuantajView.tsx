@@ -32,6 +32,7 @@ const PuantajView: React.FC<PuantajViewProps> = ({
   onFetchPuantajData
 }) => {
   const [viewMode, setViewMode] = useState<'job' | 'personnel'>('job');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [selectedPersonnelId, setSelectedPersonnelId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,9 +50,9 @@ const PuantajView: React.FC<PuantajViewProps> = ({
     }
   }, []);
 
-  // İş listesini filtrele
-  const filteredJobs = useMemo(() => {
-    let jobs = customerJobs;
+  // Müşteri listesini filtrele
+  const filteredCustomers = useMemo(() => {
+    let customersWithJobs = customers;
     
     // Tarih filtresi
     const start = filters.startDate ? new Date(filters.startDate) : null;
@@ -59,28 +60,26 @@ const PuantajView: React.FC<PuantajViewProps> = ({
     const end = filters.endDate ? new Date(filters.endDate) : null;
     if(end) end.setHours(23,59,59,999);
 
-    jobs = jobs.filter(job => {
-      const jobDate = new Date(job.date);
-      if(start && jobDate < start) return false;
-      if(end && jobDate > end) return false;
-      return true;
+    // Müşterileri filtrele - sadece belirtilen tarih aralığında işi olan müşteriler
+    customersWithJobs = customersWithJobs.filter(customer => {
+      const customerJobs = customerJobs.filter(job => {
+        const jobDate = new Date(job.date);
+        if(start && jobDate < start) return false;
+        if(end && jobDate > end) return false;
+        return job.customerId === customer.id;
+      });
+      return customerJobs.length > 0;
     });
 
     // Arama filtresi
     if (searchQuery) {
-      jobs = jobs.filter(job => {
-        const customer = customers.find(c => c.id === job.customerId);
-        return (
-          job.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          customer?.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      });
+      customersWithJobs = customersWithJobs.filter(customer => 
+        customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
 
-    // Tarihe göre sırala (en yeni önce)
-    return jobs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [customerJobs, filters, searchQuery, customers]);
+    return customersWithJobs.sort((a, b) => a.name.localeCompare(b.name));
+  }, [customers, customerJobs, filters, searchQuery]);
 
   // Personel listesini filtrele
   const filteredPersonnel = useMemo(() => {
@@ -95,6 +94,31 @@ const PuantajView: React.FC<PuantajViewProps> = ({
 
     return personel.sort((a, b) => a.name.localeCompare(b.name));
   }, [personnel, searchQuery]);
+
+  // Seçilen müşterinin detayları
+  const selectedCustomer = useMemo(() => {
+    if (!selectedCustomerId) return null;
+    return customers.find(c => c.id === selectedCustomerId);
+  }, [selectedCustomerId, customers]);
+
+  // Seçilen müşterinin işleri
+  const selectedCustomerJobs = useMemo(() => {
+    if (!selectedCustomerId) return [];
+    
+    const start = filters.startDate ? new Date(filters.startDate) : null;
+    if(start) start.setHours(0,0,0,0);
+    const end = filters.endDate ? new Date(filters.endDate) : null;
+    if(end) end.setHours(23,59,59,999);
+
+    return customerJobs.filter(job => {
+      if (job.customerId !== selectedCustomerId) return false;
+      
+      const jobDate = new Date(job.date);
+      if(start && jobDate < start) return false;
+      if(end && jobDate > end) return false;
+      return true;
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [selectedCustomerId, customerJobs, filters]);
 
   // Seçilen işin detayları
   const selectedJob = useMemo(() => {
@@ -284,31 +308,27 @@ const PuantajView: React.FC<PuantajViewProps> = ({
             
             <div className="overflow-y-auto max-h-[600px]">
               {viewMode === 'job' ? (
-                // İş Listesi - Sadece işler, müşteri gruplandırması yok
+                // Müşteri Listesi
                 <div>
-                  {filteredJobs.map(job => {
-                    const customer = customers.find(c => c.id === job.customerId);
-                    return (
-                      <button
-                        key={job.id}
-                        onClick={() => {
-                          setSelectedJobId(job.id);
-                          setSelectedPersonnelId(null);
-                        }}
-                        className={`w-full text-left p-3 hover:bg-gray-50 transition-colors border-b ${
-                          selectedJobId === job.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                        }`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-800">{job.location}</p>
-                            <p className="text-sm text-gray-500">{customer?.name} - {job.description}</p>
-                            <p className="text-xs text-gray-400">{formatDate(job.date)}</p>
-                          </div>
+                  {filteredCustomers.map(customer => (
+                    <button
+                      key={customer.id}
+                      onClick={() => {
+                        setSelectedCustomerId(customer.id);
+                        setSelectedJobId(null);
+                        setSelectedPersonnelId(null);
+                      }}
+                      className={`w-full text-left p-3 hover:bg-gray-50 transition-colors border-b ${
+                        selectedCustomerId === customer.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium text-gray-800">{customer.name}</p>
                         </div>
-                      </button>
-                    );
-                  })}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               ) : (
                 // Personel Listesi
@@ -338,60 +358,59 @@ const PuantajView: React.FC<PuantajViewProps> = ({
 
           {/* Sağ Panel - Detaylar */}
           <div className="w-full lg:w-2/3 bg-white rounded-lg shadow-md overflow-hidden">
-            {viewMode === 'job' && selectedJob ? (
-              // İş Detayları
+            {viewMode === 'job' && selectedCustomer ? (
+              // Müşteri Detayları ve İşleri
               <div className="p-6">
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">{selectedJob.location}</h2>
-                  <p className="text-gray-600">{customers.find(c => c.id === selectedJob.customerId)?.name} - {selectedJob.description}</p>
+                  <h2 className="text-2xl font-bold text-gray-800">{selectedCustomer.name}</h2>
+                  <p className="text-gray-600">Müşteri İşleri</p>
                 </div>
 
-                {/* Müşteriden Gelen Ödeme */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <DocumentCheckIcon className="h-5 w-5 text-green-600 mr-2" />
-                      <div>
-                        <p className="font-medium text-green-800">Müşteriden Gelen Ödeme</p>
-                        <div className="flex items-center text-sm text-green-600">
-                          <CalendarDaysIcon className="h-4 w-4 mr-1" />
-                          {formatDate(selectedJob.date)}
+                {/* Müşteri İşleri Listesi */}
+                <div className="space-y-4">
+                  {selectedCustomerJobs.length > 0 ? (
+                    selectedCustomerJobs.map(job => (
+                      <div key={job.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-800">{job.location}</h3>
+                            <p className="text-sm text-gray-600">{job.description}</p>
+                            <p className="text-xs text-gray-400">{formatDate(job.date)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-green-600">{formatCurrency(job.income)}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Bu işe ait puantaj kayıtları */}
+                        <div className="mt-3">
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">Personel Puantaj Kayıtları:</h4>
+                          {jobPuantajRecords.filter(kayit => kayit.musteriIsId === job.id).length > 0 ? (
+                            <div className="space-y-2">
+                              {jobPuantajRecords.filter(kayit => kayit.musteriIsId === job.id).map(kayit => {
+                                const person = personnel.find(p => p.id === kayit.personelId);
+                                return (
+                                  <div key={kayit.kayitId} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                    <div className="flex items-center">
+                                      <UserGroupIcon className="h-4 w-4 text-gray-500 mr-2" />
+                                      <span className="text-sm font-medium text-gray-800">{person?.name || 'Bilinmeyen Personel'}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-bold text-gray-800">{formatCurrency(kayit.gunlukUcret)}</p>
+                                      <p className="text-xs text-gray-500">{formatDate(kayit.tarih)}</p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-gray-500 text-sm">Bu iş için puantaj kaydı bulunmuyor.</p>
+                          )}
                         </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedJob.income)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Personel Puantaj ve Hakedişleri */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                    <UserGroupIcon className="h-5 w-5 mr-2" />
-                    Personel Puantaj ve Hakedişleri
-                  </h3>
-                  
-                  {jobPuantajRecords.length > 0 ? (
-                    <div className="space-y-3">
-                      {jobPuantajRecords.map(kayit => {
-                        const person = personnel.find(p => p.id === kayit.personelId);
-                        return (
-                          <div key={kayit.kayitId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center">
-                              <UserGroupIcon className="h-4 w-4 text-gray-500 mr-2" />
-                              <span className="font-medium text-gray-800">{person?.name || 'Bilinmeyen Personel'}</span>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-gray-800">{formatCurrency(kayit.gunlukUcret)}</p>
-                              <p className="text-xs text-gray-500">{formatDate(kayit.tarih)}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    ))
                   ) : (
-                    <p className="text-gray-500 text-center py-8">Bu iş için puantaj kaydı bulunmuyor.</p>
+                    <p className="text-gray-500 text-center py-8">Bu müşteri için seçilen tarih aralığında iş bulunmuyor.</p>
                   )}
                 </div>
               </div>
@@ -443,8 +462,8 @@ const PuantajView: React.FC<PuantajViewProps> = ({
               // Seçim Yapılmamış
               <div className="flex flex-col items-center justify-center h-full p-8">
                 <CalendarDaysIcon className="h-16 w-16 text-gray-300 mb-4" />
-                <p className="text-gray-500 text-lg font-medium">Detayları görmek için bir {viewMode === 'job' ? 'iş' : 'personel'} seçin</p>
-                <p className="text-gray-400 text-sm mt-2">Sol panelden bir {viewMode === 'job' ? 'iş' : 'personel'} seçerek detaylarını görüntüleyebilirsiniz</p>
+                <p className="text-gray-500 text-lg font-medium">Detayları görmek için bir {viewMode === 'job' ? 'müşteri' : 'personel'} seçin</p>
+                <p className="text-gray-400 text-sm mt-2">Sol panelden bir {viewMode === 'job' ? 'müşteri' : 'personel'} seçerek detaylarını görüntüleyebilirsiniz</p>
               </div>
             )}
           </div>
