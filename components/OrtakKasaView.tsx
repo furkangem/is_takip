@@ -125,14 +125,8 @@
                 return;
             }
 
-            // Tarih seçilmişse onu kullan, yoksa bugünün tarihini kullan
-            let selectedDate: string;
-            if (formData.date) {
-                // Date input'tan gelen YYYY-MM-DD formatını ISO string'e çevir
-                selectedDate = new Date(formData.date + 'T00:00:00').toISOString();
-            } else {
-                selectedDate = new Date().toISOString();
-            }
+            // Tarih seçilmişse direkt YYYY-MM-DD formatını kullan, yoksa bugünün tarihini seç
+            const selectedDate = formData.date || new Date().toISOString().split('T')[0];
 
             // formData'dan date alanını çıkar ve expenseData'ya ayrı ekle
             const { date: _, ...formDataWithoutDate } = formData;
