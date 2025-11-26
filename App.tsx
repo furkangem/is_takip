@@ -853,6 +853,18 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         console.log('🔍 Frontend Data:', frontendData);
         console.log('🔍 Mevcut SharedExpenses:', sharedExpenses.length);
         
+        // Optimistik güncelleme - hemen state'e ekle
+        setSharedExpenses(prev => {
+            // Eğer aynı ID'ye sahip bir kayıt varsa güncelle, yoksa ekle
+            const existingIndex = prev.findIndex(e => e.id === frontendData.id);
+            if (existingIndex >= 0) {
+                const updated = [...prev];
+                updated[existingIndex] = frontendData;
+                return updated;
+            }
+            return [...prev, frontendData];
+        });
+        
         // Tüm verileri yeniden yükle - backend'den güncel veriyi almak için
         console.log('🔄 Tüm veriler yeniden yükleniyor...');
         await fetchAllData();

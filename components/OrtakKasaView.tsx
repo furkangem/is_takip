@@ -274,9 +274,18 @@
                 const defaultStart = new Date('2023-01-01');
                 const today = new Date();
                 setStartDate(defaultStart.toISOString().split('T')[0]);
+                // Bugünün tarihini de dahil etmek için endDate'i bugün olarak ayarla
                 setEndDate(today.toISOString().split('T')[0]);
             }
         }, []);
+        
+        // Expenses değiştiğinde endDate'i bugüne güncelle (yeni eklenen verileri görmek için)
+        useEffect(() => {
+            const today = new Date().toISOString().split('T')[0];
+            if (endDate && new Date(endDate) < new Date(today)) {
+                setEndDate(today);
+            }
+        }, [expenses]);
 
         useEffect(() => {
             if (navigateToId) {
