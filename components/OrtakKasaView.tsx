@@ -282,10 +282,28 @@
         // Expenses değiştiğinde endDate'i bugüne güncelle (yeni eklenen verileri görmek için)
         useEffect(() => {
             const today = new Date().toISOString().split('T')[0];
-            if (endDate && new Date(endDate) < new Date(today)) {
+            const todayDate = new Date(today);
+            const endDateObj = endDate ? new Date(endDate) : null;
+            
+            // Eğer endDate bugünden önceyse veya bugünün tarihinde yeni veri varsa, endDate'i bugüne güncelle
+            if (!endDateObj || endDateObj < todayDate) {
                 setEndDate(today);
+            } else {
+                // Bugünün tarihinde veri var mı kontrol et
+                const hasTodayData = expenses.some(exp => {
+                    if (!exp.date) return false;
+                    const expDate = new Date(exp.date);
+                    const expDateOnly = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+                    const todayOnly = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+                    return expDateOnly.getTime() === todayOnly.getTime();
+                });
+                
+                // Bugünün tarihinde veri varsa ama endDate bugün değilse, endDate'i bugüne güncelle
+                if (hasTodayData && endDateObj.getTime() !== todayDate.getTime()) {
+                    setEndDate(today);
+                }
             }
-        }, [expenses]);
+        }, [expenses, endDate]);
 
         useEffect(() => {
             if (navigateToId) {
@@ -324,11 +342,11 @@
                 filteredExpenses = expenses.filter(exp => {
                     if (!exp.date) return false;
                     const expDate = new Date(exp.date);
-                    // Tarih karşılaştırması için sadece tarih kısmını kullan
-                    const expDateOnly = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+                    // Tarih karşılaştırması için sadece tarih kısmını kullan (UTC'den yerel saate çevir)
+                    const expDateUTC = new Date(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate());
                     const startDateOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate());
                     const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-                    return expDateOnly >= startDateOnly && expDateOnly <= endDateOnly;
+                    return expDateUTC >= startDateOnly && expDateUTC <= endDateOnly;
                 });
             }
 
