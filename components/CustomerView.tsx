@@ -622,6 +622,20 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
         return personnelIds.map(id => personnel.find(p => p.id === id)?.name || 'Bilinmeyen').join(', ');
     };
 
+    const getMaterialNames = (materials: Material[]) => {
+        if (!materials || materials.length === 0) return '-';
+        const names = materials.map(m => (m.name && m.name.trim()) ? m.name : 'İsimsiz Malzeme');
+        if (names.length > 2) {
+            return `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+        }
+        return names.join(', ');
+    };
+
+    const getAllMaterialNames = (materials: Material[]) => {
+        if (!materials || materials.length === 0) return 'Malzeme eklenmemiş';
+        return materials.map(m => (m.name && m.name.trim()) ? m.name : 'İsimsiz Malzeme').join(', ');
+    };
+
      const handleToggleLocation = (location: string) => {
         setExpandedLocations(prev => {
             const newSet = new Set(prev);
@@ -757,7 +771,9 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                             </div>
                                             {isExpanded && (
                                                 <div className="border-t"><div className="overflow-x-auto"><table className="w-full text-sm text-left min-w-[600px]"><thead className="bg-gray-50"><tr>
-                                                    <th className="p-3 font-semibold text-gray-600">Açıklama</th><th className="p-3 font-semibold text-gray-600 hidden sm:table-cell">Personeller</th>
+                                                    <th className="p-3 font-semibold text-gray-600">Açıklama</th>
+                                                    <th className="p-3 font-semibold text-gray-600 hidden sm:table-cell">Personeller</th>
+                                                    <th className="p-3 font-semibold text-gray-600 hidden lg:table-cell">Malzemeler</th>
                                                     <th className="p-3 font-semibold text-gray-600 text-right">Gelir</th><th className="p-3 font-semibold text-gray-600 text-right">Maliyet</th>
                                                     <th className="p-3 font-semibold text-gray-600 text-right">Kar</th></tr></thead>
                                                 <tbody className="divide-y divide-gray-200">{jobs.map(job => {
@@ -768,6 +784,7 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                                     return (<tr key={job.id} className="hover:bg-gray-50 group cursor-pointer" onClick={() => { setJobToView(job); setIsJobDetailModalOpen(true); }}>
                                                         <td className="p-3"><p className="font-medium text-gray-800 truncate max-w-[200px]" title={job.description}>{job.description}</p><p className="text-xs text-gray-500">{formatDate(job.date)}</p></td>
                                                         <td className="p-3 text-gray-600 hidden sm:table-cell" title={getAllPersonnelNames(job.personnelIds)}>{getPersonnelNames(job.personnelIds)}</td>
+                                                        <td className="p-3 text-gray-600 hidden lg:table-cell" title={getAllMaterialNames(job.materials)}>{getMaterialNames(job.materials)}</td>
                                                         <td className="p-3 font-semibold text-green-600 text-right whitespace-nowrap">{formatCurrency(job.income)}</td>
                                                         <td className="p-3 font-semibold text-red-600 text-right whitespace-nowrap">{formatCurrency(cost)}</td>
                                                         <td className={`p-3 font-semibold text-right whitespace-nowrap ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(profit)}</td>
