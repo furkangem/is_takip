@@ -163,7 +163,15 @@ const apiRequest = async (endpoint: string, method: string = 'GET', body: any = 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<View>('customers');
+  const [currentView, setCurrentView] = useState<View>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('currentView') as View | null;
+      if (saved && ['personnel','reports','admin','customers','kasa','timesheet'].includes(saved)) {
+        return saved;
+      }
+    }
+    return 'customers';
+  });
   
   // Başlangıçta tüm state'ler boş bir dizi olarak ayarlanır
   const [users, setUsers] = useState<User[]>([]);
@@ -181,6 +189,19 @@ export default function App() {
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [navigateToItem, setNavigateToItem] = useState<{ view: View, id: number } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const persistCurrentView = (view: View) => {
+    setCurrentView(view);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('currentView', view);
+    }
+  };
+
+  const handleSidebarViewChange = (view: View) => {
+    setGlobalSearchQuery('');
+    persistCurrentView(view);
+    setIsSidebarOpen(false);
+  };
 
   // Başlangıç Verilerini API'den Çekme Fonksiyonu
   const fetchAllData = async () => {
@@ -406,8 +427,8 @@ export default function App() {
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(user));
       await fetchAllData(); 
-      if (user.email === 'baris') setCurrentView('timesheet');
-      else setCurrentView('customers');
+      if (user.email === 'baris') persistCurrentView('timesheet');
+      else persistCurrentView('customers');
       return true;
     } catch (error: any) {
       return error.message;
@@ -418,12 +439,14 @@ export default function App() {
     setCurrentUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('currentView');
+    setCurrentView('customers');
   };
   
   const handleNavigation = (view: View, id: number) => {
     setGlobalSearchQuery('');
     if (view === 'kasa') {
-        setCurrentView('kasa');
+        persistCurrentView('kasa');
     }
     setNavigateToItem({ view, id });
   };
@@ -987,7 +1010,7 @@ const permanentlyDeleteSharedExpense = async (expenseId: number) => {
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-20 md:hidden" onClick={() => setIsSidebarOpen(false)} aria-hidden="true"></div>
       )}
-      <Sidebar currentView={currentView} setCurrentView={(view) => { setGlobalSearchQuery(''); setCurrentView(view); setIsSidebarOpen(false); }} currentUser={currentUser} isOpen={isSidebarOpen} />
+      <Sidebar currentView={currentView} setCurrentView={handleSidebarViewChange} currentUser={currentUser} isOpen={isSidebarOpen} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header currentUser={currentUser} onLogout={handleLogout} globalSearchQuery={globalSearchQuery} setGlobalSearchQuery={setGlobalSearchQuery} onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-8 min-w-0">
