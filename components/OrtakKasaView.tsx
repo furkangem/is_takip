@@ -80,9 +80,11 @@
             status: 'paid' as 'paid' | 'unpaid',
             date: '', // Tarih alanı eklendi
         });
+        const [dateTouched, setDateTouched] = useState(false);
 
         React.useEffect(() => {
             if (isOpen) {
+                setDateTouched(false);
                 if (expenseToEdit) {
                     // Düzenleme modunda: Mevcut tarihi date input formatına çevir (YYYY-MM-DD)
                     const expenseDate = expenseToEdit.date ? new Date(expenseToEdit.date) : new Date();
@@ -114,6 +116,9 @@
 
         const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
             const { name, value } = e.target;
+            if (name === 'date') {
+                setDateTouched(true);
+            }
             setFormData(prev => ({ ...prev, [name]: value as any }));
         };
 
@@ -125,17 +130,39 @@
                 return;
             }
 
-            // Tarihi ISO formatına çevir (backend UTC bekliyor)
-            const selectedDate = formData.date
-                ? new Date(`${formData.date}T00:00:00`).toISOString()
-                : new Date().toISOString();
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            let selectedDateIso: string;
+
+            if (expenseToEdit && !dateTouched) {
+                // Düzenlemede tarih alanına dokunulmadıysa mevcut tarihi koru
+                selectedDateIso = expenseToEdit.date;
+            } else if (!expenseToEdit && !dateTouched) {
+                // Yeni eklemede tarih seçilmezse (alan varsayılan bırakılırsa) güncel tarih+saat kullan
+                selectedDateIso = now.toISOString();
+            } else if (!formData.date) {
+                selectedDateIso = now.toISOString();
+            } else {
+                const selectedDateOnly = new Date(`${formData.date}T00:00:00`);
+                const isSameDay =
+                    selectedDateOnly.getFullYear() === startOfToday.getFullYear() &&
+                    selectedDateOnly.getMonth() === startOfToday.getMonth() &&
+                    selectedDateOnly.getDate() === startOfToday.getDate();
+
+                if (isSameDay) {
+                    selectedDateIso = now.toISOString();
+                } else {
+                    const selectedAtSevenPM = new Date(`${formData.date}T19:00:00`);
+                    selectedDateIso = selectedAtSevenPM.toISOString();
+                }
+            }
 
             // formData'dan date alanını çıkar ve expenseData'ya ayrı ekle
             const { date: _, ...formDataWithoutDate } = formData;
             const expenseData = {
                 ...formDataWithoutDate,
                 amount: numericAmount,
-                date: selectedDate,
+                date: selectedDateIso,
             };
 
             if (expenseToEdit) {
