@@ -1,7 +1,5 @@
 {
-  "installCommand": "cd is_takip && npm install",
-  "buildCommand": "cd is_takip && npm run build",
-  "outputDirectory": "is_takip/dist",
+  "outputDirectory": "dist",
   "functions": {
     "api/proxy.ts": {
       "maxDuration": 60
