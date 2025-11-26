@@ -309,12 +309,17 @@
             let filteredExpenses = expenses;
 
             if (startDate && endDate) {
-                const start = new Date(startDate);
-                const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
+                // Tarih karşılaştırması için sadece tarih kısmını kullan (saat bilgisini göz ardı et)
+                const start = new Date(startDate + 'T00:00:00');
+                const end = new Date(endDate + 'T23:59:59');
                 filteredExpenses = expenses.filter(exp => {
+                    if (!exp.date) return false;
                     const expDate = new Date(exp.date);
-                    return expDate >= start && expDate <= end;
+                    // Tarih karşılaştırması için sadece tarih kısmını kullan
+                    const expDateOnly = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+                    const startDateOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+                    const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+                    return expDateOnly >= startDateOnly && expDateOnly <= endDateOnly;
                 });
             }
 

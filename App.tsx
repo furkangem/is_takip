@@ -853,18 +853,11 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         console.log('🔍 Frontend Data:', frontendData);
         console.log('🔍 Mevcut SharedExpenses:', sharedExpenses.length);
         
-        // State'i güncelle
-        setSharedExpenses(prev => {
-            const updated = [...prev, frontendData];
-            console.log('🔍 Güncellenmiş SharedExpenses:', updated.length);
-            return updated;
-        });
-        
-        // Tüm verileri yeniden yükle - backend formatı tutarsız olabilir
+        // Tüm verileri yeniden yükle - backend'den güncel veriyi almak için
         console.log('🔄 Tüm veriler yeniden yükleniyor...');
         await fetchAllData();
         
-        console.log('✅ Gider başarıyla eklendi:', frontendData);
+        console.log('✅ Gider başarıyla eklendi ve veriler yenilendi');
         
     } catch (error: any) {
         console.error('❌ Gider ekleme hatası:', error);
@@ -928,8 +921,9 @@ const updateSharedExpense = async (data: SharedExpense) => {
             deletedAt: saved.deletedAt || saved.silinmeTarihi || data.deletedAt
         };
         
-        setSharedExpenses(prev => prev.map(e => e.id === data.id ? updatedData : e));
-        console.log('✅ Gider başarıyla güncellendi:', updatedData);
+        // Tüm verileri yeniden yükle - backend'den güncel veriyi almak için
+        await fetchAllData();
+        console.log('✅ Gider başarıyla güncellendi ve veriler yenilendi');
     } catch (error: any) {
         console.error('Gider güncelleme hatası:', error);
         
