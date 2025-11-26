@@ -803,17 +803,12 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
     }
 
     try {
-        // Tarih formatını kontrol et ve düzelt (timezone kayması olmaması için Z eklemeden)
+        // Tarihi ISO (UTC) formatına çevir (PostgreSQL timestamp with time zone için)
         let formattedDate = data.date;
-        if (!formattedDate) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            formattedDate = `${year}-${month}-${day}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-        } else if (!formattedDate.includes('T')) {
-            // YYYY-MM-DD formatındaysa saat bilgisini 00:00:00 olarak ekle
-            formattedDate = `${formattedDate}T00:00:00`;
+        if (formattedDate) {
+            formattedDate = new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`).toISOString();
+        } else {
+            formattedDate = new Date().toISOString();
         }
 
         // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)
@@ -891,16 +886,12 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
 
 const updateSharedExpense = async (data: SharedExpense) => {
     try {
-        // Tarih formatını kontrol et ve düzelt (timezone kaymasını önle)
+        // Tarihi ISO (UTC) formatına çevir
         let formattedDate = data.date;
-        if (!formattedDate) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            formattedDate = `${year}-${month}-${day}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-        } else if (!formattedDate.includes('T')) {
-            formattedDate = `${formattedDate}T00:00:00`;
+        if (formattedDate) {
+            formattedDate = new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`).toISOString();
+        } else {
+            formattedDate = new Date().toISOString();
         }
 
         // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)
