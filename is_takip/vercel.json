@@ -1,0 +1,39 @@
+{
+  "functions": {
+    "api/proxy.ts": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/proxy/(.*)",
+      "destination": "/api/proxy"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/api/proxy/(.*):1$",
+      "destination": "/api/proxy/$1",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/proxy/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        }
+      ]
+    }
+  ]
+}
