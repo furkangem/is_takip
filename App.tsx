@@ -160,6 +160,10 @@ const apiRequest = async (endpoint: string, method: string = 'GET', body: any = 
     throw new Error('Beklenmeyen hata');
 };
 
+const toUtcISOString = (date: Date) => {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -806,9 +810,9 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         // Tarihi ISO (UTC) formatına çevir (PostgreSQL timestamp with time zone için)
         let formattedDate = data.date;
         if (formattedDate) {
-            formattedDate = new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`).toISOString();
+            formattedDate = toUtcISOString(new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`));
         } else {
-            formattedDate = new Date().toISOString();
+            formattedDate = toUtcISOString(new Date());
         }
 
         // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)
@@ -889,9 +893,9 @@ const updateSharedExpense = async (data: SharedExpense) => {
         // Tarihi ISO (UTC) formatına çevir
         let formattedDate = data.date;
         if (formattedDate) {
-            formattedDate = new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`).toISOString();
+            formattedDate = toUtcISOString(new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`));
         } else {
-            formattedDate = new Date().toISOString();
+            formattedDate = toUtcISOString(new Date());
         }
 
         // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)

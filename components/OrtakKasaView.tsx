@@ -66,6 +66,10 @@
     const paymentMethodIcons: Record<PaymentMethod, React.ElementType> = { cash: CashIcon, card: CreditCardIcon, transfer: ArrowsRightLeftIcon };
     const paymentMethodNames: Record<PaymentMethod, string> = { cash: "Nakit", card: "Kart", transfer: "Havale" };
 
+    const toUtcISOString = (date: Date) => {
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
+    };
+
     const SharedExpenseEditorModal: React.FC<{
         isOpen: boolean;
         onClose: () => void;
@@ -139,9 +143,9 @@
                 selectedDateIso = expenseToEdit.date;
             } else if (!expenseToEdit && !dateTouched) {
                 // Yeni eklemede tarih seçilmezse (alan varsayılan bırakılırsa) güncel tarih+saat kullan
-                selectedDateIso = now.toISOString();
+                selectedDateIso = toUtcISOString(now);
             } else if (!formData.date) {
-                selectedDateIso = now.toISOString();
+                selectedDateIso = toUtcISOString(now);
             } else {
                 const selectedDateOnly = new Date(`${formData.date}T00:00:00`);
                 const isSameDay =
@@ -150,10 +154,10 @@
                     selectedDateOnly.getDate() === startOfToday.getDate();
 
                 if (isSameDay) {
-                    selectedDateIso = now.toISOString();
+                    selectedDateIso = toUtcISOString(now);
                 } else {
                     const selectedAtSevenPM = new Date(`${formData.date}T19:00:00`);
-                    selectedDateIso = selectedAtSevenPM.toISOString();
+                    selectedDateIso = toUtcISOString(selectedAtSevenPM);
                 }
             }
 
