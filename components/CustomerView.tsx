@@ -760,10 +760,29 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                             <div className="space-y-2">
                                 {Object.keys(jobsByLocation).length > 0 ? Object.entries(jobsByLocation).map(([location, jobs]) => {
                                     const isExpanded = expandedLocations.has(location);
+                                    const locationTotals = jobs.reduce((acc, job) => {
+                                        const personnelCost = (job.personnelPayments || []).reduce((s: number, p: JobPersonnelPayment) => s + (p?.payment || 0), 0);
+                                        const materialCost = (job.materials || []).reduce((s: number, m: Material) => s + ((m?.quantity || 0) * (m?.unitPrice || 0)), 0);
+                                        const cost = personnelCost + materialCost;
+                                        acc.income += job.income || 0;
+                                        acc.cost += cost;
+                                        acc.profit += (job.income || 0) - cost;
+                                        return acc;
+                                    }, { income: 0, cost: 0, profit: 0 });
                                     return (
                                         <div key={location} className="bg-white rounded-lg shadow-md overflow-hidden">
                                             <div onClick={() => handleToggleLocation(location)} className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50">
-                                                <div className="flex items-center"><h4 className="font-bold text-lg text-blue-700">{location}</h4><span className="ml-3 text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{jobs.length} iş</span></div>
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-3 flex-wrap">
+                                                        <h4 className="font-bold text-lg text-blue-700">{location}</h4>
+                                                        <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{jobs.length} iş</span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-600 flex flex-wrap gap-3">
+                                                        <span>Gelir: <span className="font-semibold text-green-600">{formatCurrency(locationTotals.income)}</span></span>
+                                                        <span>Maliyet: <span className="font-semibold text-red-600">{formatCurrency(locationTotals.cost)}</span></span>
+                                                        <span>Kar: <span className={`font-semibold ${locationTotals.profit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{formatCurrency(locationTotals.profit)}</span></span>
+                                                    </div>
+                                                </div>
                                                 <div className="flex items-center">
                                                     {isEditable && <button onClick={(e) => { e.stopPropagation(); setJobToEdit(null); setInitialLocationForModal(location); setIsJobModalOpen(true); }} className="flex items-center text-xs font-medium text-blue-600 hover:text-blue-800"><PlusIcon className="h-4 w-4 mr-1"/>İş Ekle</button>}
                                                     {isExpanded ? <ChevronUpIcon className="h-5 w-5 text-gray-500 ml-3"/> : <ChevronDownIcon className="h-5 w-5 text-gray-500 ml-3"/>}
@@ -782,7 +801,15 @@ const CustomerView: React.FC<CustomerViewProps> = (props) => {
                                                     const cost = personnelCost + materialCost;
                                                     const profit = job.income - cost;
                                                     return (<tr key={job.id} className="hover:bg-gray-50 group cursor-pointer" onClick={() => { setJobToView(job); setIsJobDetailModalOpen(true); }}>
-                                                        <td className="p-3"><p className="font-medium text-gray-800 truncate max-w-[200px]" title={job.description}>{job.description}</p><p className="text-xs text-gray-500">{formatDate(job.date)}</p></td>
+                                                        <td className="p-3">
+                                                            <p className="font-medium text-gray-800 truncate max-w-[220px]" title={job.description}>{job.description}</p>
+                                                            <p className="text-xs text-gray-500">{formatDate(job.date)}</p>
+                                                            <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
+                                                                <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-100">Gelir: {formatCurrency(job.income)}</span>
+                                                                <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">Maliyet: {formatCurrency(cost)}</span>
+                                                                <span className={`px-2 py-0.5 rounded-full border ${profit >=0 ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-red-100 text-red-800 border-red-200'}`}>Kar: {formatCurrency(profit)}</span>
+                                                            </div>
+                                                        </td>
                                                         <td className="p-3 text-gray-600 hidden sm:table-cell" title={getAllPersonnelNames(job.personnelIds)}>{getPersonnelNames(job.personnelIds)}</td>
                                                         <td className="p-3 text-gray-600 hidden lg:table-cell" title={getAllMaterialNames(job.materials)}>{getMaterialNames(job.materials)}</td>
                                                         <td className="p-3 font-semibold text-green-600 text-right whitespace-nowrap">{formatCurrency(job.income)}</td>
