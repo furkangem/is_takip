@@ -70,6 +70,11 @@
         return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
     };
 
+    const shiftThreeHoursBack = (date: Date) => {
+        const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+        return new Date(date.getTime() - THREE_HOURS_MS);
+    };
+
     const SharedExpenseEditorModal: React.FC<{
         isOpen: boolean;
         onClose: () => void;
@@ -143,9 +148,9 @@
                 selectedDateIso = expenseToEdit.date;
             } else if (!expenseToEdit && !dateTouched) {
                 // Yeni eklemede tarih seçilmezse (alan varsayılan bırakılırsa) güncel tarih+saat kullan
-                selectedDateIso = toUtcISOString(now);
+                selectedDateIso = toUtcISOString(shiftThreeHoursBack(now));
             } else if (!formData.date) {
-                selectedDateIso = toUtcISOString(now);
+                selectedDateIso = toUtcISOString(shiftThreeHoursBack(now));
             } else {
                 const selectedDateOnly = new Date(`${formData.date}T00:00:00`);
                 const isSameDay =
@@ -154,10 +159,10 @@
                     selectedDateOnly.getDate() === startOfToday.getDate();
 
                 if (isSameDay) {
-                    selectedDateIso = toUtcISOString(now);
+                    selectedDateIso = toUtcISOString(shiftThreeHoursBack(now));
                 } else {
                     const selectedAtSevenPM = new Date(`${formData.date}T19:00:00`);
-                    selectedDateIso = toUtcISOString(selectedAtSevenPM);
+                    selectedDateIso = toUtcISOString(shiftThreeHoursBack(selectedAtSevenPM));
                 }
             }
 

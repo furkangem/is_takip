@@ -164,6 +164,11 @@ const toUtcISOString = (date: Date) => {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
 };
 
+const shiftThreeHoursBack = (date: Date) => {
+  const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+  return new Date(date.getTime() - THREE_HOURS_MS);
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -810,9 +815,10 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         // Tarihi ISO (UTC) formatına çevir (PostgreSQL timestamp with time zone için)
         let formattedDate = data.date;
         if (formattedDate) {
-            formattedDate = toUtcISOString(new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`));
+            const dateObj = new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`);
+            formattedDate = toUtcISOString(shiftThreeHoursBack(dateObj));
         } else {
-            formattedDate = toUtcISOString(new Date());
+            formattedDate = toUtcISOString(shiftThreeHoursBack(new Date()));
         }
 
         // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)
@@ -898,9 +904,10 @@ const updateSharedExpense = async (data: SharedExpense) => {
         // Tarihi ISO (UTC) formatına çevir
         let formattedDate = data.date;
         if (formattedDate) {
-            formattedDate = toUtcISOString(new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`));
+            const dateObj = new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`);
+            formattedDate = toUtcISOString(shiftThreeHoursBack(dateObj));
         } else {
-            formattedDate = toUtcISOString(new Date());
+            formattedDate = toUtcISOString(shiftThreeHoursBack(new Date()));
         }
 
         // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)
