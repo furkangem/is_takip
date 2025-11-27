@@ -161,6 +161,14 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
         return transactions;
     }, [transactionsInDateRange, searchQuery, selectedType]);
     
+    const filteredTotals = useMemo(() => {
+        return filteredTransactions.reduce((acc, t) => {
+            acc.income += t.amountIn || 0;
+            acc.expense += t.amountOut || 0;
+            return acc;
+        }, { income: 0, expense: 0 });
+    }, [filteredTransactions]);
+    
     const totals = useMemo(() => {
         return transactionsInDateRange.reduce((acc, t) => {
             acc.income += t.amountIn || 0;
@@ -225,6 +233,24 @@ const AnaKasaView: React.FC<AnaKasaViewProps> = (props) => {
                             ))}
                          </select>
                     </div>
+                </div>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex flex-col gap-1 text-blue-900">
+                <div className="text-sm font-semibold">
+                    Görüntülenen Kayıt: {filteredTransactions.length}
+                    {searchQuery && <span className="text-xs text-blue-700 ml-2">(Arama: "{searchQuery}")</span>}
+                </div>
+                <div className="text-sm">
+                    Toplam Gelir: <span className="font-semibold text-green-600">{formatCurrency(filteredTotals.income)}</span>
+                </div>
+                <div className="text-sm">
+                    Toplam Gider: <span className="font-semibold text-red-600">{formatCurrency(filteredTotals.expense)}</span>
+                </div>
+                <div className="text-sm">
+                    Net: <span className={`font-semibold ${filteredTotals.income - filteredTotals.expense >=0 ? 'text-blue-700' : 'text-red-700'}`}>
+                        {formatCurrency(filteredTotals.income - filteredTotals.expense)}
+                    </span>
                 </div>
             </div>
 
