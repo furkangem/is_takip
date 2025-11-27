@@ -160,13 +160,15 @@ const apiRequest = async (endpoint: string, method: string = 'GET', body: any = 
     throw new Error('Beklenmeyen hata');
 };
 
-const toUtcISOString = (date: Date) => {
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
-};
-
-const shiftThreeHoursBack = (date: Date) => {
-  const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
-  return new Date(date.getTime() - THREE_HOURS_MS);
+const formatLocalDateTime = (date: Date) => {
+  const pad = (num: number) => String(num).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 };
 
 export default function App() {
@@ -816,9 +818,9 @@ const addCustomerJob = async (data: Omit<CustomerJob, 'id'>) => {
         let formattedDate = data.date;
         if (formattedDate) {
             const dateObj = new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`);
-            formattedDate = toUtcISOString(shiftThreeHoursBack(dateObj));
+            formattedDate = formatLocalDateTime(dateObj);
         } else {
-            formattedDate = toUtcISOString(shiftThreeHoursBack(new Date()));
+            formattedDate = formatLocalDateTime(new Date());
         }
 
         // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)
@@ -905,9 +907,9 @@ const updateSharedExpense = async (data: SharedExpense) => {
         let formattedDate = data.date;
         if (formattedDate) {
             const dateObj = new Date(formattedDate.includes('T') ? formattedDate : `${formattedDate}T00:00:00`);
-            formattedDate = toUtcISOString(shiftThreeHoursBack(dateObj));
+            formattedDate = formatLocalDateTime(dateObj);
         } else {
-            formattedDate = toUtcISOString(shiftThreeHoursBack(new Date()));
+            formattedDate = formatLocalDateTime(new Date());
         }
 
         // Backend'in beklediği camelCase format (JsonPropertyName attribute'larına uygun)

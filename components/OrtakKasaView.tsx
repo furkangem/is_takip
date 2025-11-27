@@ -66,13 +66,15 @@
     const paymentMethodIcons: Record<PaymentMethod, React.ElementType> = { cash: CashIcon, card: CreditCardIcon, transfer: ArrowsRightLeftIcon };
     const paymentMethodNames: Record<PaymentMethod, string> = { cash: "Nakit", card: "Kart", transfer: "Havale" };
 
-    const toUtcISOString = (date: Date) => {
-        return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
-    };
-
-    const shiftThreeHoursBack = (date: Date) => {
-        const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
-        return new Date(date.getTime() - THREE_HOURS_MS);
+    const formatLocalDateTime = (date: Date) => {
+        const pad = (num: number) => String(num).padStart(2, '0');
+        const year = date.getFullYear();
+        const month = pad(date.getMonth() + 1);
+        const day = pad(date.getDate());
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+        const seconds = pad(date.getSeconds());
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
     };
 
     const SharedExpenseEditorModal: React.FC<{
@@ -148,9 +150,9 @@
                 selectedDateIso = expenseToEdit.date;
             } else if (!expenseToEdit && !dateTouched) {
                 // Yeni eklemede tarih seçilmezse (alan varsayılan bırakılırsa) güncel tarih+saat kullan
-                selectedDateIso = toUtcISOString(shiftThreeHoursBack(now));
+                selectedDateIso = formatLocalDateTime(now);
             } else if (!formData.date) {
-                selectedDateIso = toUtcISOString(shiftThreeHoursBack(now));
+                selectedDateIso = formatLocalDateTime(now);
             } else {
                 const selectedDateOnly = new Date(`${formData.date}T00:00:00`);
                 const isSameDay =
@@ -159,10 +161,10 @@
                     selectedDateOnly.getDate() === startOfToday.getDate();
 
                 if (isSameDay) {
-                    selectedDateIso = toUtcISOString(shiftThreeHoursBack(now));
+                    selectedDateIso = formatLocalDateTime(now);
                 } else {
                     const selectedAtSevenPM = new Date(`${formData.date}T19:00:00`);
-                    selectedDateIso = toUtcISOString(shiftThreeHoursBack(selectedAtSevenPM));
+                    selectedDateIso = formatLocalDateTime(selectedAtSevenPM);
                 }
             }
 
@@ -284,29 +286,22 @@
             }
         }, []);
         
-        // Expenses değiştiğinde endDate'i bugüne güncelle (yeni eklenen verileri görmek için)
+        // Expenses değiştiğinde, bugünün tarihinde veri varsa endDate'i bugüne çek
         useEffect(() => {
-            const today = new Date().toISOString().split('T')[0];
-            const todayDate = new Date(today);
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+            const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
             const endDateObj = endDate ? new Date(endDate) : null;
-            
-            // Eğer endDate bugünden önceyse veya bugünün tarihinde yeni veri varsa, endDate'i bugüne güncelle
-            if (!endDateObj || endDateObj < todayDate) {
-                setEndDate(today);
-            } else {
-                // Bugünün tarihinde veri var mı kontrol et
-                const hasTodayData = expenses.some(exp => {
-                    if (!exp.date) return false;
-                    const expDate = new Date(exp.date);
-                    const expDateOnly = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
-                    const todayOnly = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
-                    return expDateOnly.getTime() === todayOnly.getTime();
-                });
-                
-                // Bugünün tarihinde veri varsa ama endDate bugün değilse, endDate'i bugüne güncelle
-                if (hasTodayData && endDateObj.getTime() !== todayDate.getTime()) {
-                    setEndDate(today);
-                }
+
+            const hasTodayData = expenses.some(exp => {
+                if (!exp.date) return false;
+                const expDate = new Date(exp.date);
+                const expDateOnly = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+                return expDateOnly.getTime() === todayOnly.getTime();
+            });
+
+            if (hasTodayData && (!endDateObj || endDateObj.getTime() !== todayOnly.getTime())) {
+                setEndDate(todayString);
             }
         }, [expenses, endDate]);
 
@@ -347,11 +342,11 @@
                 filteredExpenses = expenses.filter(exp => {
                     if (!exp.date) return false;
                     const expDate = new Date(exp.date);
-                    // Tarih karşılaştırması için sadece tarih kısmını kullan (UTC'den yerel saate çevir)
-                    const expDateUTC = new Date(expDate.getUTCFullYear(), expDate.getUTCMonth(), expDate.getUTCDate());
+                    // Tarih karşılaştırması için sadece tarih kısmını kullan
+                    const expDateOnly = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
                     const startDateOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate());
                     const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-                    return expDateUTC >= startDateOnly && expDateUTC <= endDateOnly;
+                    return expDateOnly >= startDateOnly && expDateOnly <= endDateOnly;
                 });
             }
 
